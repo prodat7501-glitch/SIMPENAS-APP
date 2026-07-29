@@ -13,7 +13,6 @@ export const applyExistingNumberingService = {
   applySptAndSppd: () => {
     const spts = sptService.getAll();
     const sppds = sppdService.getAllSync();
-    const sequenceBySptId = new Map<string, number>();
     const oldToNew: Array<{
       documentType: "SPT" | "SPPD";
       id: string;
@@ -23,7 +22,6 @@ export const applyExistingNumberingService = {
 
     const updatedSpts = spts.map((item, index) => {
       const sequence = getSequenceFromNumber(item.nomor, index + 1);
-      sequenceBySptId.set(item.id ?? "", sequence);
       const newNumber = penomoranService.formatNumber(
         "SPT",
         sequence,
@@ -40,10 +38,17 @@ export const applyExistingNumberingService = {
       return { ...item, nomor: newNumber };
     });
 
+    const usedSppdSequencesByYear = new Map<number, Set<number>>();
     const updatedSppds = sppds.map((item, index) => {
-      const sequence =
-        sequenceBySptId.get(item.sptId) ??
-        getSequenceFromNumber(item.nomor, index + 1);
+      const date = new Date(item.tanggalBerangkat);
+      const year = Number.isNaN(date.getTime())
+        ? new Date().getFullYear()
+        : date.getFullYear();
+      const usedSequences = usedSppdSequencesByYear.get(year) ?? new Set();
+      let sequence = getSequenceFromNumber(item.nomor, index + 1);
+      while (usedSequences.has(sequence)) sequence += 1;
+      usedSequences.add(sequence);
+      usedSppdSequencesByYear.set(year, usedSequences);
       const newNumber = penomoranService.formatNumber(
         "SPPD",
         sequence,

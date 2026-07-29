@@ -124,6 +124,8 @@ export default function PenandatanganPage() {
             ? "Ubah Data Pejabat Penandatangan"
             : "Tambah Pejabat Penandatangan Baru"
         }
+        className="max-w-2xl"
+        bodyClassName="max-h-[75vh] overflow-y-auto pr-1"
       >
         <PenandatanganForm
           initialValues={editingItem}

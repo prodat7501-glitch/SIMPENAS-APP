@@ -20,8 +20,7 @@ export const useNotaDinasStore = create<NotaDinasState>((set) => ({
   add: (newItem) => {
     set((state) => {
       const updated = [...state.items, { ...newItem, id: `nd-${Date.now()}` }];
-      notaDinasService.saveAll(updated);
-      return { items: updated };
+      return { items: notaDinasService.saveAll(updated) };
     });
   },
   update: (id, updatedItem) => {
@@ -29,27 +28,21 @@ export const useNotaDinasStore = create<NotaDinasState>((set) => ({
       const updated = state.items.map((item) =>
         item.id === id ? { ...item, ...updatedItem } : item,
       );
-      notaDinasService.saveAll(updated);
-      return { items: updated };
+      return { items: notaDinasService.saveAll(updated) };
     });
   },
   remove: (id) => {
     set((state) => {
       const target = state.items.find((item) => item.id === id);
-      if (
-        target &&
-        ["Draft", "Nomor Diambil"].includes(target.status) &&
-        target.nomor
-      ) {
+      if (target?.nomor) {
         penomoranService.releaseNumber(
           "Nota Dinas",
           target.nomor,
-          "Nota Dinas dihapus sebelum selesai.",
+          "Nomor dilepas karena Nota Dinas telah dihapus.",
         );
       }
       const updated = state.items.filter((item) => item.id !== id);
-      notaDinasService.saveAll(updated);
-      return { items: updated };
+      return { items: notaDinasService.saveAll(updated) };
     });
   },
   generateNomor: (date) => {

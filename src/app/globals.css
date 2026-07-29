@@ -216,3 +216,373 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Financial document print layouts. These rules live globally because the
+   previews are client-rendered and must be available before window.print(). */
+.spby-print-sheet {
+  box-sizing: border-box;
+  width: 215mm;
+  height: 330mm;
+  overflow: hidden;
+  padding: 8mm;
+  font-family: Arial, Helvetica, sans-serif;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.spby-document {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) 62mm;
+  width: 100%;
+  height: 314mm;
+  overflow: hidden;
+}
+.spby-main {
+  min-height: 0;
+  overflow: hidden;
+}
+.spby-signature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 7mm;
+  overflow: hidden;
+}
+.spby-signature-block {
+  display: grid;
+  grid-template-rows: 12mm 13mm 24mm 11mm;
+  min-width: 0;
+  align-content: start;
+}
+
+.tanda-terima-print-preview > .no-print,
+.kuitansi-print-preview > .no-print,
+.nominatif-print-preview > .no-print {
+  z-index: 50;
+}
+.tanda-terima-print-sheet {
+  box-sizing: border-box;
+  width: 215mm;
+  min-height: 330mm;
+  padding: 12mm 13mm 10mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.22;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.tanda-terima-document {
+  width: 100%;
+}
+.tanda-terima-reference {
+  width: 61mm;
+  margin-left: auto;
+  font-size: 10.5pt;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.tanda-terima-title {
+  margin-top: 5mm;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 800;
+}
+.tanda-terima-sppd-info {
+  display: grid;
+  grid-template-columns: 48mm 6mm 1fr;
+  margin: 4mm 0 1.5mm;
+  line-height: 1.5;
+}
+.tanda-terima-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.tanda-terima-table th,
+.tanda-terima-table td {
+  border: 1.2px solid #000;
+  padding: 1.2mm 1mm;
+}
+.tanda-terima-table th {
+  height: 9mm;
+  text-align: center;
+  font-weight: 800;
+}
+.tanda-terima-detail-row {
+  height: 73mm;
+}
+.tanda-terima-cost-row {
+  height: 6mm;
+  min-height: 6mm;
+  line-height: 5mm;
+}
+.tanda-terima-total-row {
+  height: 8mm;
+}
+.tanda-terima-terbilang-row {
+  height: 9mm;
+  background: #d9d9d9;
+}
+.tanda-terima-receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  grid-template-rows: 9mm auto;
+  column-gap: 38mm;
+  min-height: 67mm;
+  padding: 0 1mm;
+}
+.tanda-terima-receipt-date {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+.tanda-terima-receipt-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.tanda-terima-receipt-right {
+  grid-column: 2;
+  grid-row: 2;
+}
+.tanda-terima-receipt-column {
+  display: grid;
+  grid-template-rows: 7mm 8mm 9mm 21mm auto;
+  align-content: start;
+}
+.tanda-terima-receipt-amount {
+  display: grid;
+  grid-template-columns: 10mm 1fr;
+  align-items: start;
+}
+.tanda-terima-settlement {
+  border-top: 1.2px solid #000;
+  padding-top: 4mm;
+}
+.tanda-terima-settlement h2 {
+  text-align: center;
+  font-size: 12.5pt;
+  font-weight: 400;
+}
+
+.kuitansi-print-sheet {
+  box-sizing: border-box;
+  width: 215mm;
+  height: 330mm;
+  overflow: hidden;
+  padding: 15mm 5.5mm 17mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11.5pt;
+  line-height: 1.22;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.kuitansi-frame {
+  display: grid;
+  grid-template-rows: 203mm 46mm 48mm;
+  width: 100%;
+  height: 297mm;
+  overflow: hidden;
+  border: 0;
+}
+.kuitansi-main-section {
+  position: relative;
+  padding: 11mm 0.5mm 0;
+}
+.kuitansi-up-title {
+  text-align: center;
+  font-size: 14pt;
+  font-weight: 800;
+}
+.kuitansi-meta {
+  display: grid;
+  grid-template-columns: 33mm 6mm 1fr;
+  row-gap: 3mm;
+  width: 91mm;
+  margin: 10mm 0 0 auto;
+  padding-right: 22mm;
+}
+.kuitansi-document-title {
+  margin-top: 11mm;
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kuitansi-fields {
+  display: grid;
+  grid-template-columns: 40mm 6mm 1fr;
+  row-gap: 7mm;
+  margin-top: 11mm;
+}
+.kuitansi-payment-description {
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: justify;
+}
+.kuitansi-recipient {
+  width: 66mm;
+  margin: 7mm 15mm 0 auto;
+  text-align: center;
+}
+.kuitansi-approval-section {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  border-top: 1.2px solid #000;
+  border-bottom: 1.2px solid #000;
+  padding: 1mm 0.5mm;
+}
+.kuitansi-approval-section > div:last-child {
+  padding-left: 1mm;
+}
+.kuitansi-responsibility-section {
+  padding: 6mm 0.5mm 0;
+}
+
+.nominatif-print-preview > .pt-10 {
+  position: relative;
+  z-index: 1;
+}
+.nominatif-print-sheet {
+  width: 330mm;
+  height: 215mm;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.nominatif-auto-scale {
+  width: var(--nominatif-scale-width);
+  transform: scale(var(--nominatif-scale));
+  transform-origin: top left;
+}
+.nominatif-top-grid {
+  display: grid;
+  grid-template-columns: 36.5% 33% 30.5%;
+  height: 56mm;
+  border: 1.5px solid #000;
+  border-bottom: 0;
+}
+.nominatif-top-left,
+.nominatif-top-center,
+.nominatif-top-right {
+  border-right: 1.5px solid #000;
+}
+.nominatif-top-right {
+  border-right: 0;
+}
+.nominatif-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--nominatif-font-size);
+  line-height: 1.15;
+}
+.nominatif-table th,
+.nominatif-table td {
+  border: 1.5px solid #000;
+  padding: 1.4mm 1.2mm;
+  vertical-align: middle;
+}
+.nominatif-table th {
+  text-align: center;
+  font-size: calc(var(--nominatif-font-size) * 1.02);
+  font-weight: 900;
+}
+.nominatif-index-row td {
+  background: #bfbfbf;
+  padding: 0.5mm 1mm;
+  text-align: center;
+  font-size: calc(var(--nominatif-font-size) * 0.72);
+  font-style: italic;
+}
+.nominatif-data-row {
+  height: var(--nominatif-row-height);
+}
+.nominatif-total-row {
+  height: 10mm;
+  background: #d9d9d9;
+}
+.nominatif-total-row td:nth-child(5),
+.nominatif-total-row td:nth-child(6),
+.nominatif-total-row td:nth-child(7) {
+  background: #fff;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-direct,
+  .print-direct * {
+    visibility: visible;
+  }
+  .print-direct {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+
+  .spby-print-preview,
+  .tanda-terima-print-preview,
+  .kuitansi-print-preview {
+    width: 215mm !important;
+    min-height: 330mm !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  .nominatif-print-preview {
+    width: 330mm !important;
+    min-height: 215mm !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  .spby-print-preview > .pt-10,
+  .tanda-terima-print-preview > .pt-10,
+  .kuitansi-print-preview > .pt-10,
+  .nominatif-print-preview > .pt-10 {
+    padding-top: 0 !important;
+  }
+  .spby-print-sheet,
+  .kuitansi-print-sheet,
+  .nominatif-print-sheet {
+    overflow: hidden !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .spby-print-sheet,
+  .kuitansi-print-sheet {
+    width: 215mm !important;
+    height: 330mm !important;
+  }
+  .tanda-terima-print-sheet {
+    width: 215mm !important;
+    min-height: 330mm !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .nominatif-print-sheet {
+    width: 330mm !important;
+    height: 215mm !important;
+    padding: 5mm !important;
+  }
+}

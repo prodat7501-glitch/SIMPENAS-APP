@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ExportDataButton } from "@/components/ui/export-data-button";
 import { Dialog } from "@/components/ui/dialog";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { useToast } from "@/components/ui/toast";
@@ -12,7 +13,9 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   canAccessSppdByNotaDinas,
   canAccessSptByNotaDinas,
+  canManageSptChain,
   resolveCurrentPegawai,
+  resolveSptChainManagerId,
 } from "@/lib/document-access";
 import { useDipa } from "@/modules/dipa/useDipa";
 import { useJabatan } from "@/modules/jabatan/useJabatan";
@@ -24,8 +27,10 @@ import { SppdForm } from "@/modules/sppd/components/SppdForm";
 import { SppdPreview } from "@/modules/sppd/components/SppdPreview";
 import { SppdTable } from "@/modules/sppd/components/SppdTable";
 import type { Sppd } from "@/modules/sppd/sppd.schema";
+import type { SppdMutationPayload } from "@/modules/sppd/sppd.types";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
+import { formatTableDate } from "@/lib/formatters";
 
 const isApprovedSpt = (status: string) =>
   status === "Selesai" || status === "Disetujui";
@@ -69,22 +74,50 @@ export default function SppdPage() {
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
   const scopeToNotaDinas = user?.role === "Pegawai";
+  const scopeMutationsToNotaDinas =
+    user?.role !== "Administrator" && user?.role !== "Sub Bagian Keuangan";
+  const isAdministrator = user?.role === "Administrator";
 
   const approvedSpts = spts
     .filter((item) => isApprovedSpt(item.status))
     .filter(
       (item) =>
-        !scopeToNotaDinas ||
+        !scopeMutationsToNotaDinas ||
         canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),
     );
+  const getSeriesManager = (sptId: string) =>
+    items.find((item) => item.sptId === sptId && item.pengelolaPegawaiId);
+  const getSeriesManagerId = (sptId: string) =>
+    resolveSptChainManagerId(sptId, spts) ??
+    getSeriesManager(sptId)?.pengelolaPegawaiId;
+  const getSeriesManagerName = (sptId: string) =>
+    pegawais.find((item) => item.id === getSeriesManagerId(sptId))?.nama ??
+    getSeriesManager(sptId)?.pengelolaNama ??
+    "anggota lain";
+  const canManageSeries = (sptId: string) =>
+    canManageSptChain(currentPegawaiId, sptId, spts, isAdministrator);
+  const manageableApprovedSpts = approvedSpts.filter((item) =>
+    item.id ? canManageSeries(item.id) : true,
+  );
+  const hasUnissuedSppd = (sptId: string) => {
+    const sourceSpt = spts.find((item) => item.id === sptId);
+    if (!sourceSpt) return false;
+    const issuedPegawaiIds = new Set(
+      items
+        .filter((item) => item.sptId === sptId)
+        .flatMap((item) => item.personil.map((person) => person.pegawaiId)),
+    );
+    return sourceSpt.personil.some(
+      (person) => !issuedPegawaiIds.has(person.pegawaiId),
+    );
+  };
+  const creatableApprovedSpts = manageableApprovedSpts.filter((item) =>
+    Boolean(item.id && hasUnissuedSppd(item.id)),
+  );
+  const lockedSeriesCount = approvedSpts.length - manageableApprovedSpts.length;
   const visibleSppds = scopeToNotaDinas
     ? filteredItems.filter((item) =>
-        canAccessSppdByNotaDinas(
-          currentPegawaiId,
-          item,
-          spts,
-          notaDinasItems,
-        ),
+        canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notaDinasItems),
       )
     : filteredItems;
 
@@ -104,9 +137,11 @@ export default function SppdPage() {
       addToast("Anda tidak memiliki izin untuk membuat SPPD", "error");
       return;
     }
-    if (scopeToNotaDinas && !approvedSpts.length) {
+    if (!creatableApprovedSpts.length) {
       addToast(
-        "SPPD hanya dapat dibuat dari SPT pada Nota Dinas yang mencantumkan Anda.",
+        lockedSeriesCount > 0
+          ? "Rangkaian SPPD sudah dikelola pegawai pembuat SPT pertama. Anda hanya dapat melihat statusnya."
+          : "Tidak ada personel SPT yang masih memerlukan penerbitan SPPD.",
         "error",
       );
       return;
@@ -117,8 +152,15 @@ export default function SppdPage() {
   };
 
   const handleEdit = (item: Sppd) => {
+    if (!canManageSeries(item.sptId)) {
+      addToast(
+        `Rangkaian SPPD ini dikelola oleh ${getSeriesManagerName(item.sptId)}. Anda hanya dapat melihat statusnya.`,
+        "error",
+      );
+      return;
+    }
     if (
-      scopeToNotaDinas &&
+      scopeMutationsToNotaDinas &&
       !canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notaDinasItems)
     ) {
       addToast("Anda hanya dapat mengubah SPPD dari Nota Dinas Anda", "error");
@@ -134,6 +176,10 @@ export default function SppdPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      addToast("Hanya Administrator yang dapat menghapus SPPD", "error");
+      return;
+    }
     const target = items.find((item) => item.id === id);
     if (
       target &&
@@ -143,11 +189,6 @@ export default function SppdPage() {
       addToast("Anda hanya dapat menghapus SPPD dari Nota Dinas Anda", "error");
       return;
     }
-    if (!canDelete) {
-      addToast("Anda tidak memiliki izin untuk menghapus SPPD", "error");
-      return;
-    }
-
     if (!confirm("Apakah Anda yakin ingin menghapus SPPD ini?")) return;
 
     try {
@@ -162,9 +203,41 @@ export default function SppdPage() {
     }
   };
 
-  const handleSubmit = async (data: Omit<Sppd, "id">) => {
+  const handleSubmit = async (data: SppdMutationPayload) => {
     try {
-      await save(data, selectedItem);
+      if (!canManageSeries(data.sptId)) {
+        throw new Error(
+          `Rangkaian SPPD ini sudah dikelola oleh ${getSeriesManagerName(data.sptId)}.`,
+        );
+      }
+      if (
+        !selectedItem &&
+        !creatableApprovedSpts.some((item) => item.id === data.sptId)
+      ) {
+        throw new Error(
+          "Seluruh personel pada SPT ini sudah memiliki SPPD atau sumber tidak lagi tersedia.",
+        );
+      }
+      const seriesManager = getSeriesManager(data.sptId);
+      const chainManagerId = getSeriesManagerId(data.sptId);
+      const chainManager = pegawais.find((item) => item.id === chainManagerId);
+
+      await save(
+        {
+          ...data,
+          pengelolaPegawaiId:
+            seriesManager?.pengelolaPegawaiId ??
+            selectedItem?.pengelolaPegawaiId ??
+            chainManagerId ??
+            (user?.role !== "Administrator" ? currentPegawaiId : undefined),
+          pengelolaNama:
+            seriesManager?.pengelolaNama ??
+            selectedItem?.pengelolaNama ??
+            chainManager?.nama ??
+            (user?.role !== "Administrator" ? currentPegawai?.nama : undefined),
+        },
+        selectedItem,
+      );
       addToast(
         selectedItem ? "SPPD berhasil diperbarui" : "SPPD berhasil disimpan",
         "success",
@@ -189,7 +262,9 @@ export default function SppdPage() {
     pegawais.find((item) => item.id === pegawaiId)?.nama ?? "-";
   const getDipaLabel = (dipaId: string) => {
     const dipa = dipas.find((item) => item.id === dipaId);
-    return dipa ? `${dipa.kodeDipa} - ${dipa.program}` : "-";
+    return dipa
+      ? `${dipa.kodeDipa} - ${dipa.klasifikasiRincianOutput} - ${dipa.akunPerjalananDinas}`
+      : "-";
   };
 
   return (
@@ -206,15 +281,90 @@ export default function SppdPage() {
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
             Kelola SPPD berdasarkan SPT yang telah disetujui, lengkap dengan
-            nomor, personil, DIPA, approval, dan pratinjau cetak.
+            nomor, personil, DIPA, status dokumen otomatis, dan pratinjau cetak.
           </p>
         </div>
-        {canCreate && (!scopeToNotaDinas || approvedSpts.length > 0) && (
-          <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4" />
-            Buat SPPD
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportDataButton
+            title="Data Surat Perintah Perjalanan Dinas"
+            module="SPPD"
+            rows={visibleSppds}
+            defaultFileName={`data-sppd-${new Date().toISOString().slice(0, 10)}`}
+            columns={[
+              {
+                header: "No",
+                value: (_, index) => index + 1,
+                type: "number",
+                width: 45,
+              },
+              { header: "Nomor SPPD", value: (item) => item.nomor, width: 190 },
+              {
+                header: "Nama",
+                value: (item) =>
+                  item.personil
+                    .map((row) => getPegawaiName(row.pegawaiId))
+                    .join(", "),
+                width: 180,
+              },
+              {
+                header: "Nomor SPT",
+                value: (item) => getSptNumber(item.sptId),
+                width: 190,
+              },
+              {
+                header: "Berangkat Dari",
+                value: (item) => item.tempatBerangkat,
+                width: 150,
+              },
+              {
+                header: "Tujuan",
+                value: (item) => item.tempatTujuan,
+                width: 170,
+              },
+              {
+                header: "Transportasi",
+                value: (item) => item.transportasi,
+                width: 90,
+              },
+              {
+                header: "Tanggal Berangkat",
+                value: (item) => formatTableDate(item.tanggalBerangkat),
+                width: 100,
+              },
+              {
+                header: "Tanggal Kembali",
+                value: (item) => formatTableDate(item.tanggalKembali),
+                width: 100,
+              },
+              {
+                header: "Jumlah Hari",
+                value: (item) => item.lamaPerjalanan,
+                type: "number",
+                width: 75,
+              },
+              {
+                header: "Akun DIPA",
+                value: (item) => getDipaLabel(item.dipaId),
+                width: 240,
+              },
+              { header: "Status", value: (item) => item.status, width: 100 },
+            ]}
+          />
+          {canCreate && (
+            <Button
+              onClick={handleCreate}
+              disabled={!creatableApprovedSpts.length}
+              title={
+                creatableApprovedSpts.length
+                  ? "Buat SPPD individual berikutnya"
+                  : "Tidak ada rangkaian SPPD yang dapat dilanjutkan"
+              }
+            >
+              <Plus className="w-4 h-4" />
+              Buat SPPD
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -232,11 +382,31 @@ export default function SppdPage() {
         </Alert>
       )}
 
+      {canCreate && !isAdministrator && lockedSeriesCount > 0 && (
+        <Alert variant="info" title="Rangkaian SPPD Sedang Dikelola">
+          {lockedSeriesCount} rangkaian SPT sudah dikelola pegawai pembuat SPT
+          pertama pada Nota Dinas sumber. Anda tetap dapat melihat status dan
+          pratinjau, tetapi tidak dapat membuat SPPD baru pada rangkaian
+          tersebut.
+        </Alert>
+      )}
+
+      {canCreate &&
+        manageableApprovedSpts.length > 0 &&
+        creatableApprovedSpts.length === 0 && (
+          <Alert variant="info" title="Seluruh SPPD Telah Diterbitkan">
+            Tidak ada lagi personel yang memerlukan SPPD pada rangkaian yang
+            Anda kelola. Tombol Buat SPPD akan aktif kembali ketika terdapat SPT
+            dari Nota Dinas baru yang telah disetujui.
+          </Alert>
+        )}
+
       <SppdTable
         items={visibleSppds}
         search={filters.search}
         status={filters.status}
         canEdit={canUpdate}
+        canEditItem={(item) => canManageSeries(item.sptId)}
         canDelete={canDelete}
         canPrint={canPrint}
         onSearchChange={setSearch}
@@ -265,10 +435,13 @@ export default function SppdPage() {
       >
         <SppdForm
           initialValues={selectedItem}
-          approvedSpts={approvedSpts}
+          approvedSpts={
+            selectedItem ? manageableApprovedSpts : creatableApprovedSpts
+          }
           existingSppds={items}
           pegawais={pegawais}
           dipas={dipas}
+          notaDinasItems={notaDinasItems}
           penandatangans={penandatangans}
           isSaving={isSaving}
           onSubmit={handleSubmit}

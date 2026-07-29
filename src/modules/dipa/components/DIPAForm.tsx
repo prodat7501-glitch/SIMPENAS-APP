@@ -1,157 +1,177 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DIPA, dipaSchema } from "../dipa.schema";
+import { dipaFormSchema, type DIPA, type DipaFormData } from "../dipa.schema";
 
 interface DIPAFormProps {
   initialValues?: DIPA | null;
-  onSubmit: (data: Omit<DIPA, "id">) => void;
+  onSubmit: (data: DipaFormData) => void;
   onCancel: () => void;
 }
+
+const createDefaultValues = (): DipaFormData => ({
+  kodeKro: "",
+  klasifikasiRincianOutput: "",
+  kodeAkun: "",
+  akunPerjalananDinas: "",
+  pagu: 0,
+  tahunAnggaran: new Date().getFullYear().toString(),
+});
+
+const toFormValues = (item: DIPA): DipaFormData => ({
+  kodeKro: item.kodeKro,
+  klasifikasiRincianOutput: item.klasifikasiRincianOutput,
+  kodeAkun: item.kodeAkun,
+  akunPerjalananDinas: item.akunPerjalananDinas,
+  pagu: item.pagu,
+  tahunAnggaran: item.tahunAnggaran,
+});
 
 export function DIPAForm({ initialValues, onSubmit, onCancel }: DIPAFormProps) {
   const {
     register,
     handleSubmit,
-    setValue,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<Omit<DIPA, "id">>({
-    resolver: zodResolver(dipaSchema),
-    defaultValues: {
-      kodeDipa: "",
-      program: "",
-      pagu: 0,
-      realisasi: 0,
-      tahunAnggaran: new Date().getFullYear().toString(),
-    },
+  } = useForm<DipaFormData>({
+    resolver: zodResolver(dipaFormSchema),
+    defaultValues: createDefaultValues(),
   });
 
   useEffect(() => {
-    if (initialValues) {
-      setValue("kodeDipa", initialValues.kodeDipa);
-      setValue("program", initialValues.program);
-      setValue("pagu", initialValues.pagu);
-      setValue("realisasi", initialValues.realisasi);
-      setValue("tahunAnggaran", initialValues.tahunAnggaran);
-    }
-  }, [initialValues, setValue]);
+    reset(initialValues ? toFormValues(initialValues) : createDefaultValues());
+  }, [initialValues, reset]);
 
   return (
-    <form
-      onSubmit={handleSubmit((data) => {
-        onSubmit({
-          ...data,
-          pagu: Number(data.pagu),
-          realisasi: Number(data.realisasi),
-        });
-      })}
-      className="space-y-4"
-    >
-      <div>
-        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          Kode DIPA
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
+            Kode KRO
+          </span>
+          <Input
+            placeholder="Masukkan Kode KRO"
+            {...register("kodeKro")}
+            error={Boolean(errors.kodeKro)}
+          />
+          {errors.kodeKro && (
+            <span className="block text-[10px] font-bold text-danger">
+              {errors.kodeKro.message}
+            </span>
+          )}
         </label>
-        <Input
-          placeholder="Contoh: 015.01.2.654321"
-          {...register("kodeDipa")}
-          error={!!errors.kodeDipa}
-          disabled={!!initialValues}
-        />
-        {errors.kodeDipa && (
-          <p className="text-[10px] text-danger font-bold mt-1">
-            {errors.kodeDipa.message}
-          </p>
-        )}
+
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
+            Klasifikasi Rincian Output (KRO)
+          </span>
+          <Input
+            placeholder="Masukkan Klasifikasi Rincian Output (KRO)"
+            {...register("klasifikasiRincianOutput")}
+            error={Boolean(errors.klasifikasiRincianOutput)}
+          />
+          {errors.klasifikasiRincianOutput && (
+            <span className="block text-[10px] font-bold text-danger">
+              {errors.klasifikasiRincianOutput.message}
+            </span>
+          )}
+        </label>
+
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
+            Kode Akun
+          </span>
+          <Input
+            placeholder="Masukkan Kode Akun"
+            {...register("kodeAkun")}
+            error={Boolean(errors.kodeAkun)}
+          />
+          {errors.kodeAkun && (
+            <span className="block text-[10px] font-bold text-danger">
+              {errors.kodeAkun.message}
+            </span>
+          )}
+        </label>
+
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
+            Akun Perjalanan Dinas
+          </span>
+          <Input
+            placeholder="Masukkan Akun Perjalanan Dinas"
+            {...register("akunPerjalananDinas")}
+            error={Boolean(errors.akunPerjalananDinas)}
+          />
+          {errors.akunPerjalananDinas && (
+            <span className="block text-[10px] font-bold text-danger">
+              {errors.akunPerjalananDinas.message}
+            </span>
+          )}
+        </label>
       </div>
 
-      <div>
-        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          Nama Program / Kegiatan
-        </label>
-        <Input
-          placeholder="Contoh: Penyelenggaraan Pemilu Serentak"
-          {...register("program")}
-          error={!!errors.program}
-        />
-        {errors.program && (
-          <p className="text-[10px] text-danger font-bold mt-1">
-            {errors.program.message}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
             Pagu Anggaran (Rp)
-          </label>
+          </span>
           <Input
             type="number"
-            placeholder="Pagu"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            placeholder="0"
             {...register("pagu", { valueAsNumber: true })}
-            error={!!errors.pagu}
+            error={Boolean(errors.pagu)}
           />
           {errors.pagu && (
-            <p className="text-[10px] text-danger font-bold mt-1">
+            <span className="block text-[10px] font-bold text-danger">
               {errors.pagu.message}
-            </p>
+            </span>
           )}
-        </div>
+        </label>
 
-        <div>
-          <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-            Realisasi (Rp)
-          </label>
+        <label className="space-y-2">
+          <span className="block text-xs font-bold uppercase text-muted-foreground">
+            Tahun Anggaran
+          </span>
           <Input
             type="number"
-            placeholder="Realisasi"
-            {...register("realisasi", { valueAsNumber: true })}
-            error={!!errors.realisasi}
+            min={1000}
+            max={9999}
+            step={1}
+            inputMode="numeric"
+            placeholder="Contoh: 2026"
+            {...register("tahunAnggaran")}
+            error={Boolean(errors.tahunAnggaran)}
           />
-          {errors.realisasi && (
-            <p className="text-[10px] text-danger font-bold mt-1">
-              {errors.realisasi.message}
-            </p>
+          {errors.tahunAnggaran && (
+            <span className="block text-[10px] font-bold text-danger">
+              {errors.tahunAnggaran.message}
+            </span>
           )}
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          Tahun Anggaran
         </label>
-        <Input
-          placeholder="Contoh: 2026"
-          {...register("tahunAnggaran")}
-          error={!!errors.tahunAnggaran}
-        />
-        {errors.tahunAnggaran && (
-          <p className="text-[10px] text-danger font-bold mt-1">
-            {errors.tahunAnggaran.message}
-          </p>
-        )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-4 border-t border-border">
+      <div className="flex justify-end gap-2 border-t border-border pt-4">
         <Button
           type="button"
           variant="ghost"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="cursor-pointer"
         >
           Batal
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="cursor-pointer"
-        >
-          {initialValues ? "Simpan Perubahan" : "Tambah Anggaran"}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting
+            ? "Menyimpan..."
+            : initialValues
+              ? "Simpan Perubahan"
+              : "Tambah Anggaran"}
         </Button>
       </div>
     </form>

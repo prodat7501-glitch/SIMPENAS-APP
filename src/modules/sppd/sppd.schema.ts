@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DEFAULT_INSTANSI, SPPD_STATUS_OPTIONS } from "./sppd.constants";
+import { penandatanganSnapshotSchema } from "@/modules/penandatangan/penandatangan.schema";
 
 export const sppdPersonilSchema = z.object({
   pegawaiId: z.string().min(1, "Personil SPT tidak valid"),
@@ -24,6 +25,8 @@ export const sppdSchema = z
       .string()
       .min(1, "Nomor SPPD wajib diisi dari nomor SPT referensi."),
     sptId: z.string().min(1, "SPT yang telah disetujui wajib dipilih"),
+    pengelolaPegawaiId: z.string().optional(),
+    pengelolaNama: z.string().optional(),
     personil: z
       .array(sppdPersonilSchema)
       .min(1, "Wajib memilih satu personil dari SPT")
@@ -41,14 +44,13 @@ export const sppdSchema = z
       .default(DEFAULT_INSTANSI),
     dipaId: z.string().min(1, "Akun DIPA wajib dipilih"),
     penandatanganId: z.string().min(1, "Pejabat penandatangan wajib dipilih"),
+    penandatanganSnapshot: penandatanganSnapshotSchema.nullable().optional(),
     jumlahKolomHalaman2: z.coerce
       .number()
       .int()
       .min(1, "Minimal terdapat Romawi I")
       .default(6),
-    tandaTanganHalaman2: z
-      .array(sppdTandaTanganHalaman2Schema)
-      .default([]),
+    tandaTanganHalaman2: z.array(sppdTandaTanganHalaman2Schema).default([]),
     status: z.enum(SPPD_STATUS_OPTIONS).default("Draft"),
   })
   .superRefine((data, ctx) => {

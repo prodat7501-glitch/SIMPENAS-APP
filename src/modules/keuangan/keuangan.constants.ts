@@ -2,8 +2,9 @@ export const KEUANGAN_QUERY_KEY = ["keuangan"] as const;
 export const SPJ_STATUS_OPTIONS = [
   "SPJ Diterima",
   "Validasi SPJ",
-  "SPJ Perlu Dilengkapi",
-  "Validasi SPJ Selesai",
+  "Validasi Selesai",
+  "Proses Pembayaran",
+  "Pembayaran Selesai",
 ] as const;
 export const DOCUMENT_TYPES = [
   "SPBY",
@@ -11,3 +12,4 @@ export const DOCUMENT_TYPES = [
   "Tanda Terima",
   "Kuitansi",
 ] as const;
+export const PAYMENT_METHOD_OPTIONS = ["Tunai", "Transfer"] as const;

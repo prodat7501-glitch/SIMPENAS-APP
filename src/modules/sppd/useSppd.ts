@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Sppd } from "./sppd.schema";
 import { sppdService } from "./sppd.service";
 import { SPPD_QUERY_KEY } from "./sppd.constants";
-import type { SppdMutationPayload, SppdNomorRequest } from "./sppd.types";
+import type { SppdMutationPayload } from "./sppd.types";
 import { useSppdStore } from "./sppd.store";
 import { useActivityStore } from "@/stores/activity.store";
 
@@ -70,19 +70,6 @@ export function useSppd() {
     },
   });
 
-  const nomorMutation = useMutation({
-    mutationFn: (payload: SppdNomorRequest) =>
-      sppdService.requestNomor(payload),
-    onSuccess: (nomor) => {
-      log({
-        action: "Generate",
-        module: "SPPD",
-        description: `Ambil nomor SPPD ${nomor}`,
-        user: "Pengguna aktif",
-      });
-    },
-  });
-
   const items = listQuery.data ?? [];
   const filteredItems = items.filter((item) => {
     const search = filters.search.trim().toLowerCase();
@@ -117,7 +104,6 @@ export function useSppd() {
     isLoading: listQuery.isLoading,
     isSaving: createMutation.isPending || updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    isGeneratingNomor: nomorMutation.isPending,
     error: listQuery.error,
     setSelectedItem,
     setPreviewItem,
@@ -125,6 +111,5 @@ export function useSppd() {
     setStatus,
     save,
     remove: deleteMutation.mutateAsync,
-    requestNomor: nomorMutation.mutateAsync,
   };
 }

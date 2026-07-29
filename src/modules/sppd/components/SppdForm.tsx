@@ -15,16 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { DIPA } from "@/modules/dipa/dipa.schema";
+import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
 import type { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
+import { isPenandatanganAvailable } from "@/modules/penandatangan/penandatangan.service";
 import type { Spt } from "@/modules/spt/spt.schema";
-import {
-  DEFAULT_INSTANSI,
-  SPPD_STATUS_OPTIONS,
-  TRANSPORTASI_OPTIONS,
-} from "../sppd.constants";
+import { DEFAULT_INSTANSI, TRANSPORTASI_OPTIONS } from "../sppd.constants";
 import { type Sppd, type SppdFormValues, sppdSchema } from "../sppd.schema";
+import type { SppdMutationPayload } from "../sppd.types";
 
 interface SppdFormProps {
   initialValues?: Sppd | null;
@@ -32,9 +32,10 @@ interface SppdFormProps {
   existingSppds: Sppd[];
   pegawais: Pegawai[];
   dipas: DIPA[];
+  notaDinasItems: NotaDinas[];
   penandatangans: Penandatangan[];
   isSaving: boolean;
-  onSubmit: (data: Omit<Sppd, "id">) => void;
+  onSubmit: (data: SppdMutationPayload) => void;
   onCancel: () => void;
 }
 
@@ -58,11 +59,6 @@ const calculateDuration = (start?: string, end?: string) => {
   return Math.floor(diff / 86_400_000) + 1;
 };
 
-const getSequenceFromSptNumber = (nomorSpt: string) => {
-  const parsed = Number(nomorSpt.split("/")[0]?.trim());
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-};
-
 type Page2Signer = NonNullable<Sppd["tandaTanganHalaman2"]>[number];
 
 const normalizePage2Signer = (item?: Partial<Page2Signer>): Page2Signer => ({
@@ -82,6 +78,7 @@ export function SppdForm({
   existingSppds,
   pegawais,
   dipas,
+  notaDinasItems,
   penandatangans,
   isSaving,
   onSubmit,
@@ -110,6 +107,7 @@ export function SppdForm({
       instansi: DEFAULT_INSTANSI,
       dipaId: "",
       penandatanganId: "",
+      penandatanganSnapshot: null,
       jumlahKolomHalaman2: 6,
       tandaTanganHalaman2: [],
       status: "Draft",
@@ -127,6 +125,25 @@ export function SppdForm({
   const tanggalKembali = useWatch({ control, name: "tanggalKembali" });
   const personil = useWatch({ control, name: "personil" }) ?? [];
   const selectedSpt = approvedSpts.find((item) => item.id === selectedSptId);
+  const availablePersonil = (selectedSpt?.personil ?? []).filter((person) => {
+    if (initialValues?.personil[0]?.pegawaiId === person.pegawaiId) return true;
+    return !existingSppds.some(
+      (item) =>
+        item.sptId === selectedSptId &&
+        item.personil.some(
+          (existingPerson) => existingPerson.pegawaiId === person.pegawaiId,
+        ),
+    );
+  });
+  const sourceNota = notaDinasItems.find(
+    (item) => item.id === selectedSpt?.notaDinasId,
+  );
+  const sourceDipa = dipas.find((item) => item.id === sourceNota?.dipaId);
+  const availablePenandatangans = penandatangans.filter(
+    (item) =>
+      isPenandatanganAvailable(item, "SPPD", tanggalBerangkat) ||
+      item.id === initialValues?.penandatanganId,
+  );
 
   useEffect(() => {
     if (!initialValues) return;
@@ -144,11 +161,14 @@ export function SppdForm({
     setValue("instansi", initialValues.instansi);
     setValue("dipaId", initialValues.dipaId);
     setValue("penandatanganId", initialValues.penandatanganId);
+    setValue(
+      "penandatanganSnapshot",
+      initialValues.penandatanganSnapshot ?? null,
+    );
     setValue("jumlahKolomHalaman2", initialValues.jumlahKolomHalaman2 ?? 6);
     replaceTandaTangan(
       (initialValues.tandaTanganHalaman2 ?? []).map(normalizePage2Signer),
     );
-    setValue("status", initialValues.status);
   }, [initialValues, replaceTandaTangan, setValue]);
 
   useEffect(() => {
@@ -156,10 +176,33 @@ export function SppdForm({
     setValue("lamaPerjalanan", duration, { shouldValidate: true });
   }, [tanggalBerangkat, tanggalKembali, setValue]);
 
+  useEffect(() => {
+    if (initialValues || !selectedSptId || !tanggalBerangkat) return;
+
+    const config = penomoranService
+      .list()
+      .find((item) => item.documentType === "SPPD");
+    const date = new Date(tanggalBerangkat);
+    if (!config || Number.isNaN(date.getTime())) return;
+
+    const numbersInYear = existingSppds
+      .filter(
+        (item) =>
+          new Date(item.tanggalBerangkat).getFullYear() === date.getFullYear(),
+      )
+      .map((item) => item.nomor);
+    setValue("nomor", penomoranService.preview(config, date, numbersInYear), {
+      shouldValidate: true,
+    });
+  }, [existingSppds, initialValues, selectedSptId, setValue, tanggalBerangkat]);
+
   const handleSptChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const sptId = event.target.value;
     const nextSpt = approvedSpts.find((item) => item.id === sptId);
     const existingSameSpt = existingSppds.find((item) => item.sptId === sptId);
+    const sourceNota = notaDinasItems.find(
+      (item) => item.id === nextSpt?.notaDinasId,
+    );
 
     setValue("sptId", sptId, { shouldValidate: true });
 
@@ -171,19 +214,15 @@ export function SppdForm({
 
     const tanggalBerangkat =
       existingSameSpt?.tanggalBerangkat ?? nextSpt.tanggalMulai;
-    setValue(
-      "nomor",
-      penomoranService.formatNumber(
-        "SPPD",
-        getSequenceFromSptNumber(nextSpt.nomor),
-        tanggalBerangkat,
-      ),
-      { shouldValidate: true },
-    );
+    setValue("nomor", "", { shouldValidate: true });
     setValue("personil", [], { shouldValidate: true });
-    setValue("maksud", existingSameSpt?.maksud ?? nextSpt.untuk[0]?.text ?? "", {
-      shouldValidate: true,
-    });
+    setValue(
+      "maksud",
+      existingSameSpt?.maksud ?? nextSpt.untuk[0]?.text ?? "",
+      {
+        shouldValidate: true,
+      },
+    );
     setValue("transportasi", existingSameSpt?.transportasi ?? "", {
       shouldValidate: true,
     });
@@ -196,13 +235,17 @@ export function SppdForm({
     setValue("tanggalBerangkat", tanggalBerangkat, {
       shouldValidate: true,
     });
-    setValue("tanggalKembali", existingSameSpt?.tanggalKembali ?? nextSpt.tanggalSelesai, {
-      shouldValidate: true,
-    });
+    setValue(
+      "tanggalKembali",
+      existingSameSpt?.tanggalKembali ?? nextSpt.tanggalSelesai,
+      {
+        shouldValidate: true,
+      },
+    );
     setValue("instansi", existingSameSpt?.instansi ?? DEFAULT_INSTANSI, {
       shouldValidate: true,
     });
-    setValue("dipaId", existingSameSpt?.dipaId ?? "", {
+    setValue("dipaId", existingSameSpt?.dipaId ?? sourceNota?.dipaId ?? "", {
       shouldValidate: true,
     });
     setValue("penandatanganId", existingSameSpt?.penandatanganId ?? "", {
@@ -230,13 +273,13 @@ export function SppdForm({
     setValue("jumlahKolomHalaman2", count, { shouldValidate: true });
   };
 
-  const handlePersonilChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handlePersonilChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     const pegawaiId = event.target.value;
-    setValue(
-      "personil",
-      pegawaiId ? [{ pegawaiId }] : [],
-      { shouldValidate: true },
-    );
+    setValue("personil", pegawaiId ? [{ pegawaiId }] : [], {
+      shouldValidate: true,
+    });
   };
 
   const getPegawaiLabel = (pegawaiId: string) => {
@@ -265,20 +308,18 @@ export function SppdForm({
           instansi: data.instansi || DEFAULT_INSTANSI,
           dipaId: data.dipaId,
           penandatanganId: data.penandatanganId,
+          penandatanganSnapshot: initialValues?.penandatanganSnapshot ?? null,
           jumlahKolomHalaman2: Number(data.jumlahKolomHalaman2 ?? 6),
-          tandaTanganHalaman2: (data.tandaTanganHalaman2 ?? []).map(
-            (item) => ({
-              tibaDi: item.tibaDi ?? "",
-              tanggalTiba: item.tanggalTiba ?? "",
-              berangkatDari: item.berangkatDari ?? "",
-              ke: item.ke ?? "",
-              tanggalBerangkat: item.tanggalBerangkat ?? "",
-              jabatan: item.jabatan ?? "",
-              nama: item.nama ?? "",
-              nip: item.nip ?? "",
-            }),
-          ),
-          status: data.status ?? "Draft",
+          tandaTanganHalaman2: (data.tandaTanganHalaman2 ?? []).map((item) => ({
+            tibaDi: item.tibaDi ?? "",
+            tanggalTiba: item.tanggalTiba ?? "",
+            berangkatDari: item.berangkatDari ?? "",
+            ke: item.ke ?? "",
+            tanggalBerangkat: item.tanggalBerangkat ?? "",
+            jabatan: item.jabatan ?? "",
+            nama: item.nama ?? "",
+            nip: item.nip ?? "",
+          })),
         });
       })}
       className="space-y-6"
@@ -321,14 +362,14 @@ export function SppdForm({
               <Input
                 {...register("nomor")}
                 readOnly
-                placeholder="Otomatis mengikuti nomor SPT"
+                placeholder="Diterbitkan otomatis saat disimpan"
                 error={!!errors.nomor}
                 className="font-mono text-xs font-bold bg-muted"
               />
             </div>
             <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-              Nomor urut SPPD mengikuti nomor SPT referensi, dengan kode
-              dokumen SPT diubah menjadi SPD.
+              Setiap personel memperoleh nomor SPPD unik. Nomor di atas adalah
+              preview dan baru diterbitkan ketika SPPD berhasil disimpan.
             </p>
             {errors.nomor && (
               <p className="text-[10px] text-danger font-bold mt-1">
@@ -341,14 +382,29 @@ export function SppdForm({
             <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
               Akun DIPA
             </label>
-            <Select {...register("dipaId")} error={!!errors.dipaId}>
-              <option value="">-- Pilih Akun DIPA --</option>
-              {dipas.map((dipa) => (
-                <option key={dipa.id} value={dipa.id}>
-                  {dipa.kodeDipa} - {dipa.program}
-                </option>
-              ))}
-            </Select>
+            {sourceDipa ? (
+              <>
+                <input type="hidden" {...register("dipaId")} />
+                <Input
+                  readOnly
+                  value={`${sourceDipa.kodeDipa} - ${sourceDipa.klasifikasiRincianOutput} - ${sourceDipa.akunPerjalananDinas}`}
+                  className="bg-muted"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Sumber anggaran diwarisi dari Nota Dinas referensi.
+                </p>
+              </>
+            ) : (
+              <Select {...register("dipaId")} error={!!errors.dipaId}>
+                <option value="">-- Pilih Akun DIPA --</option>
+                {dipas.map((dipa) => (
+                  <option key={dipa.id} value={dipa.id}>
+                    {dipa.kodeDipa} - {dipa.klasifikasiRincianOutput} -{" "}
+                    {dipa.akunPerjalananDinas}
+                  </option>
+                ))}
+              </Select>
+            )}
             {errors.dipaId && (
               <p className="text-[10px] text-danger font-bold mt-1">
                 {errors.dipaId.message}
@@ -365,7 +421,7 @@ export function SppdForm({
               error={!!errors.penandatanganId}
             >
               <option value="">-- Pilih Pejabat --</option>
-              {penandatangans.map((item) => (
+              {availablePenandatangans.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nama} ({item.peran})
                 </option>
@@ -452,22 +508,20 @@ export function SppdForm({
               </div>
             ))}
             <p className="text-[10px] text-muted-foreground font-semibold">
-              Romawi I dan Romawi akhir otomatis memakai PPK SPPD. Romawi II
-              dan seterusnya diisi manual; jika kosong, dokumen tetap kosong.
+              Romawi I dan Romawi akhir otomatis memakai PPK SPPD. Romawi II dan
+              seterusnya diisi manual; jika kosong, dokumen tetap kosong.
             </p>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Status Approval
+              Status Dokumen (Otomatis)
             </label>
-            <Select {...register("status")} error={!!errors.status}>
-              {SPPD_STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
+            <Input value={initialValues?.status ?? "Draft"} readOnly />
+            <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+              Status diperbarui otomatis berdasarkan kelengkapan SPPD per
+              personil dan pengarsipan SPJ.
+            </p>
           </div>
         </div>
 
@@ -609,7 +663,11 @@ export function SppdForm({
               disabled={!selectedSpt}
             >
               <option value="">-- Pilih satu personil --</option>
-              {selectedSpt?.personil.map((item) => (
+              {sortByPegawaiOrder(
+                availablePersonil,
+                (item) => item.pegawaiId,
+                pegawais,
+              ).map((item) => (
                 <option key={item.pegawaiId} value={item.pegawaiId}>
                   {getPegawaiLabel(item.pegawaiId)}
                 </option>

@@ -2,12 +2,16 @@ import { sptService } from "@/modules/spt/spt.service";
 import type { Spt } from "@/modules/spt/spt.schema";
 import { notaDinasService } from "@/modules/nota-dinas/nota-dinas.service";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
-import { penandatanganService } from "@/modules/penandatangan/penandatangan.service";
 import {
   approvalDecisionSchema,
   type ApprovalDecision,
   type ApprovalHistory,
 } from "./approval.schema";
+import type { UserRole, UserSession } from "@/stores/auth.store";
+import {
+  canUserApproveDocument,
+  getNotaDinasCreatorPegawaiId,
+} from "./approval-access";
 
 const HISTORY_KEY = "simpenas_approval_history";
 export type ApprovalItem =
@@ -28,77 +32,88 @@ const normalizeHistory = (item: LegacyApprovalHistory): ApprovalHistory => ({
   approver: item.approver,
   status: item.status,
   catatan: item.catatan,
+  recipientPegawaiId: item.recipientPegawaiId,
 });
 
 const getHistory = (): ApprovalHistory[] =>
   typeof window === "undefined"
     ? []
-    : (JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]") as
-        LegacyApprovalHistory[]).map(normalizeHistory);
+    : (
+        JSON.parse(
+          localStorage.getItem(HISTORY_KEY) ?? "[]",
+        ) as LegacyApprovalHistory[]
+      ).map(normalizeHistory);
 const saveHistory = (items: ApprovalHistory[]) => {
   if (typeof window !== "undefined")
     localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
 };
 
-const normalizeText = (value: string) => value.toLowerCase();
-const getSignerText = (penandatanganId: string) => {
-  const signer = penandatanganService
-    .getAll()
-    .find((item) => item.id === penandatanganId);
-  return signer
-    ? normalizeText(`${signer.jabatanPenandatangan} ${signer.peran}`)
-    : "";
-};
-const isSekretarisSigner = (penandatanganId: string) => {
-  const text = getSignerText(penandatanganId);
-  return (
-    text.includes("sekretaris") ||
-    text.includes("plt sekretaris") ||
-    text.includes("plh sekretaris")
-  );
-};
-const isKetuaKpuSigner = (penandatanganId: string) =>
-  getSignerText(penandatanganId).includes("ketua kpu");
 export const approvalService = {
-  listPending: async (): Promise<ApprovalItem[]> => [
-    ...notaDinasService
-      .getAll()
-      .filter((item) => item.status === "Menunggu Approval")
-      .map((item) => ({ ...item, documentType: "Nota Dinas" as const })),
-    ...sptService
-      .getAll()
-      .filter((item) => item.status === "Menunggu Approval")
-      .map((item) => ({ ...item, documentType: "SPT" as const })),
-  ],
+  listPending: async (user: UserSession): Promise<ApprovalItem[]> => {
+    const notas = notaDinasService.getAll();
+    const pending: ApprovalItem[] = [
+      ...notas
+        .filter((item) => item.status === "Menunggu Approval")
+        .map((item) => ({ ...item, documentType: "Nota Dinas" as const })),
+      ...sptService
+        .getAll()
+        .filter((item) => item.status === "Menunggu Approval")
+        .map((item) => ({ ...item, documentType: "SPT" as const })),
+    ];
+    return pending.filter((item) => canUserApproveDocument(user, item, notas));
+  },
   listHistory: async (): Promise<ApprovalHistory[]> => getHistory(),
-  decide: async (input: ApprovalDecision): Promise<ApprovalHistory> => {
+  clearHistory: async (role: UserRole): Promise<number> => {
+    if (role !== "Administrator") {
+      throw new Error(
+        "Hanya Administrator yang dapat membersihkan riwayat approval.",
+      );
+    }
+    const total = getHistory().length;
+    saveHistory([]);
+    return total;
+  },
+  decide: async (
+    input: ApprovalDecision,
+    user: UserSession,
+  ): Promise<ApprovalHistory> => {
     const data = approvalDecisionSchema.parse(input);
     const isNotaDinas = data.documentType === "Nota Dinas";
     const items = isNotaDinas ? notaDinasService.getAll() : sptService.getAll();
     const target = items.find((item) => item.id === data.documentId);
-    if (!target)
-      throw new Error(`${data.documentType} tidak ditemukan.`);
+    if (!target) throw new Error(`${data.documentType} tidak ditemukan.`);
     if (target.status !== "Menunggu Approval")
       throw new Error(`${data.documentType} tidak lagi menunggu approval.`);
-    if (
-      !isNotaDinas &&
-      !isSekretarisSigner(target.penandatanganId) &&
-      !isKetuaKpuSigner(target.penandatanganId)
-    ) {
+    const notas = notaDinasService.getAll();
+    const approvalItem = {
+      ...target,
+      documentType: data.documentType,
+    } as ApprovalItem;
+    if (!canUserApproveDocument(user, approvalItem, notas)) {
       throw new Error(
-        "Approval SPT hanya dapat diproses untuk dokumen dengan penandatangan Sekretaris/PLT/PLH Sekretaris atau Ketua KPU.",
+        data.documentType === "SPT"
+          ? "Anda bukan Sekretaris/Ketua yang berwenang atau Kasubbag pembuat/penandatangan Nota Dinas sumber SPT ini."
+          : "Approval Nota Dinas hanya dapat dilakukan Sekretaris/PLH/PLT Sekretaris yang sedang berlaku.",
       );
     }
+    const catatanRevisi =
+      data.decision === "Perlu Revisi" ? data.catatan.trim() : "";
     const updatedItems = items.map((item) =>
-      item.id === data.documentId ? { ...item, status: data.decision } : item,
+      item.id === data.documentId
+        ? { ...item, status: data.decision, catatanRevisi }
+        : item,
     );
     if (isNotaDinas) {
       notaDinasService.saveAll(updatedItems as NotaDinas[]);
     } else {
       sptService.saveAll(updatedItems as Spt[]);
     }
+    const recipientPegawaiId = isNotaDinas
+      ? getNotaDinasCreatorPegawaiId(target as NotaDinas)
+      : (target as Spt).createdByPegawaiId ||
+        (target as Spt).personil[0]?.pegawaiId;
     const history: ApprovalHistory = {
-      id: `approval-${Date.now()}`,
+      id: `approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       documentId: data.documentId,
       documentType: data.documentType,
       nomorDokumen: target.nomor,
@@ -106,6 +121,7 @@ export const approvalService = {
       approver: data.approver,
       status: data.decision,
       catatan: data.catatan.trim(),
+      recipientPegawaiId,
     };
     saveHistory([history, ...getHistory()]);
     return history;

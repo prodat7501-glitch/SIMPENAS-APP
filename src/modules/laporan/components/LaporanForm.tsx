@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Upload } from "@/components/ui/upload";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import type { Sppd } from "@/modules/sppd/sppd.schema";
 import type { Spt } from "@/modules/spt/spt.schema";
 import {
@@ -121,6 +122,7 @@ const resolveInitialValues = (
       buildTempatWaktu(tempatPelaksanaan, hariTanggalPelaksanaan),
     materi: item?.materi || "",
     hasilPelaksanaan: item?.hasilPelaksanaan || "",
+    kalimatPenutup: item?.kalimatPenutup || "",
     dokumentasi: (item?.dokumentasi ?? []).map((foto) => ({
       ...foto,
       caption: foto.caption ?? "",
@@ -286,7 +288,11 @@ export function LaporanForm({
             </p>
           ) : (
             <ol className="list-decimal space-y-1 pl-4">
-              {selectedSpt.personil.map(({ pegawaiId }) => {
+              {sortByPegawaiOrder(
+                selectedSpt.personil,
+                (person) => person.pegawaiId,
+                pegawais,
+              ).map(({ pegawaiId }) => {
                 const pegawai = pegawais.find((item) => item.id === pegawaiId);
                 return (
                   <li key={pegawaiId}>
@@ -390,6 +396,21 @@ export function LaporanForm({
           </p>
         </Field>
       </div>
+
+      <Field
+        label="Kalimat Penutup"
+        error={errors.kalimatPenutup?.message}
+      >
+        <textarea
+          {...register("kalimatPenutup")}
+          className="editor"
+          rows={3}
+          placeholder="Masukkan kalimat penutup laporan"
+        />
+        <p className="text-[10px] font-semibold text-muted-foreground">
+          Dicetak setelah poin F dan sejajar dengan posisi huruf F.
+        </p>
+      </Field>
 
       <section className="space-y-3 border border-border rounded-xl p-4">
         <h3 className="font-bold text-foreground flex gap-2">

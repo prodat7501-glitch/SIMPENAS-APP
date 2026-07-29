@@ -1,6 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useActivityStore } from "@/stores/activity.store";
+import { useJabatanStore } from "@/modules/jabatan/jabatan.store";
+import { usePangkatStore } from "@/modules/pangkat/pangkat.store";
 import { usePegawaiStore } from "./pegawai.store";
+import { sortPegawais } from "./pegawai-order";
 
 export function usePegawai() {
   const items = usePegawaiStore((state) => state.items);
@@ -9,14 +12,25 @@ export function usePegawai() {
   const update = usePegawaiStore((state) => state.update);
   const remove = usePegawaiStore((state) => state.remove);
   const toggleStatus = usePegawaiStore((state) => state.toggleStatus);
+  const jabatans = useJabatanStore((state) => state.items);
+  const loadJabatans = useJabatanStore((state) => state.load);
+  const pangkats = usePangkatStore((state) => state.items);
+  const loadPangkats = usePangkatStore((state) => state.load);
   const log = useActivityStore((state) => state.add);
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadJabatans();
+    loadPangkats();
+  }, [load, loadJabatans, loadPangkats]);
+
+  const orderedItems = useMemo(
+    () => sortPegawais(items, jabatans, pangkats),
+    [items, jabatans, pangkats],
+  );
 
   return {
-    items,
+    items: orderedItems,
     add: (...args: Parameters<typeof add>) => {
       const result = add(...args);
       log({

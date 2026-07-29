@@ -4,11 +4,13 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintExportActions } from "@/components/ui/print-export-actions";
+import { PrintPageSetup } from "@/components/ui/print-preview";
 import type { DIPA } from "@/modules/dipa/dipa.schema";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
 import type { Pangkat } from "@/modules/pangkat/pangkat.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import type { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
+import { snapshotToPenandatangan } from "@/modules/penandatangan/penandatangan.service";
 import type { Spt } from "@/modules/spt/spt.schema";
 import { useDocumentTemplate } from "@/providers/TemplateProvider";
 import type { Sppd } from "../sppd.schema";
@@ -46,9 +48,11 @@ export function SppdPreview({
   const template = useDocumentTemplate();
   const spt = item ? spts.find((data) => data.id === item.sptId) : null;
   const dipa = item ? dipas.find((data) => data.id === item.dipaId) : null;
-  const penandatangan = item
-    ? penandatangans.find((data) => data.id === item.penandatanganId)
-    : null;
+  const penandatangan = item?.penandatanganSnapshot
+    ? snapshotToPenandatangan(item.penandatanganSnapshot)
+    : item
+      ? penandatangans.find((data) => data.id === item.penandatanganId)
+      : null;
 
   const getPegawai = (pegawaiId: string) =>
     pegawais.find((pegawai) => pegawai.id === pegawaiId);
@@ -77,9 +81,11 @@ export function SppdPreview({
         roleText.includes("pejabat pembuat komitmen"))
     );
   });
-  const effectivePenandatangan = isSppdKomisioner
-    ? ppkPenandatangan ?? penandatangan
-    : penandatangan;
+  const effectivePenandatangan = item.penandatanganSnapshot
+    ? penandatangan
+    : isSppdKomisioner
+      ? ppkPenandatangan ?? penandatangan
+      : penandatangan;
 
   const manualPage2Signers = item.tandaTanganHalaman2 ?? [];
   const roman = (value: number) => {
@@ -151,8 +157,7 @@ export function SppdPreview({
       {nip ? `NIP. ${nip}` : "NIP."}
     </p>
   );
-  const page2ManualRowHeight =
-    page2Count > 7 ? "h-[25mm]" : page2Count > 6 ? "h-[29mm]" : "h-[33mm]";
+  const page2MinimumManualRowHeightMm = 52;
   const tempatKedudukan = "Komisi Pemilihan Umum Kabupaten Gorontalo";
   const tempatKedudukanHalaman2 =
     manualPage2Signers.reduce(
@@ -278,7 +283,7 @@ export function SppdPreview({
 
           {mode === "page1" && (
           <div
-            className="min-h-[297mm] border-2 border-black p-5 text-[15px] leading-[1.18]"
+            className="min-h-[330mm] w-[215mm] p-5 text-[15px] leading-[1.18]"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
             <div className="grid grid-cols-[1fr_1.1fr] gap-8">
@@ -361,14 +366,22 @@ export function SppdPreview({
                     </p>
                   </td>
                   <td className="border-2 border-black px-5 py-1 align-top space-y-3 leading-[1.35]">
-                    <p>
-                      a.&nbsp;&nbsp;{" "}
-                      {pangkat
-                        ? `${pangkat.namaPangkat},${pangkat.golongan}`
-                        : "-"}
-                    </p>
-                    <p>b.&nbsp;&nbsp; {jabatan?.nama ?? "-"}</p>
-                    <p className="pt-6">c.&nbsp;&nbsp; C</p>
+                    <div className="grid grid-cols-[18px_minmax(0,1fr)]">
+                      <span>a.</span>
+                      <span>
+                        {pangkat
+                          ? `${pangkat.namaPangkat},${pangkat.golongan}`
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[18px_minmax(0,1fr)]">
+                      <span>b.</span>
+                      <span>{jabatan?.nama ?? "-"}</span>
+                    </div>
+                    <div className="grid grid-cols-[18px_minmax(0,1fr)] pt-6">
+                      <span>c.</span>
+                      <span>C</span>
+                    </div>
                   </td>
                 </tr>
                 <tr>
@@ -469,7 +482,7 @@ export function SppdPreview({
                   </td>
                   <td className="border-2 border-black px-5 py-1 align-top space-y-2 leading-[1.3]">
                     <p>&nbsp;</p>
-                    <p>a.&nbsp;&nbsp; {item.instansi}</p>
+                    <p>a.&nbsp;&nbsp; KPU Kabupaten Gorontalo</p>
                     <p>b.&nbsp;&nbsp; {dipa?.kodeDipa ?? "0"}</p>
                   </td>
                 </tr>
@@ -481,8 +494,12 @@ export function SppdPreview({
                     Keterangan lain-lain
                   </td>
                   <td className="border-2 border-black px-5 py-0.5 align-top">
-                    ST No. {spt?.nomor ?? "-"}{" "}
-                    {formatTanggalIndonesia(spt?.tanggalMulai ?? item.tanggalBerangkat)}
+                    <p>ST No. {spt?.nomor ?? "-"}</p>
+                    <p>
+                      Tanggal {formatTanggalIndonesia(
+                        spt?.tanggalMulai ?? item.tanggalBerangkat,
+                      )}
+                    </p>
                   </td>
                 </tr>
               </tbody>
@@ -506,15 +523,15 @@ export function SppdPreview({
 
           {mode === "page2" && (
           <div
-            className="h-[330mm] w-[215mm] p-[6mm] text-[14px] leading-[1.15] print:h-[330mm] print:w-[215mm] print:p-[6mm]"
+            className="min-h-[330mm] w-[215mm] p-[6mm] text-[14px] leading-[1.15] print:h-auto print:min-h-0 print:w-full print:p-0"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
-            <table className="w-full table-fixed border border-black border-collapse text-[14px] leading-[1.15]">
+            <table className="sppd-page2-table w-full table-fixed border border-black border-collapse text-[14px] leading-[1.15]">
               <colgroup>
                 <col className="w-1/2" />
                 <col className="w-1/2" />
               </colgroup>
-              <tbody>
+              <tbody className="sppd-page2-keep-block">
                 <tr className="h-[8mm]">
                   <td className="border-0 px-[1.5mm] py-[0.8mm] align-top text-[15px] leading-[1.1]">
                     Lampiran SPPD Tanggal :{" "}
@@ -556,69 +573,104 @@ export function SppdPreview({
                     </div>
                   </td>
                 </tr>
-                {Array.from({ length: visibleManualPage2Count }, (_, index) => {
+              </tbody>
+              {Array.from({ length: visibleManualPage2Count }, (_, index) => {
                   const manual = manualPage2Signers[index];
                   const route = getPage2ManualRoute(index);
                   return (
-                  <tr key={roman(index + 2)} className={page2ManualRowHeight}>
-                    <td className="border border-black p-[2mm] align-top">
-                      <div className="h-[26mm] overflow-hidden">
-                        {renderPage2Fields(
-                          [
-                            {
-                              roman: roman(index + 2),
-                              label: "Tiba di",
-                              value: route.tibaDi,
-                            },
-                            {
-                              label: "Pada Tanggal",
-                              value: formatPage2Date(route.tanggalTiba),
-                            },
-                            { label: "Kepala", value: manual?.jabatan ?? "" },
-                          ],
-                          { tightRoman: true },
-                        )}
-                      </div>
-                      <div
-                        className="ml-[8mm] mt-[13mm] w-[86mm]"
-                        title={manual?.nama ?? ""}
-                      >
-                        {renderPage2SignatureName(manual?.nama)}
-                        {renderPage2Nip(manual?.nip, !!manual?.nama || !!manual?.nip)}
-                      </div>
-                    </td>
-                    <td className="border border-black p-[2mm] align-top">
-                      <div className="h-[26mm] overflow-hidden">
-                        {renderPage2Fields(
-                          [
-                            {
-                              label: "Berangkat dari",
-                              value: route.berangkatDari,
-                            },
-                            {
-                              label: "Ke",
-                              value: route.ke,
-                            },
-                            {
-                              label: "Pada Tanggal",
-                              value: formatPage2Date(route.tanggalBerangkat),
-                            },
-                            { label: "Kepala", value: manual?.jabatan ?? "" },
-                          ],
-                          { compact: true },
-                        )}
-                      </div>
-                      <div
-                        className="mt-[13mm] w-[86mm]"
-                        title={manual?.nama ?? ""}
-                      >
-                        {renderPage2SignatureName(manual?.nama)}
-                        {renderPage2Nip(manual?.nip, !!manual?.nama || !!manual?.nip)}
-                      </div>
-                    </td>
-                  </tr>
+                  <tbody
+                    key={roman(index + 2)}
+                    className="sppd-page2-keep-block"
+                  >
+                    <tr className="sppd-page2-manual-row">
+                      <td className="border border-black p-[2mm] align-top">
+                        <div
+                          className="sppd-page2-signature-cell"
+                          style={{
+                            minHeight: `${page2MinimumManualRowHeightMm}mm`,
+                          }}
+                        >
+                          <div className="min-h-[26mm]">
+                            {renderPage2Fields(
+                              [
+                                {
+                                  roman: roman(index + 2),
+                                  label: "Tiba di",
+                                  value: route.tibaDi,
+                                },
+                                {
+                                  label: "Pada Tanggal",
+                                  value: formatPage2Date(route.tanggalTiba),
+                                },
+                                {
+                                  label: "Kepala",
+                                  value: manual?.jabatan ?? "",
+                                },
+                              ],
+                              { tightRoman: true },
+                            )}
+                          </div>
+                          <div
+                            className="ml-[8mm] mt-[13mm] w-[86mm]"
+                            title={manual?.nama ?? ""}
+                          >
+                            {renderPage2SignatureName(manual?.nama)}
+                            {renderPage2Nip(
+                              manual?.nip,
+                              !!manual?.nama || !!manual?.nip,
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="border border-black p-[2mm] align-top">
+                        <div
+                          className="sppd-page2-signature-cell"
+                          style={{
+                            minHeight: `${page2MinimumManualRowHeightMm}mm`,
+                          }}
+                        >
+                          <div className="min-h-[26mm]">
+                            {renderPage2Fields(
+                              [
+                                {
+                                  label: "Berangkat dari",
+                                  value: route.berangkatDari,
+                                },
+                                {
+                                  label: "Ke",
+                                  value: route.ke,
+                                },
+                                {
+                                  label: "Pada Tanggal",
+                                  value: formatPage2Date(
+                                    route.tanggalBerangkat,
+                                  ),
+                                },
+                                {
+                                  label: "Kepala",
+                                  value: manual?.jabatan ?? "",
+                                },
+                              ],
+                              { compact: true },
+                            )}
+                          </div>
+                          <div
+                            className="mt-[13mm] w-[86mm]"
+                            title={manual?.nama ?? ""}
+                          >
+                            {renderPage2SignatureName(manual?.nama)}
+                            {renderPage2Nip(
+                              manual?.nip,
+                              !!manual?.nama || !!manual?.nip,
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
                   );
                 })}
+              <tbody className="sppd-page2-keep-block">
                 <tr className="h-[16mm]">
                   <td className="border border-black p-[1.2mm] align-top">
                     {renderPage2Fields([
@@ -679,6 +731,8 @@ export function SppdPreview({
                     </table>
                   </td>
                 </tr>
+              </tbody>
+              <tbody className="sppd-page2-keep-block">
                 <tr>
                   <td colSpan={2} className="h-[6mm] border border-black px-[2mm] leading-[1.1]">
                     {roman(catatanRoman)} &nbsp; Catatan Lain-Lain
@@ -705,14 +759,6 @@ export function SppdPreview({
       </div>
       <style jsx global>{`
         @media print {
-          ${mode === "page2"
-            ? `
-          @page {
-            size: 215mm 330mm;
-            margin: 0;
-          }
-          `
-            : ""}
           body * {
             visibility: hidden;
           }
@@ -744,8 +790,25 @@ export function SppdPreview({
           .no-print {
             display: none !important;
           }
+          .sppd-page2-table {
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          .sppd-page2-keep-block,
+          .sppd-page2-keep-block > tr,
+          .sppd-page2-keep-block > tr > td {
+            break-inside: avoid-page !important;
+            page-break-inside: avoid !important;
+          }
+          .sppd-page2-manual-row {
+            height: auto !important;
+          }
         }
       `}</style>
+      <PrintPageSetup
+        printPageSize="215mm 330mm"
+        lockPrintScale={mode !== "page2"}
+      />
     </>
   );
 }

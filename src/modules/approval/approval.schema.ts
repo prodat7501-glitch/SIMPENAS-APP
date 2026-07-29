@@ -27,6 +27,7 @@ export const approvalHistorySchema = z.object({
   approver: z.string(),
   status: z.enum(["Disetujui", "Perlu Revisi"]),
   catatan: z.string(),
+  recipientPegawaiId: z.string().optional(),
 });
 
 export type ApprovalDecision = z.infer<typeof approvalDecisionSchema>;

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   DEFAULT_PERAN_DOKUMEN,
+  JENIS_DOKUMEN_PENANDATANGAN,
   Penandatangan,
   penandatanganSchema,
 } from "../penandatangan.schema";
@@ -54,6 +55,9 @@ export function PenandatanganForm({
       nama: "",
       jabatanPenandatangan: "",
       peran: "KPA",
+      berlakuMulai: "",
+      berlakuSampai: "",
+      jenisDokumen: ["SPBY", "Daftar Nominatif", "Tanda Terima", "Kuitansi"],
       status: "Aktif",
     },
   });
@@ -69,6 +73,9 @@ export function PenandatanganForm({
       setValue("nama", initialValues.nama);
       setValue("jabatanPenandatangan", initialValues.jabatanPenandatangan);
       setValue("peran", initialValues.peran);
+      setValue("berlakuMulai", initialValues.berlakuMulai);
+      setValue("berlakuSampai", initialValues.berlakuSampai);
+      setValue("jenisDokumen", initialValues.jenisDokumen);
       setValue("status", initialValues.status);
     }
   }, [initialValues, setValue]);
@@ -87,9 +94,12 @@ export function PenandatanganForm({
   return (
     <form
       onSubmit={handleSubmit((data) => {
-        const { id, ...rest } = data;
+        const rest = { ...data };
+        delete rest.id;
         onSubmit({
           ...rest,
+          berlakuMulai: rest.berlakuMulai || "",
+          berlakuSampai: rest.berlakuSampai || "",
           status: rest.status || "Aktif",
         });
       })}
@@ -200,6 +210,56 @@ export function PenandatanganForm({
           )}
         </div>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-2 block text-xs font-bold uppercase text-muted-foreground">
+            Berlaku Mulai
+          </label>
+          <Input type="date" {...register("berlakuMulai")} />
+        </div>
+        <div>
+          <label className="mb-2 block text-xs font-bold uppercase text-muted-foreground">
+            Berlaku Sampai (Opsional)
+          </label>
+          <Input
+            type="date"
+            {...register("berlakuSampai")}
+            error={!!errors.berlakuSampai}
+          />
+          {errors.berlakuSampai && (
+            <p className="mt-1 text-[10px] font-bold text-danger">
+              {errors.berlakuSampai.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <fieldset className="space-y-2 rounded-xl border border-border p-3">
+        <legend className="px-1 text-xs font-bold uppercase text-muted-foreground">
+          Digunakan pada Jenis Dokumen
+        </legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {JENIS_DOKUMEN_PENANDATANGAN.map((jenis) => (
+            <label
+              key={jenis}
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground"
+            >
+              <input
+                type="checkbox"
+                value={jenis}
+                {...register("jenisDokumen")}
+              />
+              {jenis}
+            </label>
+          ))}
+        </div>
+        {errors.jenisDokumen && (
+          <p className="text-[10px] font-bold text-danger">
+            {errors.jenisDokumen.message}
+          </p>
+        )}
+      </fieldset>
 
       <div className="flex justify-end gap-2 pt-4 border-t border-border">
         <Button

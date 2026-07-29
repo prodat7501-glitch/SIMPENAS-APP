@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { Spt } from "./spt.schema";
 import { sptService } from "./spt.service";
-import { penomoranService } from "@/modules/pengaturan/penomoran.service";
 
 interface SptState {
   items: Spt[];
@@ -20,8 +19,7 @@ export const useSptStore = create<SptState>((set) => ({
   add: (newItem) => {
     set((state) => {
       const updated = [...state.items, { ...newItem, id: `st-${Date.now()}` }];
-      sptService.saveAll(updated);
-      return { items: updated };
+      return { items: sptService.saveAll(updated) };
     });
   },
   update: (id, updatedItem) => {
@@ -29,27 +27,20 @@ export const useSptStore = create<SptState>((set) => ({
       const updated = state.items.map((item) =>
         item.id === id ? { ...item, ...updatedItem } : item,
       );
-      sptService.saveAll(updated);
-      return { items: updated };
+      return { items: sptService.saveAll(updated) };
     });
   },
   remove: (id) => {
     set((state) => {
       const target = state.items.find((item) => item.id === id);
-      if (
-        target &&
-        ["Draft", "Nomor Diambil"].includes(target.status) &&
-        target.nomor
-      ) {
-        penomoranService.releaseNumber(
-          "SPT",
+      if (target?.nomor) {
+        sptService.releaseNomor(
           target.nomor,
-          "SPT dihapus sebelum selesai.",
+          `Nomor dilepas karena SPT berstatus ${target.status} dihapus oleh Administrator.`,
         );
       }
       const updated = state.items.filter((item) => item.id !== id);
-      sptService.saveAll(updated);
-      return { items: updated };
+      return { items: sptService.saveAll(updated) };
     });
   },
   generateNomor: (date) => {

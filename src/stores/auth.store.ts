@@ -21,7 +21,6 @@ interface AuthState {
   login: (
     username: string,
     password: string,
-    role: UserRole,
   ) => Promise<boolean>;
   logout: () => void;
   updateProfile: (name: string, email: string) => void;
@@ -33,8 +32,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      login: async (username: string, password: string, role: UserRole) => {
-        const userSession = await AuthService.login(username, password, role);
+      login: async (username: string, password: string) => {
+        const userSession = await AuthService.login(username, password);
         if (userSession) {
           set({ user: userSession, isAuthenticated: true });
           useActivityStore.getState().add({
@@ -72,21 +71,29 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           user: state.user ? { ...state.user, name, email } : null,
         })),
-      refreshUserFromMaster: () =>
-        set((state) => {
-          if (!state.user) return {};
+      refreshUserFromMaster: () => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) return;
 
-          const resolvedUser = AuthService.resolvePersistedSession(state.user);
-          if (
-            resolvedUser.name === state.user.name &&
-            resolvedUser.email === state.user.email &&
-            resolvedUser.pegawaiId === state.user.pegawaiId
-          ) {
-            return {};
+        const resolvedUser = AuthService.resolvePersistedSession(currentUser);
+        if (!resolvedUser) {
+          set({ user: null, isAuthenticated: false });
+          if (typeof document !== "undefined") {
+            document.cookie =
+              "simpenas_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
           }
+          return;
+        }
 
-          return { user: resolvedUser };
-        }),
+        const isUnchanged =
+          resolvedUser.username === currentUser.username &&
+          resolvedUser.name === currentUser.name &&
+          resolvedUser.email === currentUser.email &&
+          resolvedUser.role === currentUser.role &&
+          resolvedUser.pegawaiId === currentUser.pegawaiId;
+
+        if (!isUnchanged) set({ user: resolvedUser, isAuthenticated: true });
+      },
     }),
     {
       name: "simpenas-auth-storage",

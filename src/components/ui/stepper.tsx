@@ -10,10 +10,16 @@ interface Step {
 interface StepperProps {
   steps: Step[];
   currentStep: number; // 0-indexed
+  completeCurrentStep?: boolean;
   className?: string;
 }
 
-export function Stepper({ steps, currentStep, className }: StepperProps) {
+export function Stepper({
+  steps,
+  currentStep,
+  completeCurrentStep = false,
+  className,
+}: StepperProps) {
   return (
     <div
       className={cn(
@@ -22,8 +28,9 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
       )}
     >
       {steps.map((step, idx) => {
-        const isCompleted = idx < currentStep;
-        const isActive = idx === currentStep;
+        const isCompleted =
+          idx < currentStep || (completeCurrentStep && idx === currentStep);
+        const isActive = idx === currentStep && !completeCurrentStep;
 
         return (
           <div

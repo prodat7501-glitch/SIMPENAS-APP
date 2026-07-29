@@ -27,6 +27,7 @@ export const laporanSchema = z.object({
   tempatWaktu: z.string().optional().default(""),
   materi: z.string().min(5, "Materi minimal 5 karakter"),
   hasilPelaksanaan: z.string().min(10, "Hasil pelaksanaan minimal 10 karakter"),
+  kalimatPenutup: z.string().optional().default(""),
   dokumentasi: z
     .array(dokumentasiSchema)
     .min(1, "Minimal satu foto dokumentasi wajib diunggah"),

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useActivityStore } from "@/stores/activity.store";
 import { useSptStore } from "./spt.store";
+import { sptService } from "./spt.service";
 
 export function useSpt() {
   const items = useSptStore((state) => state.items);
@@ -57,5 +58,6 @@ export function useSpt() {
       });
       return result;
     },
+    releaseNomor: sptService.releaseNomor,
   };
 }

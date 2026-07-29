@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpt } from "@/modules/spt/useSpt";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { useJabatan } from "@/modules/jabatan/useJabatan";
 import { usePangkat } from "@/modules/pangkat/usePangkat";
 import { usePenandatangan } from "@/modules/penandatangan/usePenandatangan";
@@ -12,6 +13,7 @@ import { SptTable } from "@/modules/spt/components/SptTable";
 import { SptForm } from "@/modules/spt/components/SptForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ExportDataButton } from "@/components/ui/export-data-button";
 import { useToast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { Plus, X } from "lucide-react";
@@ -21,13 +23,19 @@ import { useActivityStore } from "@/stores/activity.store";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import {
   canAccessSptByNotaDinas,
+  canInitiateNotaDinasChain,
   isPegawaiInNotaDinas,
   resolveCurrentPegawai,
 } from "@/lib/document-access";
-import { TemplateFooter, useTemplateDocumentStyle } from "@/components/document/DocumentTemplate";
+import {
+  TemplateFooter,
+  useTemplateDocumentStyle,
+} from "@/components/document/DocumentTemplate";
 import { useDocumentTemplate } from "@/providers/TemplateProvider";
 import { PrintExportActions } from "@/components/ui/print-export-actions";
+import { PrintPageSetup } from "@/components/ui/print-preview";
 import type { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
+import { snapshotToPenandatangan } from "@/modules/penandatangan/penandatangan.service";
 
 const formatTanggalIndonesia = (dateStr: string) =>
   new Intl.DateTimeFormat("id-ID", {
@@ -50,22 +58,20 @@ function SptTemplateHeader() {
         height={56}
         className="mx-auto mb-2 h-14 w-14 object-contain"
       />
-      <h1 className="text-base font-black tracking-wide uppercase">
+      <h1 className="spt-kop-title text-base tracking-wide uppercase">
         KOMISI PEMILIHAN UMUM
       </h1>
-      <p className="text-base font-black tracking-wide uppercase">
+      <p className="spt-kop-title text-base tracking-wide uppercase">
         KABUPATEN GORONTALO
       </p>
-      <p className="mt-1 text-[10px] italic text-gray-500">
-        {template.alamat}
-      </p>
+      <p className="mt-1 text-[10px] italic text-gray-500">{template.alamat}</p>
     </header>
   );
 }
 
 export default function SptPage() {
   const { user, hasPermission } = useAuth();
-  const { items, add, update, remove, generateNomor } = useSpt();
+  const { items, add, update, remove, generateNomor, releaseNomor } = useSpt();
   const { items: pegawais } = usePegawai();
   const { items: jabatans } = useJabatan();
   const { items: pangkats } = usePangkat();
@@ -79,12 +85,13 @@ export default function SptPage() {
   const templateStyle = useTemplateDocumentStyle();
   const sptTemplateStyle = {
     ...templateStyle,
-    fontFamily: "Tahoma, Geneva, sans-serif",
+    fontFamily: '"Bookman Old Style", Bookman, Georgia, serif',
   };
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Spt | null>(null);
   const [previewItem, setPreviewItem] = useState<Spt | null>(null);
+  const [pendingNumber, setPendingNumber] = useState<string | null>(null);
 
   // RBAC checks
   const canRead = hasPermission("SPT", "R");
@@ -94,7 +101,36 @@ export default function SptPage() {
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
   const scopeToNotaDinas = user?.role === "Pegawai";
-  const accessibleNotaDinasItems = scopeToNotaDinas
+  const scopeMutationsToNotaDinas =
+    user?.role !== "Administrator" && user?.role !== "Sub Bagian Keuangan";
+  const isAdministrator = user?.role === "Administrator";
+  const isPegawaiKomisioner = (id: string) => {
+    const pegawai = pegawais.find((item) => item.id === id);
+    return (
+      pegawai?.kategoriPegawai === "Ketua KPU" ||
+      pegawai?.kategoriPegawai === "Anggota KPU"
+    );
+  };
+  const getSptGroup = (item: Pick<Spt, "personil">) =>
+    item.personil.length > 0 &&
+    item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId))
+      ? "Komisioner"
+      : "Sekretariat";
+  const hasUncreatedSptGroup = (notaDinasId: string) => {
+    const nota = notaDinasItems.find((item) => item.id === notaDinasId);
+    if (!nota) return false;
+
+    const requiredGroups = new Set(
+      nota.lampiran.map((item) =>
+        isPegawaiKomisioner(item.pegawaiId) ? "Komisioner" : "Sekretariat",
+      ),
+    );
+    const existingGroups = new Set(
+      items.filter((item) => item.notaDinasId === notaDinasId).map(getSptGroup),
+    );
+    return [...requiredGroups].some((group) => !existingGroups.has(group));
+  };
+  const accessibleNotaDinasItems = scopeMutationsToNotaDinas
     ? notaDinasItems.filter((item) =>
         isPegawaiInNotaDinas(currentPegawaiId, item),
       )
@@ -104,10 +140,25 @@ export default function SptPage() {
         canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),
       )
     : items;
+  const approvedAssignedNotaDinasItems = notaDinasItems.filter(
+    (item) =>
+      item.status === "Disetujui" &&
+      (isAdministrator || isPegawaiInNotaDinas(currentPegawaiId, item)),
+  );
+  const creatableNotaDinasItems = approvedAssignedNotaDinasItems.filter(
+    (item) =>
+      canInitiateNotaDinasChain(
+        currentPegawaiId,
+        item,
+        items,
+        isAdministrator,
+      ) && Boolean(item.id && hasUncreatedSptGroup(item.id)),
+  );
   const canCreateFromAccessibleNota =
-    canCreate &&
-    (!scopeToNotaDinas ||
-      accessibleNotaDinasItems.some((item) => item.status === "Disetujui"));
+    canCreate && creatableNotaDinasItems.length > 0;
+  const canManageSpt = (item: Spt) =>
+    user?.role === "Administrator" ||
+    (Boolean(currentPegawaiId) && item.createdByPegawaiId === currentPegawaiId);
 
   if (!canRead) {
     return (
@@ -120,7 +171,27 @@ export default function SptPage() {
     );
   }
 
+  const handleCreate = () => {
+    if (!canCreateFromAccessibleNota) {
+      addToast(
+        "Belum ada Nota Dinas Disetujui baru yang dapat Anda lanjutkan sebagai pengelola rangkaian.",
+        "error",
+      );
+      return;
+    }
+    setEditingItem(null);
+    setPendingNumber(null);
+    setModalOpen(true);
+  };
+
   const handleEdit = (item: Spt) => {
+    if (!canManageSpt(item)) {
+      addToast(
+        "SPT ini dikelola oleh pegawai pembuatnya. Anda hanya dapat melihat status dan pratinjau.",
+        "error",
+      );
+      return;
+    }
     if (
       scopeToNotaDinas &&
       !canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems)
@@ -133,10 +204,15 @@ export default function SptPage() {
       return;
     }
     setEditingItem(item);
+    setPendingNumber(null);
     setModalOpen(true);
   };
 
   const handleDelete = (id: string) => {
+    if (!canDelete) {
+      addToast("Hanya Administrator yang dapat menghapus SPT", "error");
+      return;
+    }
     const target = items.find((item) => item.id === id);
     if (
       target &&
@@ -144,10 +220,6 @@ export default function SptPage() {
       !canAccessSptByNotaDinas(currentPegawaiId, target, notaDinasItems)
     ) {
       addToast("Anda hanya dapat menghapus SPT dari Nota Dinas Anda", "error");
-      return;
-    }
-    if (!canDelete) {
-      addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
     if (confirm("Apakah Anda yakin ingin menghapus transaksi SPT ini?")) {
@@ -160,17 +232,47 @@ export default function SptPage() {
     data: Omit<Spt, "id">,
     options?: { keepOpen?: boolean },
   ) => {
+    if (
+      !editingItem &&
+      !creatableNotaDinasItems.some((item) => item.id === data.notaDinasId)
+    ) {
+      addToast(
+        "Rangkaian Nota Dinas ini sudah dikelola pegawai lain atau seluruh SPT-nya telah diterbitkan.",
+        "error",
+      );
+      return;
+    }
+    if (
+      !editingItem &&
+      items.some(
+        (item) =>
+          item.notaDinasId === data.notaDinasId &&
+          getSptGroup(item) === getSptGroup(data),
+      )
+    ) {
+      addToast(
+        `SPT ${getSptGroup(data)} untuk Nota Dinas ini sudah diterbitkan.`,
+        "error",
+      );
+      return;
+    }
+    const securedData: Omit<Spt, "id"> = {
+      ...data,
+      createdByPegawaiId:
+        editingItem?.createdByPegawaiId || currentPegawaiId || "",
+      catatanRevisi: editingItem?.catatanRevisi ?? data.catatanRevisi ?? "",
+    };
     if (editingItem) {
-      update(editingItem.id!, data);
+      update(editingItem.id!, securedData);
       addToast("SPT berhasil diperbarui", "success");
     } else {
-      add(data);
+      add(securedData);
       addToast("SPT berhasil disimpan", "success");
     }
-    if (data.status === "Menunggu Approval") {
+    if (securedData.status === "Menunggu Approval") {
       addNotification(
         "SPT Menunggu Approval",
-        `${data.nomor} telah diajukan kepada Supervisor.`,
+        `${securedData.nomor} telah diajukan kepada pejabat berwenang.`,
         "info",
       );
       addActivity({
@@ -180,6 +282,7 @@ export default function SptPage() {
         user: "Pengguna aktif",
       });
     }
+    setPendingNumber(null);
     if (!options?.keepOpen) {
       setModalOpen(false);
       setEditingItem(null);
@@ -187,6 +290,10 @@ export default function SptPage() {
   };
 
   const handleCancel = () => {
+    if (!editingItem && pendingNumber) {
+      releaseNomor(pendingNumber);
+    }
+    setPendingNumber(null);
     setModalOpen(false);
     setEditingItem(null);
   };
@@ -214,19 +321,16 @@ export default function SptPage() {
     const p = penandatangans.find((x) => x.id === id);
     return p ? p : null;
   };
-  const isPegawaiKomisioner = (id: string) => {
-    const pegawai = pegawais.find((x) => x.id === id);
-    return (
-      pegawai?.kategoriPegawai === "Ketua KPU" ||
-      pegawai?.kategoriPegawai === "Anggota KPU"
-    );
-  };
   const isSptKomisioner = (item: Spt) =>
     item.personil.length > 0 &&
     item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId));
   const getSptSigningOfficial = (item: Spt): Penandatangan | null => {
+    if (item.penandatanganSnapshot) {
+      return snapshotToPenandatangan(item.penandatanganSnapshot);
+    }
     const signer = getPenandatanganDetail(item.penandatanganId);
-    const signerText = `${signer?.jabatanPenandatangan ?? ""} ${signer?.peran ?? ""}`.toLowerCase();
+    const signerText =
+      `${signer?.jabatanPenandatangan ?? ""} ${signer?.peran ?? ""}`.toLowerCase();
     if (!signerText.includes("ketua kpu")) return signer;
     const ketuaPegawai = pegawais.find(
       (pegawai) => pegawai.kategoriPegawai === "Ketua KPU",
@@ -239,6 +343,9 @@ export default function SptPage() {
           jabatanPenandatangan:
             signer?.jabatanPenandatangan || "Ketua KPU Kabupaten Gorontalo",
           peran: signer?.peran || "Ketua KPU",
+          berlakuMulai: signer?.berlakuMulai || "",
+          berlakuSampai: signer?.berlakuSampai || "",
+          jenisDokumen: signer?.jenisDokumen || ["SPT"],
           status: signer?.status || "Aktif",
         }
       : signer;
@@ -274,15 +381,80 @@ export default function SptPage() {
             KPU.
           </p>
         </div>
-        {canCreateFromAccessibleNota && (
-          <Button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Buat SPT
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportDataButton
+            title="Data Surat Tugas"
+            module="SPT"
+            rows={visibleSpts}
+            defaultFileName={`data-spt-${new Date().toISOString().slice(0, 10)}`}
+            columns={[
+              {
+                header: "No",
+                value: (_, index) => index + 1,
+                type: "number",
+                width: 45,
+              },
+              { header: "Nomor SPT", value: (item) => item.nomor, width: 190 },
+              {
+                header: "Nomor Nota Dinas",
+                value: (item) => getNotaDinasNumber(item.notaDinasId),
+                width: 180,
+              },
+              {
+                header: "Maksud/Kegiatan",
+                value: (item) => item.untuk.map((row) => row.text).join("; "),
+                width: 280,
+              },
+              {
+                header: "Tanggal Mulai",
+                value: (item) => formatTanggalIndonesia(item.tanggalMulai),
+                width: 100,
+              },
+              {
+                header: "Tanggal Selesai",
+                value: (item) => formatTanggalIndonesia(item.tanggalSelesai),
+                width: 100,
+              },
+              {
+                header: "Personil",
+                value: (item) =>
+                  item.personil
+                    .map(
+                      (row) =>
+                        pegawais.find((pegawai) => pegawai.id === row.pegawaiId)
+                          ?.nama ?? row.pegawaiId,
+                    )
+                    .join(", "),
+                width: 240,
+              },
+              { header: "Status", value: (item) => item.status, width: 110 },
+            ]}
+          />
+          {canCreate && (
+            <Button
+              onClick={handleCreate}
+              disabled={!canCreateFromAccessibleNota}
+              title={
+                canCreateFromAccessibleNota
+                  ? "Buat SPT dari Nota Dinas Disetujui"
+                  : "Tidak ada Nota Dinas baru yang dapat dibuatkan SPT"
+              }
+              className="flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Buat SPT
+            </Button>
+          )}
+        </div>
       </div>
+
+      {canCreate && !canCreateFromAccessibleNota && (
+        <Alert variant="info" title="Pembuatan SPT Baru Dinonaktifkan">
+          Tidak ada Nota Dinas Disetujui baru yang dapat Anda mulai. Rangkaian
+          yang sudah memiliki SPT hanya dapat dilanjutkan oleh pegawai pembuat
+          SPT pertama; personel lain tetap dapat melihat status dan pratinjau
+          sampai memperoleh Nota Dinas baru yang telah disetujui.
+        </Alert>
+      )}
 
       <div className="no-print">
         <SptTable
@@ -290,7 +462,9 @@ export default function SptPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onPreview={(item) => setPreviewItem(item)}
-          canEdit={canUpdate || canDelete}
+          canEdit={canUpdate}
+          canEditItem={canManageSpt}
+          canDelete={canDelete}
           getNotaDinasNumber={getNotaDinasNumber}
         />
       </div>
@@ -306,23 +480,31 @@ export default function SptPage() {
         <SptForm
           initialValues={editingItem}
           existingSpts={items}
-          notaDinasItems={accessibleNotaDinasItems.filter(
-            (item) =>
-              item.status === "Disetujui" ||
-              item.id === editingItem?.notaDinasId,
-          )}
+          notaDinasItems={
+            editingItem
+              ? accessibleNotaDinasItems.filter(
+                  (item) =>
+                    item.status === "Disetujui" ||
+                    item.id === editingItem.notaDinasId,
+                )
+              : creatableNotaDinasItems
+          }
           pegawais={pegawais}
           penandatangans={penandatangans}
           onSubmit={handleFormSubmit}
           onCancel={handleCancel}
           onGenerateNomor={generateNomor}
+          onNumberReserved={setPendingNumber}
         />
       </Dialog>
 
       {/* High-Fidelity Printable Document Modal */}
       {previewItem && (
         <div className="fixed inset-0 z-50 flex justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto print-direct">
-          <div style={sptTemplateStyle} className="bg-white text-black w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl shadow-2xl space-y-6 print-container relative my-auto">
+          <div
+            style={sptTemplateStyle}
+            className="spt-print-document bg-white text-black w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl shadow-2xl space-y-6 print-container relative my-auto"
+          >
             {/* Modal Controls */}
             <div className="absolute top-4 right-4 flex items-center gap-2 no-print">
               <PrintExportActions
@@ -358,7 +540,10 @@ export default function SptPage() {
               <div>:</div>
               <div className="space-y-1 text-justify">
                 {previewItem.menimbang.map((m, idx) => (
-                  <div key={idx} className="grid grid-cols-[14px_1fr] gap-x-1 align-top">
+                  <div
+                    key={idx}
+                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                  >
                     <span className="font-bold text-right">
                       {String.fromCharCode(97 + idx)}.
                     </span>
@@ -374,7 +559,10 @@ export default function SptPage() {
               <div>:</div>
               <div className="space-y-1 text-justify">
                 {previewItem.dasar.map((d, idx) => (
-                  <div key={idx} className="grid grid-cols-[14px_1fr] gap-x-1 align-top">
+                  <div
+                    key={idx}
+                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                  >
                     <span className="font-bold text-right">{idx + 1}.</span>
                     <p>{d.text}</p>
                   </div>
@@ -403,9 +591,7 @@ export default function SptPage() {
                     </colgroup>
                     <thead>
                       <tr className="font-bold">
-                        <th className="border-0 px-1 py-0.5 text-center">
-                          No
-                        </th>
+                        <th className="border-0 px-1 py-0.5 text-center">No</th>
                         <th className="border-0 px-1 py-0.5 text-center">
                           Nama
                         </th>
@@ -415,10 +601,14 @@ export default function SptPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {previewItem.personil.map((p, idx) => {
-                        const [nama] = getPegawaiNameAndNip(
-                          p.pegawaiId,
-                        ).split(" / NIP. ");
+                      {sortByPegawaiOrder(
+                        previewItem.personil,
+                        (person) => person.pegawaiId,
+                        pegawais,
+                      ).map((p, idx) => {
+                        const [nama] = getPegawaiNameAndNip(p.pegawaiId).split(
+                          " / NIP. ",
+                        );
 
                         return (
                           <tr key={idx}>
@@ -446,9 +636,7 @@ export default function SptPage() {
                     </colgroup>
                     <thead>
                       <tr className="font-bold">
-                        <th className="border-0 px-1 py-0.5 text-center">
-                          No
-                        </th>
+                        <th className="border-0 px-1 py-0.5 text-center">No</th>
                         <th className="border-0 px-1 py-0.5 text-center">
                           Nama
                         </th>
@@ -461,7 +649,11 @@ export default function SptPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {previewItem.personil.map((p, idx) => {
+                      {sortByPegawaiOrder(
+                        previewItem.personil,
+                        (person) => person.pegawaiId,
+                        pegawais,
+                      ).map((p, idx) => {
                         const [nama, nip = "-"] = getPegawaiNameAndNip(
                           p.pegawaiId,
                         ).split(" / NIP. ");
@@ -495,7 +687,10 @@ export default function SptPage() {
               <div>:</div>
               <div className="space-y-1 text-justify">
                 {previewItem.untuk.map((u, idx) => (
-                  <div key={idx} className="grid grid-cols-[14px_1fr] gap-x-1 align-top">
+                  <div
+                    key={idx}
+                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                  >
                     <span className="font-bold text-right">{idx + 1}.</span>
                     <p>{u.text}</p>
                   </div>
@@ -510,7 +705,8 @@ export default function SptPage() {
                 <div className="w-72 space-y-16 text-center">
                   <div className="space-y-1 text-center">
                     <p>
-                      Limboto, {formatTanggalIndonesia(previewItem.tanggalMulai)}
+                      Limboto,{" "}
+                      {formatTanggalIndonesia(previewItem.tanggalMulai)}
                     </p>
                     <div className="font-bold text-center mt-2">
                       {getSptSignatureTitleLines(previewItem).map((line) => (
@@ -520,8 +716,8 @@ export default function SptPage() {
                   </div>
                   <div className="space-y-0.5">
                     <p className="font-extrabold underline uppercase">
-                      {getSptSigningOfficial(previewItem)
-                        ?.nama || "Herman Monoarfa, M.Si"}
+                      {getSptSigningOfficial(previewItem)?.nama ||
+                        "Herman Monoarfa, M.Si"}
                     </p>
                     {!isSptKomisioner(previewItem) && (
                       <p className="text-gray-500 text-xs">
@@ -539,6 +735,12 @@ export default function SptPage() {
 
       {/* Global CSS for hiding print wrappers */}
       <style jsx global>{`
+        .spt-print-document * {
+          font-weight: 400 !important;
+        }
+        .spt-print-document .spt-kop-title {
+          font-weight: 900 !important;
+        }
         @media print {
           body * {
             visibility: hidden;
@@ -573,6 +775,7 @@ export default function SptPage() {
           }
         }
       `}</style>
+      {previewItem && <PrintPageSetup printPageSize="215mm 330mm" />}
     </div>
   );
 }

@@ -4,8 +4,14 @@ import { CheckCircle, RotateCcw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { formatTableDate } from "@/lib/formatters";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
+import {
+  getLampiranCostLines,
+  type LampiranCostLine,
+} from "@/modules/nota-dinas/nota-dinas-calculation";
 import {
   approvalDecisionSchema,
   type ApprovalDecision,
@@ -74,9 +80,15 @@ export function ApprovalDetail({
           <Info label="Nomor Dokumen" value={item.nomor} />
           <Info label="Tanggal" value={getTanggalInfo(item)} />
           <Info label="Penandatangan" value={item.penandatanganId} />
-          <Info label="Jumlah Personil" value={String(getPersonilCount(item))} />
+          <Info
+            label="Jumlah Personil"
+            value={String(getPersonilCount(item))}
+          />
           {item.documentType === "Nota Dinas" && (
-            <Info label="Total Anggaran" value={formatRupiah(item.totalBiaya)} />
+            <Info
+              label="Total Anggaran"
+              value={formatRupiah(item.totalBiaya)}
+            />
           )}
         </div>
 
@@ -90,6 +102,7 @@ export function ApprovalDetail({
             <Section title="Untuk" items={item.untuk.map((x) => x.text)} />
             <SptPersonilTable
               item={item}
+              pegawais={pegawais}
               getPegawai={getPegawai}
               getJabatanName={getJabatanName}
             />
@@ -100,6 +113,7 @@ export function ApprovalDetail({
             <Section title="Isi Nota Dinas" items={[item.isi]} />
             <NotaDinasLampiranTable
               item={item}
+              pegawais={pegawais}
               getPegawai={getPegawai}
               getJabatanName={getJabatanName}
             />
@@ -154,12 +168,14 @@ export function ApprovalDetail({
 
 function getTanggalInfo(item: ApprovalItem) {
   return item.documentType === "SPT"
-    ? `${item.tanggalMulai} – ${item.tanggalSelesai}`
-    : item.tanggal;
+    ? `${formatTableDate(item.tanggalMulai)} – ${formatTableDate(item.tanggalSelesai)}`
+    : formatTableDate(item.tanggal);
 }
 
 function getPersonilCount(item: ApprovalItem) {
-  return item.documentType === "SPT" ? item.personil.length : item.lampiran.length;
+  return item.documentType === "SPT"
+    ? item.personil.length
+    : item.lampiran.length;
 }
 
 function formatRupiah(val: number) {
@@ -170,16 +186,14 @@ function formatRupiah(val: number) {
   }).format(val);
 }
 
-function formatRupiahIfFilled(val: number) {
-  return Number(val) > 0 ? formatRupiah(val) : "-";
-}
-
 function SptPersonilTable({
   item,
+  pegawais,
   getPegawai,
   getJabatanName,
 }: {
   item: Extract<ApprovalItem, { documentType: "SPT" }>;
+  pegawais: Pegawai[];
   getPegawai: (pegawaiId: string) => Pegawai | undefined;
   getJabatanName: (pegawaiId: string) => string;
 }) {
@@ -204,16 +218,16 @@ function SptPersonilTable({
               <th className="border-b border-border p-2 text-left">
                 Nama / NIP
               </th>
-              <th className="border-b border-border p-2 text-left">
-                Kategori
-              </th>
-              <th className="border-b border-border p-2 text-left">
-                Jabatan
-              </th>
+              <th className="border-b border-border p-2 text-left">Kategori</th>
+              <th className="border-b border-border p-2 text-left">Jabatan</th>
             </tr>
           </thead>
           <tbody>
-            {item.personil.map((personil, index) => {
+            {sortByPegawaiOrder(
+              item.personil,
+              (personil) => personil.pegawaiId,
+              pegawais,
+            ).map((personil, index) => {
               const pegawai = getPegawai(personil.pegawaiId);
               return (
                 <tr key={`${personil.pegawaiId}-${index}`}>
@@ -246,13 +260,26 @@ function SptPersonilTable({
 
 function NotaDinasLampiranTable({
   item,
+  pegawais,
   getPegawai,
   getJabatanName,
 }: {
   item: Extract<ApprovalItem, { documentType: "Nota Dinas" }>;
+  pegawais: Pegawai[];
   getPegawai: (pegawaiId: string) => Pegawai | undefined;
   getJabatanName: (pegawaiId: string) => string;
 }) {
+  const costColumns = Array.from(
+    item.lampiran.reduce((columns, row) => {
+      getLampiranCostLines(row, item.jenis).forEach((line) => {
+        if (line.subtotal > 0 && !columns.has(line.key)) {
+          columns.set(line.key, line);
+        }
+      });
+      return columns;
+    }, new Map<LampiranCostLine["key"], LampiranCostLine>()),
+  ).map(([, line]) => line);
+
   return (
     <section className="space-y-2">
       <div>
@@ -264,7 +291,7 @@ function NotaDinasLampiranTable({
         </p>
       </div>
       <div className="overflow-x-auto rounded-xl border border-border bg-background">
-        <table className="w-full min-w-[820px] border-collapse text-[11px]">
+        <table className="w-full min-w-[980px] border-collapse text-[11px]">
           <thead className="bg-muted/70">
             <tr>
               <th className="border-b border-border p-2 text-center w-10">
@@ -273,31 +300,24 @@ function NotaDinasLampiranTable({
               <th className="border-b border-border p-2 text-left">
                 Nama / NIP
               </th>
-              <th className="border-b border-border p-2 text-left">
-                Jabatan
-              </th>
-              <th className="border-b border-border p-2 text-right">
-                Uang Harian
-              </th>
-              <th className="border-b border-border p-2 text-right">
-                Transport
-              </th>
-              <th className="border-b border-border p-2 text-right">
-                Penginapan
-              </th>
-              <th className="border-b border-border p-2 text-right">
-                Tiket
-              </th>
-              <th className="border-b border-border p-2 text-center">
-                Durasi
-              </th>
-              <th className="border-b border-border p-2 text-right">
-                Total
-              </th>
+              <th className="border-b border-border p-2 text-left">Jabatan</th>
+              {costColumns.map((column) => (
+                <th
+                  key={column.key}
+                  className="border-b border-border p-2 text-right"
+                >
+                  {column.label}
+                </th>
+              ))}
+              <th className="border-b border-border p-2 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
-            {item.lampiran.map((lampiran, index) => {
+            {sortByPegawaiOrder(
+              item.lampiran,
+              (lampiran) => lampiran.pegawaiId,
+              pegawais,
+            ).map((lampiran, index) => {
               const pegawai = getPegawai(lampiran.pegawaiId);
               return (
                 <tr key={`${lampiran.pegawaiId}-${index}`}>
@@ -315,21 +335,32 @@ function NotaDinasLampiranTable({
                   <td className="border-b border-border p-2">
                     {getJabatanName(lampiran.pegawaiId)}
                   </td>
-                  <td className="border-b border-border p-2 text-right">
-                    {formatRupiahIfFilled(lampiran.uangHarian)}
-                  </td>
-                  <td className="border-b border-border p-2 text-right">
-                    {formatRupiahIfFilled(lampiran.uangTransport)}
-                  </td>
-                  <td className="border-b border-border p-2 text-right">
-                    {formatRupiahIfFilled(lampiran.penginapan)}
-                  </td>
-                  <td className="border-b border-border p-2 text-right">
-                    {formatRupiahIfFilled(lampiran.tiketPesawat)}
-                  </td>
-                  <td className="border-b border-border p-2 text-center">
-                    {lampiran.volume} hari
-                  </td>
+                  {costColumns.map((column) => {
+                    const line = getLampiranCostLines(
+                      lampiran,
+                      item.jenis,
+                    ).find((candidate) => candidate.key === column.key);
+                    return (
+                      <td
+                        key={column.key}
+                        className="border-b border-border p-2 text-right whitespace-nowrap"
+                      >
+                        {line && line.subtotal > 0 ? (
+                          <>
+                            <p>
+                              {formatRupiah(line.rate)} × {line.quantity}{" "}
+                              {line.unit}
+                            </p>
+                            <p className="font-bold">
+                              = {formatRupiah(line.subtotal)}
+                            </p>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="border-b border-border p-2 text-right font-bold text-primary">
                     {formatRupiah(lampiran.total)}
                   </td>
@@ -339,7 +370,10 @@ function NotaDinasLampiranTable({
           </tbody>
           <tfoot>
             <tr className="bg-primary/5">
-              <td colSpan={8} className="p-2 text-right font-bold">
+              <td
+                colSpan={3 + costColumns.length}
+                className="p-2 text-right font-bold"
+              >
                 Total Anggaran
               </td>
               <td className="p-2 text-right font-black text-primary">

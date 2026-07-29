@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { Edit2, Inbox, Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableHead,
-  TableRow,
   TableCell,
   TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Edit2, Trash2, Search, Inbox } from "lucide-react";
-import { DIPA } from "../dipa.schema";
-import { EmptyState } from "@/components/ui/empty-state";
+import type { DIPA } from "../dipa.schema";
 
 interface DIPATableProps {
   items: DIPA[];
@@ -23,6 +23,25 @@ interface DIPATableProps {
   canEdit: boolean;
 }
 
+const formatRupiah = (value: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
+
+const getSearchText = (item: DIPA) =>
+  [
+    item.kodeDipa,
+    item.kodeKro,
+    item.klasifikasiRincianOutput,
+    item.kodeAkun,
+    item.akunPerjalananDinas,
+    item.tahunAnggaran,
+  ]
+    .join(" ")
+    .toLocaleLowerCase("id-ID");
+
 export function DIPATable({
   items,
   onEdit,
@@ -30,30 +49,19 @@ export function DIPATable({
   canEdit,
 }: DIPATableProps) {
   const [search, setSearch] = useState("");
-
-  const filtered = items.filter(
-    (item) =>
-      item.kodeDipa.toLowerCase().includes(search.toLowerCase()) ||
-      item.program.toLowerCase().includes(search.toLowerCase()),
+  const normalizedSearch = search.trim().toLocaleLowerCase("id-ID");
+  const filtered = items.filter((item) =>
+    getSearchText(item).includes(normalizedSearch),
   );
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(val);
-  };
 
   return (
     <div className="space-y-4">
-      {/* Search Input */}
-      <div className="flex items-center w-full max-w-sm">
+      <div className="flex w-full max-w-sm items-center">
         <Input
-          placeholder="Cari kode DIPA atau program..."
+          placeholder="Cari KRO atau akun perjalanan dinas..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<Search className="w-4 h-4" />}
+          onChange={(event) => setSearch(event.target.value)}
+          leftIcon={<Search className="h-4 w-4" />}
         />
       </div>
 
@@ -65,19 +73,22 @@ export function DIPATable({
               ? "Pencarian tidak menemukan kecocokan."
               : "Data anggaran DIPA belum terdaftar."
           }
-          icon={<Inbox className="w-6 h-6" />}
+          icon={<Inbox className="h-6 w-6" />}
         />
       ) : (
         <TableContainer>
-          <Table>
+          <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">No</TableHead>
-                <TableHead>Kode DIPA</TableHead>
-                <TableHead>Program / Kegiatan</TableHead>
-                <TableHead>Pagu</TableHead>
-                <TableHead>Realisasi</TableHead>
-                <TableHead className="w-20">Tahun</TableHead>
+                <TableHead className="w-20 text-center">No Urut</TableHead>
+                <TableHead className="w-52">Kode Akun</TableHead>
+                <TableHead className="w-64">
+                  Klasifikasi Rincian Output (KRO)
+                </TableHead>
+                <TableHead>Akun Perjalanan Dinas</TableHead>
+                <TableHead className="w-44">Pagu Anggaran</TableHead>
+                <TableHead className="w-44">Realisasi Pembayaran</TableHead>
+                <TableHead className="w-32">Tahun Anggaran</TableHead>
                 {canEdit && (
                   <TableHead className="w-24 text-right">Aksi</TableHead>
                 )}
@@ -86,34 +97,45 @@ export function DIPATable({
             <TableBody>
               {filtered.map((item, index) => (
                 <TableRow key={item.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-bold">{item.kodeDipa}</TableCell>
-                  <TableCell>{item.program}</TableCell>
-                  <TableCell className="text-primary font-bold">
+                  <TableCell className="text-center">{index + 1}</TableCell>
+                  <TableCell className="break-words align-top font-bold">
+                    {item.kodeDipa}
+                  </TableCell>
+                  <TableCell className="break-words align-top font-bold">
+                    {item.klasifikasiRincianOutput}
+                  </TableCell>
+                  <TableCell className="min-w-80 break-words align-top">
+                    {item.akunPerjalananDinas}
+                  </TableCell>
+                  <TableCell className="align-top font-bold text-primary">
                     {formatRupiah(item.pagu)}
                   </TableCell>
-                  <TableCell className="text-success-hover font-bold">
+                  <TableCell className="align-top font-bold text-success-hover">
                     {formatRupiah(item.realisasi)}
                   </TableCell>
-                  <TableCell>{item.tahunAnggaran}</TableCell>
+                  <TableCell className="align-top">
+                    {item.tahunAnggaran}
+                  </TableCell>
                   {canEdit && (
-                    <TableCell className="text-right">
+                    <TableCell className="align-top text-right">
                       <div className="flex justify-end gap-1.5">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => onEdit(item)}
-                          className="h-8 w-8 text-primary hover:bg-primary/10 cursor-pointer"
+                          className="text-primary hover:bg-primary/10"
+                          aria-label={`Ubah DIPA ${item.kodeDipa}`}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => onDelete(item.id!)}
-                          className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                          onClick={() => onDelete(item.id)}
+                          className="text-danger hover:bg-danger/10"
+                          aria-label={`Hapus DIPA ${item.kodeDipa}`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>

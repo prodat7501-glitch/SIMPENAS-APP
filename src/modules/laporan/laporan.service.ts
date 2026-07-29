@@ -1,17 +1,105 @@
 import type { Laporan } from "./laporan.schema";
 import type { LaporanPayload, LaporanStatus } from "./laporan.types";
 
-const STORAGE_KEY = "simpenas_laporan_perjalanan";
+const DATABASE_NAME = "simpenas-laporan-perjalanan";
+const DATABASE_VERSION = 1;
+const STORE_NAME = "laporan";
+const LEGACY_STORAGE_KEY = "simpenas_laporan_perjalanan";
+const MIGRATION_KEY = "simpenas_laporan_indexeddb_migrated";
 
-const getItems = (): Laporan[] => {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? (JSON.parse(stored) as Laporan[]) : [];
+const openDatabase = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(
+        new Error(
+          "Penyimpanan Laporan tidak tersedia pada browser ini. Gunakan browser modern dan pastikan mode privat tidak memblokir penyimpanan situs.",
+        ),
+      );
+      return;
+    }
+
+    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () =>
+      reject(
+        request.error ?? new Error("Gagal membuka penyimpanan Laporan."),
+      );
+  });
+
+const runRequest = <T>(request: IDBRequest<T>): Promise<T> =>
+  new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () =>
+      reject(request.error ?? new Error("Operasi penyimpanan Laporan gagal."));
+  });
+
+const waitForTransaction = (transaction: IDBTransaction): Promise<void> =>
+  new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(
+        transaction.error ?? new Error("Penyimpanan Laporan gagal diproses."),
+      );
+    transaction.onabort = () =>
+      reject(
+        transaction.error ?? new Error("Penyimpanan Laporan dibatalkan."),
+      );
+  });
+
+const readDatabaseItems = async (): Promise<Laporan[]> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readonly");
+    return await runRequest(
+      transaction.objectStore(STORE_NAME).getAll() as IDBRequest<Laporan[]>,
+    );
+  } finally {
+    database.close();
+  }
 };
 
-const saveItems = (items: Laporan[]) => {
-  if (typeof window !== "undefined")
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+const writeDatabaseItems = async (items: Laporan[]): Promise<void> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const completed = waitForTransaction(transaction);
+    const store = transaction.objectStore(STORE_NAME);
+    store.clear();
+    items.forEach((item) => store.put(item));
+    await completed;
+  } finally {
+    database.close();
+  }
+};
+
+const putDatabaseItem = async (item: Laporan): Promise<void> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const completed = waitForTransaction(transaction);
+    transaction.objectStore(STORE_NAME).put(item);
+    await completed;
+  } finally {
+    database.close();
+  }
+};
+
+const deleteDatabaseItem = async (id: string): Promise<void> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const completed = waitForTransaction(transaction);
+    transaction.objectStore(STORE_NAME).delete(id);
+    await completed;
+  } finally {
+    database.close();
+  }
 };
 
 const buildDasarPelaksanaan = (item: Partial<Laporan>) =>
@@ -26,8 +114,13 @@ const buildTempatWaktu = (item: Partial<Laporan>) =>
     item.hariTanggalPelaksanaan ?? ""
   }`;
 
+const createId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `laporan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 const normalizeLaporan = (item: Partial<Laporan>): Laporan => ({
-  id: item.id,
+  id: item.id ?? createId(),
   sptId: item.sptId ?? "",
   sppdId: item.sppdId ?? "",
   pelaksanaId: item.pelaksanaId ?? "",
@@ -43,6 +136,7 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => ({
   tempatWaktu: buildTempatWaktu(item),
   materi: item.materi ?? "",
   hasilPelaksanaan: item.hasilPelaksanaan ?? "",
+  kalimatPenutup: item.kalimatPenutup ?? "",
   dokumentasi: (item.dokumentasi ?? []).map((foto) => ({
     ...foto,
     caption: foto.caption ?? "",
@@ -54,51 +148,103 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => ({
   tanggalLaporan: item.tanggalLaporan ?? new Date().toISOString().slice(0, 10),
 });
 
-const createId = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `laporan-${Date.now()}`;
+const readLegacyItems = (): Laporan[] => {
+  if (typeof localStorage === "undefined") return [];
+  const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!stored) return [];
+
+  try {
+    const parsed = JSON.parse(stored) as Partial<Laporan>[];
+    return Array.isArray(parsed) ? parsed.map(normalizeLaporan) : [];
+  } catch {
+    throw new Error(
+      "Data Laporan lama tidak dapat dibaca. Ekspor Data Demo sebelum membersihkan penyimpanan browser.",
+    );
+  }
+};
+
+const markMigrationComplete = () => {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  localStorage.setItem(MIGRATION_KEY, "complete");
+};
+
+const ensureLegacyMigration = async () => {
+  if (
+    typeof localStorage === "undefined" ||
+    localStorage.getItem(MIGRATION_KEY) === "complete"
+  ) {
+    return;
+  }
+
+  const databaseItems = await readDatabaseItems();
+  const legacyItems = readLegacyItems();
+  if (legacyItems.length) {
+    const merged = new Map<string, Laporan>();
+    legacyItems.forEach((item) => merged.set(item.id!, item));
+    databaseItems.forEach((item) => merged.set(item.id!, item));
+    await writeDatabaseItems(Array.from(merged.values()));
+  }
+  markMigrationComplete();
+};
+
+const getItems = async (): Promise<Laporan[]> => {
+  await ensureLegacyMigration();
+  return (await readDatabaseItems()).map(normalizeLaporan);
+};
+
+const replaceAll = async (items: Laporan[]): Promise<void> => {
+  const normalized = items.map(normalizeLaporan);
+  await writeDatabaseItems(normalized);
+  markMigrationComplete();
+};
 
 export const laporanService = {
-  list: async () => {
-    const normalized = getItems().map(normalizeLaporan);
-    saveItems(normalized);
-    return normalized;
-  },
+  list: getItems,
   create: async (payload: LaporanPayload) => {
-    const items = getItems().map(normalizeLaporan);
+    const items = await getItems();
     if (items.some((item) => item.sptId === payload.sptId)) {
       throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
     }
     const item: Laporan = normalizeLaporan({ ...payload, id: createId() });
-    saveItems([...items, item]);
+    await putDatabaseItem(item);
     return item;
   },
   update: async (id: string, payload: LaporanPayload) => {
-    const items = getItems().map(normalizeLaporan);
-    if (!items.some((item) => item.id === id))
+    const items = await getItems();
+    if (!items.some((item) => item.id === id)) {
       throw new Error("Laporan tidak ditemukan.");
+    }
     if (items.some((item) => item.id !== id && item.sptId === payload.sptId)) {
       throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
     }
     const updated: Laporan = normalizeLaporan({ ...payload, id });
-    saveItems(items.map((item) => (item.id === id ? updated : item)));
+    await putDatabaseItem(updated);
     return updated;
   },
-  remove: async (id: string) =>
-    saveItems(getItems().map(normalizeLaporan).filter((item) => item.id !== id)),
+  remove: async (id: string) => {
+    await ensureLegacyMigration();
+    await deleteDatabaseItem(id);
+  },
   verify: async (
     id: string,
     status: Extract<LaporanStatus, "Perlu Revisi" | "Terverifikasi">,
     catatan: string,
   ) => {
-    const items = getItems().map(normalizeLaporan);
+    const items = await getItems();
     const target = items.find((item) => item.id === id);
     if (!target) throw new Error("Laporan tidak ditemukan.");
-    if (status === "Perlu Revisi" && catatan.trim().length < 3)
+    if (status === "Perlu Revisi" && catatan.trim().length < 3) {
       throw new Error("Catatan revisi wajib diisi.");
-    const updated = { ...target, status, catatanVerifikasi: catatan };
-    saveItems(items.map((item) => (item.id === id ? updated : item)));
+    }
+    const updated = normalizeLaporan({
+      ...target,
+      status,
+      catatanVerifikasi: catatan,
+    });
+    await putDatabaseItem(updated);
     return updated;
   },
+  exportRecords: getItems,
+  replaceAll,
 };

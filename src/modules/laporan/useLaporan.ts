@@ -19,8 +19,12 @@ export function useLaporan() {
     queryClient.invalidateQueries({ queryKey: LAPORAN_QUERY_KEY });
   const createMutation = useMutation({
     mutationFn: laporanService.create,
-    onSuccess: (item) => {
-      invalidate();
+    onSuccess: async (item) => {
+      queryClient.setQueryData<Laporan[]>(LAPORAN_QUERY_KEY, (current = []) => [
+        ...current,
+        item,
+      ]);
+      await invalidate();
       useNotificationStore
         .getState()
         .addNotification(
@@ -41,8 +45,11 @@ export function useLaporan() {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: LaporanPayload }) =>
       laporanService.update(id, payload),
-    onSuccess: (item) => {
-      invalidate();
+    onSuccess: async (item) => {
+      queryClient.setQueryData<Laporan[]>(LAPORAN_QUERY_KEY, (current = []) =>
+        current.map((entry) => (entry.id === item.id ? item : entry)),
+      );
+      await invalidate();
       useNotificationStore
         .getState()
         .addNotification(
@@ -64,8 +71,11 @@ export function useLaporan() {
   });
   const deleteMutation = useMutation({
     mutationFn: laporanService.remove,
-    onSuccess: (_, id) => {
-      invalidate();
+    onSuccess: async (_, id) => {
+      queryClient.setQueryData<Laporan[]>(LAPORAN_QUERY_KEY, (current = []) =>
+        current.filter((entry) => entry.id !== id),
+      );
+      await invalidate();
       useActivityStore
         .getState()
         .add({
@@ -86,8 +96,11 @@ export function useLaporan() {
       status: Extract<LaporanStatus, "Perlu Revisi" | "Terverifikasi">;
       catatan: string;
     }) => laporanService.verify(id, status, catatan),
-    onSuccess: (item) => {
-      invalidate();
+    onSuccess: async (item) => {
+      queryClient.setQueryData<Laporan[]>(LAPORAN_QUERY_KEY, (current = []) =>
+        current.map((entry) => (entry.id === item.id ? item : entry)),
+      );
+      await invalidate();
       useNotificationStore
         .getState()
         .addNotification(

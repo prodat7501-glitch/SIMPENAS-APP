@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 import { useActivityStore } from "@/stores/activity.store";
+import {
+  FindNotaDinasTravelConflictsInput,
+  notaDinasService,
+} from "./nota-dinas.service";
 import { useNotaDinasStore } from "./nota-dinas.store";
 
 export function useNotaDinas() {
@@ -57,5 +61,9 @@ export function useNotaDinas() {
       });
       return result;
     },
+    releaseNomor: notaDinasService.releaseNomor,
+    findTravelConflicts: (
+      input: Omit<FindNotaDinasTravelConflictsInput, "notas">,
+    ) => notaDinasService.findTravelConflicts({ ...input, notas: items }),
   };
 }

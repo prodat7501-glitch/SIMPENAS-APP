@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, Search, Inbox, Printer } from "lucide-react";
 import { Spt } from "../spt.schema";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatTableDate } from "@/lib/formatters";
 
 interface SptTableProps {
   items: Spt[];
@@ -23,6 +24,8 @@ interface SptTableProps {
   onDelete: (id: string) => void;
   onPreview: (item: Spt) => void;
   canEdit: boolean;
+  canEditItem?: (item: Spt) => boolean;
+  canDelete: boolean;
   getNotaDinasNumber: (notaDinasId: string) => string;
 }
 
@@ -32,6 +35,8 @@ export function SptTable({
   onDelete,
   onPreview,
   canEdit,
+  canEditItem,
+  canDelete,
   getNotaDinasNumber,
 }: SptTableProps) {
   const [search, setSearch] = useState("");
@@ -103,15 +108,23 @@ export function SptTable({
                     <p className="line-clamp-2">{item.untuk[0]?.text || "-"}</p>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {item.tanggalMulai} s.d {item.tanggalSelesai}
+                    {formatTableDate(item.tanggalMulai)} s.d{" "}
+                    {formatTableDate(item.tanggalSelesai)}
                   </TableCell>
                   <TableCell className="text-center font-bold">
                     {item.personil.length}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {item.status}
-                    </Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={getStatusVariant(item.status)}>
+                        {item.status}
+                      </Badge>
+                      {item.status === "Perlu Revisi" && item.catatanRevisi && (
+                        <p className="max-w-64 text-[10px] font-semibold leading-relaxed text-danger">
+                          Catatan: {item.catatanRevisi}
+                        </p>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -124,25 +137,26 @@ export function SptTable({
                       >
                         <Printer className="w-3.5 h-3.5" />
                       </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(item)}
-                            className="h-8 w-8 text-primary hover:bg-primary/10 cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onDelete(item.id!)}
-                            className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </>
+                      {canEdit && (canEditItem?.(item) ?? true) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(item)}
+                          className="h-8 w-8 text-primary hover:bg-primary/10 cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(item.id!)}
+                          title="Hapus"
+                          className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>

@@ -18,10 +18,14 @@ import { useKeuangan } from "@/modules/keuangan/useKeuangan";
 import { useLaporan } from "@/modules/laporan/useLaporan";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
-import { downloadGeneratedPdf, type PdfDocumentInput } from "@/lib/document-pdf";
-import { formatRupiah } from "@/lib/formatters";
+import {
+  downloadGeneratedPdf,
+  type PdfDocumentInput,
+} from "@/lib/document-pdf";
+import { formatRupiah, formatTableDate } from "@/lib/formatters";
 import { useDocumentTemplate } from "@/providers/TemplateProvider";
 
 type ArchiveDoc = {
@@ -35,12 +39,12 @@ type ArchiveDoc = {
 
 export default function DokumenPage() {
   const template = useDocumentTemplate();
-  const { items: laporan } = useLaporan();
+  const { items: laporan, isLoading: laporanLoading } = useLaporan();
   const { items: sppd } = useSppd();
   const { items: spt } = useSpt();
   const { items: notaDinas } = useNotaDinas();
   const { items: pegawai } = usePegawai();
-  const { items: spj } = useKeuangan(laporan);
+  const { items: spj } = useKeuangan(laporan, undefined, !laporanLoading);
   const [search, setSearch] = useState("");
   const [jenis, setJenis] = useState("");
   const getPegawai = useCallback(
@@ -56,11 +60,11 @@ export default function DokumenPage() {
           (item) => item.id === relatedSpt?.notaDinasId,
         );
         return {
-        id: x.id!,
-        nomor: x.nomor,
-        jenis: "SPPD",
-        tanggal: x.tanggalBerangkat,
-        status: x.status,
+          id: x.id!,
+          nomor: x.nomor,
+          jenis: "SPPD",
+          tanggal: x.tanggalBerangkat,
+          status: x.status,
           buildPdf: () => ({
             title: "Surat Perintah Perjalanan Dinas",
             subtitle: `Nomor: ${x.nomor}`,
@@ -84,7 +88,13 @@ export default function DokumenPage() {
                   `Tujuan: ${x.tempatTujuan}`,
                   `Tanggal: ${x.tanggalBerangkat} s.d. ${x.tanggalKembali}`,
                   `Lama Perjalanan: ${x.lamaPerjalanan} hari`,
-                  `Personil: ${x.personil.map((p) => getPegawai(p.pegawaiId)).join(", ")}`,
+                  `Personil: ${sortByPegawaiOrder(
+                    x.personil,
+                    (person) => person.pegawaiId,
+                    pegawai,
+                  )
+                    .map((p) => getPegawai(p.pegawaiId))
+                    .join(", ")}`,
                 ],
               },
             ],
@@ -94,11 +104,11 @@ export default function DokumenPage() {
       ...laporan.map((x) => {
         const relatedSppd = sppd.find((item) => item.id === x.sppdId);
         return {
-        id: x.id!,
-        nomor: sppd.find((s) => s.id === x.sppdId)?.nomor ?? x.id!,
-        jenis: "Laporan",
-        tanggal: x.tanggalLaporan,
-        status: x.status,
+          id: x.id!,
+          nomor: sppd.find((s) => s.id === x.sppdId)?.nomor ?? x.id!,
+          jenis: "Laporan",
+          tanggal: x.tanggalLaporan,
+          status: x.status,
           buildPdf: () => ({
             title: "Laporan Perjalanan Dinas",
             subtitle: `Referensi SPPD: ${relatedSppd?.nomor ?? x.sppdId}`,
@@ -165,7 +175,11 @@ export default function DokumenPage() {
               },
               {
                 title: "Rincian Penerima",
-                lines: d.rincian.map(
+                lines: sortByPegawaiOrder(
+                  d.rincian,
+                  (row) => row.pegawaiId,
+                  pegawai,
+                ).map(
                   (r, index) =>
                     `${index + 1}. ${getPegawai(r.pegawaiId)} - Transport ${formatRupiah(r.uangTransport)}, Harian ${formatRupiah(r.uangHarian)}, Penginapan ${formatRupiah(r.penginapan)}, Jumlah ${formatRupiah(r.jumlah)}`,
                 ),
@@ -175,7 +189,7 @@ export default function DokumenPage() {
         })),
       ),
     ],
-    [sppd, spt, notaDinas, laporan, spj, getPegawai, template],
+    [sppd, spt, notaDinas, laporan, spj, pegawai, getPegawai, template],
   );
   const rows = docs.filter(
     (x) =>
@@ -223,7 +237,7 @@ export default function DokumenPage() {
               <TableRow key={`${x.jenis}-${x.id}`}>
                 <TableCell className="font-mono font-bold">{x.nomor}</TableCell>
                 <TableCell>{x.jenis}</TableCell>
-                <TableCell>{x.tanggal}</TableCell>
+                <TableCell>{formatTableDate(x.tanggal)}</TableCell>
                 <TableCell>
                   <Badge variant="info">{x.status}</Badge>
                 </TableCell>

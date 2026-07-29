@@ -1,14 +1,23 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Mail, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/schemas/auth.schema";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  DEFAULT_MOCK_PASSWORD,
+  DEFAULT_MOCK_PASSWORD_HASH,
+  userAccountService,
+} from "@/modules/user-account/user-account.service";
+import type { UserAccount } from "@/modules/user-account/user-account.types";
+import { DEMO_DATA_IMPORTED_KEY } from "@/modules/demo-data/demo-data.constants";
 
 export default function LoginPage() {
   const { login, isLoading, error } = useAuth();
+  const [mockAccounts, setMockAccounts] = useState<UserAccount[]>([]);
 
   const {
     register,
@@ -20,25 +29,35 @@ export default function LoginPage() {
     defaultValues: {
       username: "",
       password: "",
-      role: "Administrator",
     },
   });
+
+  useEffect(() => {
+    // Daftar akun dibaca setelah hydration karena sumber mock menggunakan localStorage.
+    const hasImportedDemoData = Boolean(
+      localStorage.getItem(DEMO_DATA_IMPORTED_KEY),
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMockAccounts(
+      userAccountService
+        .getAll()
+        .filter(
+          (account) =>
+            userAccountService.canLogin(account) &&
+            account.passwordHash === DEFAULT_MOCK_PASSWORD_HASH &&
+            (!hasImportedDemoData || account.role === "Pegawai"),
+        ),
+    );
+  }, []);
 
   const onSubmit = async (data: LoginInput) => {
     await login(data);
   };
 
   // Helper function to fill mock logins quickly for testing
-  const selectMockUser = (role: LoginInput["role"]) => {
-    const roleUsernames: Record<LoginInput["role"], string> = {
-      Administrator: "admin",
-      Supervisor: "supervisor",
-      Pegawai: "pegawai",
-      "Sub Bagian Keuangan": "keuangan",
-    };
-    setValue("role", role);
-    setValue("username", roleUsernames[role]);
-    setValue("password", "password123");
+  const selectMockUser = (account: UserAccount) => {
+    setValue("username", account.username);
+    setValue("password", DEFAULT_MOCK_PASSWORD);
   };
 
   return (
@@ -81,29 +100,6 @@ export default function LoginPage() {
 
         {/* Form Container */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Role selector field */}
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-              Hak Akses / Peran
-            </label>
-            <select
-              {...register("role")}
-              className="w-full px-4 py-3 bg-muted/30 border border-border rounded-xl text-sm focus:outline-none focus:border-primary/50 text-foreground"
-            >
-              <option value="Administrator">Administrator (Penuh)</option>
-              <option value="Supervisor">
-                Supervisor (Verifikator & Approval)
-              </option>
-              <option value="Pegawai">Pegawai (Pelaksana Perjalanan)</option>
-              <option value="Sub Bagian Keuangan">Sub Bagian Keuangan</option>
-            </select>
-            {errors.role && (
-              <p className="text-[10px] text-danger font-bold mt-1">
-                {errors.role.message}
-              </p>
-            )}
-          </div>
-
           {/* Username field */}
           <div>
             <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
@@ -175,31 +171,25 @@ export default function LoginPage() {
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center mb-3">
             Pintasan Pengujian (Mock Login)
           </p>
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-            <button
-              onClick={() => selectMockUser("Administrator")}
-              className="py-2 px-3 border border-border rounded-lg bg-muted/20 hover:bg-muted/50 transition-colors"
-            >
-              Administrator
-            </button>
-            <button
-              onClick={() => selectMockUser("Supervisor")}
-              className="py-2 px-3 border border-border rounded-lg bg-muted/20 hover:bg-muted/50 transition-colors"
-            >
-              Supervisor
-            </button>
-            <button
-              onClick={() => selectMockUser("Pegawai")}
-              className="py-2 px-3 border border-border rounded-lg bg-muted/20 hover:bg-muted/50 transition-colors"
-            >
-              Pegawai
-            </button>
-            <button
-              onClick={() => selectMockUser("Sub Bagian Keuangan")}
-              className="py-2 px-3 border border-border rounded-lg bg-muted/20 hover:bg-muted/50 transition-colors"
-            >
-              Keuangan
-            </button>
+          <p className="mb-3 text-center text-[10px] text-muted-foreground">
+            Setiap username mewakili satu pegawai. Role dibaca otomatis dari
+            Master Pegawai.
+          </p>
+          <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto text-[10px] font-bold">
+            {mockAccounts.map((account) => (
+              <button
+                key={account.id}
+                type="button"
+                onClick={() => selectMockUser(account)}
+                className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/50"
+                title={`${account.username} - ${account.role}`}
+              >
+                <span className="block truncate">{account.name}</span>
+                <span className="block truncate font-normal text-muted-foreground">
+                  {account.username}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>

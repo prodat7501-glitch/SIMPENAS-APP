@@ -7,8 +7,4 @@ export interface SppdListFilters {
   status: SppdStatus | "Semua";
 }
 
-export interface SppdNomorRequest {
-  tanggalBerangkat: string;
-}
-
-export type SppdMutationPayload = Omit<Sppd, "id">;
+export type SppdMutationPayload = Omit<Sppd, "id" | "status">;

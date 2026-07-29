@@ -45,7 +45,7 @@ export function PangkatForm({
           Golongan
         </label>
         <Input
-          placeholder="Contoh: IV/a"
+          placeholder="Contoh: I atau IV/a"
           {...register("golongan")}
           error={!!errors.golongan}
           disabled={!!initialValues}

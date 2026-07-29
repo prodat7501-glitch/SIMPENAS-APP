@@ -66,6 +66,51 @@ export const isPegawaiInNotaDinas = (
   return nota.lampiran.some((item) => item.pegawaiId === pegawaiId);
 };
 
+export const resolveNotaDinasChainManagerId = (
+  notaDinasId: string,
+  spts: Spt[],
+) =>
+  spts.find(
+    (item) =>
+      item.notaDinasId === notaDinasId && Boolean(item.createdByPegawaiId),
+  )?.createdByPegawaiId;
+
+export const resolveSptChainManagerId = (sptId: string, spts: Spt[]) => {
+  const sourceSpt = spts.find((item) => item.id === sptId);
+  if (!sourceSpt) return undefined;
+
+  return (
+    resolveNotaDinasChainManagerId(sourceSpt.notaDinasId, spts) ??
+    sourceSpt.createdByPegawaiId
+  );
+};
+
+export const canInitiateNotaDinasChain = (
+  pegawaiId: string | undefined,
+  nota: NotaDinas,
+  spts: Spt[],
+  isAdministrator = false,
+) => {
+  if (isAdministrator) return true;
+  if (!isPegawaiInNotaDinas(pegawaiId, nota)) return false;
+
+  const managerId = nota.id
+    ? resolveNotaDinasChainManagerId(nota.id, spts)
+    : undefined;
+  return !managerId || managerId === pegawaiId;
+};
+
+export const canManageSptChain = (
+  pegawaiId: string | undefined,
+  sptId: string,
+  spts: Spt[],
+  isAdministrator = false,
+) => {
+  if (isAdministrator) return true;
+  if (!pegawaiId) return false;
+  return resolveSptChainManagerId(sptId, spts) === pegawaiId;
+};
+
 export const canAccessSptByNotaDinas = (
   pegawaiId: string | undefined,
   spt: Spt,

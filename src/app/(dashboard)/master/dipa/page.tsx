@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
-import type { DIPA } from "@/modules/dipa/dipa.schema";
+import type { DIPA, DipaFormData } from "@/modules/dipa/dipa.schema";
 
 export default function DipaPage() {
   const { hasPermission } = useAuth();
@@ -57,7 +57,7 @@ export default function DipaPage() {
     }
   };
 
-  const handleFormSubmit = (data: Omit<DIPA, "id">) => {
+  const handleFormSubmit = (data: DipaFormData) => {
     if (editingItem) {
       update(editingItem.id!, data);
       addToast("Data anggaran DIPA berhasil diperbarui", "success");
@@ -105,6 +105,8 @@ export default function DipaPage() {
       <Dialog
         isOpen={modalOpen}
         onClose={handleCancel}
+        className="max-w-3xl"
+        bodyClassName="max-h-[75vh] overflow-y-auto pr-1"
         title={
           editingItem ? "Ubah Data Anggaran DIPA" : "Tambah Anggaran DIPA Baru"
         }

@@ -13,9 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Search, Inbox, Printer } from "lucide-react";
+import {
+  AlertTriangle,
+  Edit2,
+  Trash2,
+  Search,
+  Inbox,
+  Printer,
+} from "lucide-react";
 import { NotaDinas } from "../nota-dinas.schema";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatTableDate } from "@/lib/formatters";
 
 interface NotaDinasTableProps {
   items: NotaDinas[];
@@ -23,6 +31,9 @@ interface NotaDinasTableProps {
   onDelete: (id: string) => void;
   onPreview: (item: NotaDinas) => void;
   canEdit: boolean;
+  canEditItem?: (item: NotaDinas) => boolean;
+  canDelete: boolean;
+  getPegawaiName: (pegawaiId: string) => string;
 }
 
 export function NotaDinasTable({
@@ -31,6 +42,9 @@ export function NotaDinasTable({
   onDelete,
   onPreview,
   canEdit,
+  canEditItem,
+  canDelete,
+  getPegawaiName,
 }: NotaDinasTableProps) {
   const [search, setSearch] = useState("");
 
@@ -56,6 +70,15 @@ export function NotaDinasTable({
     if (status === "Perlu Revisi") return "danger";
     return "success";
   };
+
+  const getConflictNames = (item: NotaDinas) =>
+    Array.from(
+      new Set(
+        (item.travelConflicts ?? []).map((conflict) =>
+          getPegawaiName(conflict.pegawaiId),
+        ),
+      ),
+    );
 
   return (
     <div className="space-y-4">
@@ -85,7 +108,8 @@ export function NotaDinasTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16">No</TableHead>
-                <TableHead>Nota Dinas (Nomor & Perihal)</TableHead>
+                <TableHead className="min-w-48">Nomor</TableHead>
+                <TableHead className="min-w-72">Perihal</TableHead>
                 <TableHead className="w-28">Tanggal</TableHead>
                 <TableHead>Pengirim (Dari)</TableHead>
                 <TableHead className="w-32">Tipe Dinas</TableHead>
@@ -97,19 +121,33 @@ export function NotaDinasTable({
             </TableHeader>
             <TableBody>
               {filtered.map((item, index) => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  className={
+                    getConflictNames(item).length ? "bg-danger/5" : undefined
+                  }
+                >
                   <TableCell>{index + 1}</TableCell>
+                  <TableCell className="font-mono text-[10px]">
+                    {item.nomor}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-bold text-foreground line-clamp-1">
                         {item.perihal}
                       </span>
-                      <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                        {item.nomor}
-                      </span>
+                      {getConflictNames(item).length > 0 && (
+                        <span className="mt-1 flex items-start gap-1 text-[10px] font-bold leading-tight text-danger">
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                          Potensi perjalanan ganda:{" "}
+                          {getConflictNames(item).join(", ")}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs">{item.tanggal}</TableCell>
+                  <TableCell className="text-xs">
+                    {formatTableDate(item.tanggal)}
+                  </TableCell>
                   <TableCell className="text-xs">{item.dari}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{item.jenis}</Badge>
@@ -121,9 +159,19 @@ export function NotaDinasTable({
                     {formatRupiah(item.totalBiaya)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {item.status}
-                    </Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={getStatusVariant(item.status)}>
+                        {item.status}
+                      </Badge>
+                      {item.status === "Perlu Revisi" && item.catatanRevisi && (
+                        <p className="max-w-64 text-[10px] font-semibold leading-relaxed text-danger">
+                          Catatan: {item.catatanRevisi}
+                        </p>
+                      )}
+                      {getConflictNames(item).length > 0 && (
+                        <Badge variant="danger">Potensi Ganda</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -136,25 +184,26 @@ export function NotaDinasTable({
                       >
                         <Printer className="w-3.5 h-3.5" />
                       </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(item)}
-                            className="h-8 w-8 text-primary hover:bg-primary/10 cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onDelete(item.id!)}
-                            className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </>
+                      {canEdit && (canEditItem?.(item) ?? true) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEdit(item)}
+                          className="h-8 w-8 text-primary hover:bg-primary/10 cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(item.id!)}
+                          title="Hapus"
+                          className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>

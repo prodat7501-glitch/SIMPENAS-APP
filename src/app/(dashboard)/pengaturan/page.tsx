@@ -13,16 +13,19 @@ import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
-import type {
-  DocumentType,
-  NumberHistory,
-  NumberStatus,
-  NumberingConfig,
+import { DemoDataTransferCard } from "@/modules/demo-data/components/DemoDataTransferCard";
+import {
+  documentTypes,
+  type DocumentType,
+  type NumberHistory,
+  type NumberStatus,
+  type NumberingConfig,
 } from "@/modules/pengaturan/penomoran.schema";
 import { applyExistingNumberingService } from "@/modules/pengaturan/apply-existing-numbering.service";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
 import { usePenomoran } from "@/modules/pengaturan/usePenomoran";
 import { SPPD_QUERY_KEY } from "@/modules/sppd/sppd.constants";
+import { formatTableDateTime } from "@/lib/formatters";
 
 type BookingForm = {
   documentType: DocumentType;
@@ -32,7 +35,7 @@ type BookingForm = {
   note: string;
 };
 
-const managedNumberTypes: DocumentType[] = ["Nota Dinas", "SPT", "SPPD"];
+const managedNumberTypes: DocumentType[] = [...documentTypes];
 const today = () => new Date().toISOString().slice(0, 10);
 
 const getStatusVariant = (status?: NumberStatus) => {
@@ -42,8 +45,9 @@ const getStatusVariant = (status?: NumberStatus) => {
 };
 
 export default function PengaturanPage() {
-  const { hasPermission } = useAuth();
-  const { configs, history, loading, error, save, refresh } = usePenomoran();
+  const { user, hasPermission } = useAuth();
+  const { configs, history, loading, error, save, refresh, previewNext } =
+    usePenomoran();
   const [editing, setEditing] = useState<NumberingConfig | null>(null);
   const [booking, setBooking] = useState<BookingForm>({
     documentType: "SPT",
@@ -56,8 +60,8 @@ export default function PengaturanPage() {
   const queryClient = useQueryClient();
   const canUpdate = hasPermission("Pengaturan Penomoran", "U");
   const preview = useMemo(
-    () => (editing ? penomoranService.preview(editing) : ""),
-    [editing],
+    () => (editing ? previewNext(editing) : ""),
+    [editing, previewNext],
   );
   const managedHistory = history.filter((item) =>
     managedNumberTypes.includes(item.documentType),
@@ -106,10 +110,7 @@ export default function PengaturanPage() {
       }));
       refresh();
     } catch (e) {
-      addToast(
-        e instanceof Error ? e.message : "Booking nomor gagal",
-        "error",
-      );
+      addToast(e instanceof Error ? e.message : "Booking nomor gagal", "error");
     }
   };
 
@@ -141,9 +142,7 @@ export default function PengaturanPage() {
       </Alert>
     );
   if (loading)
-    return (
-      <LoadingOverlay isOpen message="Memuat pengaturan penomoran..." />
-    );
+    return <LoadingOverlay isOpen message="Memuat pengaturan penomoran..." />;
 
   return (
     <div className="space-y-6">
@@ -168,6 +167,10 @@ export default function PengaturanPage() {
         </Alert>
       )}
 
+      {user?.role === "Administrator" && (
+        <DemoDataTransferCard administratorName={user.name} />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {configs.map((item) => (
           <Card key={item.documentType}>
@@ -185,7 +188,9 @@ export default function PengaturanPage() {
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <p>
-                  <span className="text-muted-foreground">Running</span>
+                  <span className="text-muted-foreground">
+                    Nomor Berikutnya
+                  </span>
                   <br />
                   <b>{item.runningNumber}</b>
                 </p>
@@ -196,9 +201,11 @@ export default function PengaturanPage() {
                 </p>
               </div>
               <p className="rounded bg-muted p-2">
-                <span className="text-muted-foreground">Preview berikutnya</span>
+                <span className="text-muted-foreground">
+                  Nomor yang akan diterbitkan
+                </span>
                 <br />
-                <b>{penomoranService.preview(item)}</b>
+                <b>{previewNext(item)}</b>
               </p>
               {canUpdate && (
                 <Button
@@ -225,7 +232,7 @@ export default function PengaturanPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">
-              Kelola Nomor Admin - Nota Dinas, SPT, SPPD
+              Kelola Nomor Admin - Seluruh Dokumen Bernomor
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -341,18 +348,24 @@ export default function PengaturanPage() {
                 }
               />
             </Field>
-            <Field label="Running Number">
-              <Input
-                type="number"
-                min={0}
-                value={editing.runningNumber}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    runningNumber: Number(e.target.value),
-                  })
-                }
-              />
+            <Field label="Nomor Berikutnya">
+              <div className="space-y-1">
+                <Input
+                  type="number"
+                  min={1}
+                  value={editing.runningNumber}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      runningNumber: Number(e.target.value),
+                    })
+                  }
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Nilai 1 menerbitkan 001. Setelah dipakai, sistem otomatis
+                  melanjutkan ke 002 dan seterusnya.
+                </p>
+              </div>
             </Field>
             <Field label="Jumlah Digit">
               <Input
@@ -366,16 +379,31 @@ export default function PengaturanPage() {
               />
             </Field>
             <div className="rounded bg-muted p-3 text-sm md:col-span-2">
-              <span className="text-muted-foreground">Preview format:</span>{" "}
+              <span className="text-muted-foreground">
+                Nomor yang benar-benar akan diterbitkan:
+              </span>{" "}
               <b>{preview}</b>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Riwayat Booking tetap dipertahankan dan akan dilewati otomatis.
+                Riwayat Terpakai tanpa dokumen sumber direkonsiliasi saat
+                pengaturan jenis dokumen yang didukung disimpan.
+              </p>
             </div>
             <div className="flex gap-2 md:col-span-2">
               <Button
                 onClick={() => {
                   try {
-                    save(editing);
+                    const result = save(editing);
+                    const actualNumber = previewNext(result.config);
                     setEditing(null);
-                    addToast("Pengaturan penomoran disimpan", "success");
+                    addToast(
+                      `Pengaturan disimpan. Nomor berikutnya: ${actualNumber}.${
+                        result.reconciledCount
+                          ? ` ${result.reconciledCount} riwayat Terpakai tanpa dokumen dibatalkan.`
+                          : ""
+                      }`,
+                      "success",
+                    );
                   } catch (e) {
                     addToast(
                       e instanceof Error ? e.message : "Data tidak valid",
@@ -433,9 +461,7 @@ export default function PengaturanPage() {
                       <td className="p-3">{row.bookedFor ?? "-"}</td>
                       <td className="p-3">{row.note ?? "-"}</td>
                       <td className="p-3">
-                        {new Date(row.updatedAt ?? row.createdAt).toLocaleString(
-                          "id-ID",
-                        )}
+                        {formatTableDateTime(row.updatedAt ?? row.createdAt)}
                       </td>
                       {canUpdate && (
                         <td className="p-3 text-right">

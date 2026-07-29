@@ -1,6 +1,8 @@
 "use client";
+import { Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Timeline } from "@/components/ui/timeline";
 import { useToast } from "@/components/ui/toast";
@@ -19,6 +21,8 @@ export default function ApprovalPage() {
   const { items: pegawais } = usePegawai();
   const { items: jabatans } = useJabatan();
   const canApprove = hasPermission("Approval", "A");
+  const canClearHistory =
+    user?.role === "Administrator" && hasPermission("Approval", "D");
   if (!hasPermission("Approval", "R"))
     return (
       <Alert variant="error" title="Akses Ditolak">
@@ -30,11 +34,44 @@ export default function ApprovalPage() {
       return addToast("Anda tidak memiliki izin approval", "error");
     try {
       await approval.decide(data);
-      addToast(`${data.documentType} ${data.decision.toLowerCase()}`, "success");
+      addToast(
+        `${data.documentType} ${data.decision.toLowerCase()}`,
+        "success",
+      );
       approval.setSelected(null);
     } catch (error) {
       addToast(
         error instanceof Error ? error.message : "Approval gagal",
+        "error",
+      );
+    }
+  };
+  const clearHistory = async () => {
+    if (!user || !canClearHistory) {
+      addToast(
+        "Hanya Administrator yang dapat membersihkan riwayat approval.",
+        "error",
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        `Bersihkan ${approval.history.length} riwayat approval? Dokumen Nota Dinas dan SPT tidak akan dihapus.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const total = await approval.clearHistory({
+        role: user.role,
+        user: user.name,
+      });
+      addToast(`${total} riwayat approval berhasil dibersihkan.`, "success");
+    } catch (error) {
+      addToast(
+        error instanceof Error
+          ? error.message
+          : "Riwayat approval gagal dibersihkan.",
         "error",
       );
     }
@@ -46,9 +83,9 @@ export default function ApprovalPage() {
         message="Memproses approval dokumen..."
       />
       <div>
-        <h1 className="text-xl font-extrabold">Approval Dokumen</h1>
+        <h1 className="text-xl font-extrabold">Approval SPT dan Nota Dinas</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Periksa, setujui, atau kembalikan Nota Dinas/SPT untuk revisi.
+          Periksa, setujui, atau kembalikan SPT dan Nota Dinas untuk revisi.
         </p>
       </div>
       {approval.error && (
@@ -63,9 +100,21 @@ export default function ApprovalPage() {
         onDetail={approval.setSelected}
       />
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold">Riwayat Approval</h2>
-          <Badge variant="outline">{approval.history.length}</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold">Riwayat Approval</h2>
+            <Badge variant="outline">{approval.history.length}</Badge>
+          </div>
+          {canClearHistory && (
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={approval.history.length === 0 || approval.isSaving}
+              onClick={clearHistory}
+            >
+              <Trash2 className="w-4 h-4" /> Bersihkan Riwayat Approval
+            </Button>
+          )}
         </div>
         {approval.history.length === 0 ? (
           <Alert variant="info">Belum ada riwayat keputusan approval.</Alert>

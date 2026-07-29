@@ -5,12 +5,110 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrintExportActions } from "@/components/ui/print-export-actions";
 
+export type PrintPageSize =
+  | "210mm 297mm"
+  | "297mm 210mm"
+  | "215mm 330mm"
+  | "330mm 215mm";
+
 interface PrintPreviewProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   className?: string;
+  printPageSize?: PrintPageSize;
   children: React.ReactNode;
+}
+
+export function PrintPageSetup({
+  printPageSize,
+  lockPrintScale = true,
+}: {
+  printPageSize: PrintPageSize;
+  lockPrintScale?: boolean;
+}) {
+  if (!lockPrintScale) {
+    return (
+      <style media="print">{`
+        @page {
+          size: ${printPageSize};
+        }
+
+        html,
+        body {
+          width: auto !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        .print-direct.print-direct {
+          position: absolute !important;
+          inset: 0 0 auto 0 !important;
+          box-sizing: border-box !important;
+          width: auto !important;
+          max-width: none !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+
+        .print-direct .print-container.print-container {
+          box-sizing: border-box !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+      `}</style>
+    );
+  }
+
+  const pageWidth = printPageSize.split(" ")[0];
+
+  return (
+    <style media="print">{`
+      @page {
+        size: ${printPageSize};
+        margin: 0;
+      }
+
+      html,
+      body {
+        width: ${pageWidth};
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .print-direct.print-direct {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        box-sizing: border-box !important;
+        width: ${pageWidth} !important;
+        max-width: ${pageWidth} !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        zoom: 1 !important;
+        transform: none !important;
+      }
+
+      .print-direct .print-container.print-container {
+        box-sizing: border-box !important;
+        width: ${pageWidth} !important;
+        max-width: ${pageWidth} !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        padding: var(--document-print-padding, 0mm) !important;
+        zoom: 1 !important;
+        transform: none !important;
+      }
+    `}</style>
+  );
 }
 
 export function PrintPreview({
@@ -18,6 +116,7 @@ export function PrintPreview({
   onClose,
   title = "Pratinjau Cetak Dokumen",
   className,
+  printPageSize,
   children,
 }: PrintPreviewProps) {
   if (!isOpen) return null;
@@ -83,6 +182,9 @@ export function PrintPreview({
           }
         }
       `}</style>
+      {printPageSize ? (
+        <PrintPageSetup printPageSize={printPageSize} />
+      ) : null}
     </>
   );
 }

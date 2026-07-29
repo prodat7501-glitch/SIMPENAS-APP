@@ -19,12 +19,14 @@ import {
 import { SPPD_STATUS_OPTIONS } from "../sppd.constants";
 import type { Sppd } from "../sppd.schema";
 import type { SppdStatus } from "../sppd.types";
+import { formatTableDate } from "@/lib/formatters";
 
 interface SppdTableProps {
   items: Sppd[];
   search: string;
   status: SppdStatus | "Semua";
   canEdit: boolean;
+  canEditItem?: (item: Sppd) => boolean;
   canDelete: boolean;
   canPrint: boolean;
   onSearchChange: (value: string) => void;
@@ -40,9 +42,8 @@ interface SppdTableProps {
 
 const getStatusVariant = (status: Sppd["status"]) => {
   if (status === "Draft") return "outline";
-  if (status === "Nomor Diambil") return "info";
-  if (status === "Menunggu Approval") return "warning";
-  if (status === "Perlu Revisi") return "danger";
+  if (status === "Diproses") return "warning";
+  if (status === "Diarsipkan") return "info";
   return "success";
 };
 
@@ -51,6 +52,7 @@ export function SppdTable({
   search,
   status,
   canEdit,
+  canEditItem,
   canDelete,
   canPrint,
   onSearchChange,
@@ -78,7 +80,7 @@ export function SppdTable({
             onStatusChange(event.target.value as SppdStatus | "Semua")
           }
         >
-          <option value="Semua">Semua Status</option>
+          <option value="Semua">Semua Status Dokumen</option>
           {SPPD_STATUS_OPTIONS.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -110,7 +112,7 @@ export function SppdTable({
                 <TableHead className="w-40">Tanggal</TableHead>
                 <TableHead className="w-24 text-center">Hari</TableHead>
                 <TableHead>Akun DIPA</TableHead>
-                <TableHead className="w-36">Status</TableHead>
+                <TableHead className="w-36">Status Dokumen</TableHead>
                 <TableHead className="w-36 text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -136,7 +138,8 @@ export function SppdTable({
                     </p>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {item.tanggalBerangkat} s.d {item.tanggalKembali}
+                    {formatTableDate(item.tanggalBerangkat)} s.d{" "}
+                    {formatTableDate(item.tanggalKembali)}
                   </TableCell>
                   <TableCell className="text-center font-bold">
                     {item.lamaPerjalanan}
@@ -171,7 +174,7 @@ export function SppdTable({
                           </Button>
                         </>
                       )}
-                      {canEdit && (
+                      {canEdit && (canEditItem?.(item) ?? true) && (
                         <Button
                           variant="ghost"
                           size="icon"

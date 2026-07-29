@@ -11,6 +11,7 @@ export interface RekapRow {
   biaya: number;
   status: string;
   bulan: string;
+  bulanPembayaran: string;
 }
 export interface RekapFilters {
   dari: string;

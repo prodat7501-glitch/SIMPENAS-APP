@@ -26,10 +26,15 @@ import {
   ShieldCheck,
   ClipboardList,
   Sparkles,
+  Archive,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotificationStore } from "@/stores/notification.store";
+import {
+  isNotificationVisibleFor,
+  useNotificationStore,
+} from "@/stores/notification.store";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -47,7 +52,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [keuanganMenuOpen, setKeuanganMenuOpen] = useState(false);
 
   const { user, logout, hasPermission } = useAuth();
-  const { notifications, unreadCount, markAllAsRead } = useNotificationStore();
+  const { notifications, markAllAsRead } = useNotificationStore();
+  const visibleNotifications = notifications.filter((notification) =>
+    isNotificationVisibleFor(notification, user?.pegawaiId),
+  );
+  const visibleUnreadCount = visibleNotifications.filter(
+    (notification) => !notification.read,
+  ).length;
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -66,9 +77,14 @@ export function AppLayout({ children }: AppLayoutProps) {
     )
       setTransaksiMenuOpen(true);
     if (
-      ["/spj", "/spby", "/daftar-nominatif", "/tanda-terima", "/kuitansi"].some(
-        (p) => pathname.startsWith(p),
-      )
+      [
+        "/spj",
+        "/spby",
+        "/daftar-nominatif",
+        "/tanda-terima",
+        "/kuitansi",
+        "/arsip-spj",
+      ].some((p) => pathname.startsWith(p))
     )
       setKeuanganMenuOpen(true);
   }, [pathname]);
@@ -90,6 +106,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       if (segment === "dashboard") name = "Dashboard";
       else if (segment === "master") name = "Master Data";
       else if (segment === "pegawai") name = "Pegawai";
+      else if (segment === "akun-pengguna") name = "Akun Pengguna";
       else if (segment === "jabatan") name = "Jabatan";
       else if (segment === "unit-kerja") name = "Unit Kerja";
       else if (segment === "pangkat") name = "Pangkat & Golongan";
@@ -100,11 +117,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       else if (segment === "spt") name = "Surat Perintah Tugas (SPT)";
       else if (segment === "sppd") name = "SPPD";
       else if (segment === "laporan") name = "Laporan Perjalanan";
-      else if (segment === "spj") name = "Validasi SPJ";
+      else if (segment === "spj") name = "Validasi SPJ dan Pembayaran";
       else if (segment === "spby") name = "Surat Perintah Bayar (SPBY)";
       else if (segment === "daftar-nominatif") name = "Daftar Nominatif";
       else if (segment === "tanda-terima") name = "Tanda Terima";
       else if (segment === "kuitansi") name = "Kuitansi";
+      else if (segment === "arsip-spj") name = "Arsip SPJ";
       else if (segment === "rekapitulasi") name = "Rekapitulasi";
       else if (segment === "pengaturan") name = "Pengaturan";
       else if (segment === "demo-components") name = "Demo Komponen";
@@ -132,6 +150,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       href: "/master/pegawai",
       icon: Users,
       show: hasPermission("Master Pegawai", "R"),
+    },
+    {
+      name: "Akun Pengguna",
+      href: "/master/akun-pengguna",
+      icon: UserCog,
+      show: hasPermission("Master Akun Pengguna", "R"),
     },
     {
       name: "Jabatan",
@@ -198,7 +222,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       show: hasPermission("Laporan Perjalanan Dinas", "R"),
     },
     {
-      name: "Approval SPT",
+      name: "Approval SPT dan Nota Dinas",
       href: "/approval",
       icon: ShieldCheck,
       show: hasPermission("Approval", "R"),
@@ -208,10 +232,10 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Keuangan submenus filter by permission
   const keuanganSubmenu = [
     {
-      name: "Validasi SPJ",
+      name: "Validasi SPJ dan Pembayaran",
       href: "/spj",
       icon: ShieldCheck,
-      show: hasPermission("Validasi SPJ", "R"),
+      show: hasPermission("Validasi SPJ dan Pembayaran", "R"),
     },
     {
       name: "Surat Perintah Bayar (SPBY)",
@@ -236,6 +260,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       href: "/kuitansi",
       icon: FileText,
       show: hasPermission("Kuitansi", "R"),
+    },
+    {
+      name: "Arsip SPJ",
+      href: "/arsip-spj",
+      icon: Archive,
+      show: hasPermission("Arsip SPJ", "R"),
     },
   ].filter((item) => item.show);
 
@@ -270,18 +300,26 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
       >
         {/* Sidebar Brand Header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-sidebar-border">
-          <Link href="/dashboard" className="flex items-center gap-2">
+        <div className="flex min-h-24 items-center justify-between gap-2 border-b border-sidebar-border px-4 py-3">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/images/logo-kpu.png"
               alt="Logo Komisi Pemilihan Umum"
-              width={36}
-              height={36}
+              width={40}
+              height={40}
               priority
-              className="w-9 h-9 object-contain"
+              className="h-10 w-10 shrink-0 object-contain"
             />
-            <span className="text-xl font-black tracking-tight text-primary">
-              SIMPENAS
+            <span className="min-w-0 leading-none">
+              <span className="block text-lg font-black tracking-tight text-primary">
+                SIMPENAS
+              </span>
+              <span className="mt-1 block whitespace-nowrap text-[8px] font-bold leading-tight tracking-tight text-sidebar-foreground/80">
+                Sistem Informasi Manajemen Perjalanan Dinas
+              </span>
+              <span className="mt-1 block text-[9px] font-bold leading-tight text-sidebar-foreground/70">
+                KPU Kabupaten Gorontalo
+              </span>
             </span>
           </Link>
           <button
@@ -596,14 +634,43 @@ export function AppLayout({ children }: AppLayoutProps) {
                   setNotifDropdownOpen(!notifDropdownOpen);
                   setUserDropdownOpen(false);
                   if (!notifDropdownOpen) {
-                    markAllAsRead();
+                    markAllAsRead(user?.pegawaiId);
                   }
                 }}
-                className="p-2 rounded-lg hover:bg-muted text-foreground relative transition-colors"
+                aria-label={
+                  visibleUnreadCount > 0
+                    ? `Notifikasi, ${visibleUnreadCount} belum dibaca`
+                    : "Notifikasi"
+                }
+                aria-expanded={notifDropdownOpen}
+                title={
+                  visibleUnreadCount > 0
+                    ? `${visibleUnreadCount} notifikasi belum dibaca`
+                    : "Tidak ada notifikasi baru"
+                }
+                className={cn(
+                  "relative rounded-xl p-2 transition-all duration-200",
+                  visibleUnreadCount > 0
+                    ? "bg-danger/10 text-danger ring-2 ring-danger/50 shadow-lg shadow-danger/20 hover:bg-danger/20"
+                    : "text-foreground hover:bg-muted",
+                )}
               >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-danger border-2 border-card animate-pulse" />
+                {visibleUnreadCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-xl border border-danger/60 animate-ping"
+                  />
+                )}
+                <Bell
+                  className={cn(
+                    "relative h-5 w-5",
+                    visibleUnreadCount > 0 && "fill-danger/20",
+                  )}
+                />
+                {visibleUnreadCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-card bg-danger px-1 text-[9px] font-black leading-none text-white">
+                    {visibleUnreadCount > 99 ? "99+" : visibleUnreadCount}
+                  </span>
                 )}
               </button>
 
@@ -613,23 +680,34 @@ export function AppLayout({ children }: AppLayoutProps) {
                     Notifikasi Terbaru
                   </div>
                   <div className="max-h-60 overflow-y-auto">
-                    {notifications.length === 0 ? (
+                    {visibleNotifications.length === 0 ? (
                       <div className="px-4 py-6 text-center text-xs text-muted-foreground">
                         Tidak ada notifikasi baru
                       </div>
                     ) : (
-                      notifications.map((n) => (
-                        <div
+                      visibleNotifications.map((n) => (
+                        <Link
                           key={n.id}
-                          className="px-4 py-3 hover:bg-muted border-b border-border/50 text-xs"
+                          href={n.actionUrl ?? "/notifikasi"}
+                          onClick={() => setNotifDropdownOpen(false)}
+                          className={cn(
+                            "block border-b border-border/50 px-4 py-3 text-xs hover:bg-muted",
+                            n.type === "error" &&
+                              "border-l-4 border-l-danger bg-danger/10 hover:bg-danger/15",
+                          )}
                         >
-                          <p className="font-semibold text-primary">
+                          <p
+                            className={cn(
+                              "font-semibold text-primary",
+                              n.type === "error" && "text-danger",
+                            )}
+                          >
                             {n.title}
                           </p>
                           <p className="text-muted-foreground mt-1">
                             {n.message}
                           </p>
-                        </div>
+                        </Link>
                       ))
                     )}
                   </div>

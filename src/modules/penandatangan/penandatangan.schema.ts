@@ -6,6 +6,7 @@ export const DEFAULT_PERAN_DOKUMEN = [
   "Penandatangan SPPD",
   "Verifikator Laporan",
   "Pejabat Pembuat Komitmen",
+  "Pejabat Pengadaan Barang",
   "Bendahara Pengeluaran",
   "Kuasa Pengguna Anggaran",
   "Verifikator SPJ",
@@ -20,21 +21,68 @@ export const DEFAULT_PERAN_DOKUMEN = [
   "Kasubbag",
 ] as const;
 
-export const penandatanganSchema = z.object({
-  id: z.string().optional(),
-  nip: z
-    .string()
-    .min(18, "NIP harus minimal 18 karakter")
-    .max(20, "NIP maksimal 20 karakter"),
-  nama: z.string().min(3, "Nama minimal 3 karakter"),
-  jabatanPenandatangan: z
-    .string()
-    .min(
-      5,
-      "Jabatan penandatangan minimal 5 karakter (contoh: Kepala Sekretariat KPU Kabupaten Gorontalo)",
-    ),
-  peran: z.string().min(2, "Peran dokumen wajib diisi"),
-  status: z.enum(["Aktif", "Nonaktif"]).default("Aktif"),
+export const JENIS_DOKUMEN_PENANDATANGAN = [
+  "Nota Dinas",
+  "SPT",
+  "SPPD",
+  "Laporan Perjalanan",
+  "SPBY",
+  "Daftar Nominatif",
+  "Tanda Terima",
+  "Kuitansi",
+] as const;
+
+export const penandatanganSnapshotSchema = z.object({
+  penandatanganId: z.string(),
+  nama: z.string(),
+  nip: z.string(),
+  jabatanPenandatangan: z.string(),
+  peran: z.string(),
+  jenisDokumen: z.enum(JENIS_DOKUMEN_PENANDATANGAN),
+  berlakuMulai: z.string().default(""),
+  berlakuSampai: z.string().default(""),
+  diambilPada: z.string(),
 });
 
+export const penandatanganSchema = z
+  .object({
+    id: z.string().optional(),
+    nip: z
+      .string()
+      .min(18, "NIP harus minimal 18 karakter")
+      .max(20, "NIP maksimal 20 karakter"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    jabatanPenandatangan: z
+      .string()
+      .min(
+        5,
+        "Jabatan penandatangan minimal 5 karakter (contoh: Kepala Sekretariat KPU Kabupaten Gorontalo)",
+      ),
+    peran: z.string().min(2, "Peran dokumen wajib diisi"),
+    berlakuMulai: z.string().default(""),
+    berlakuSampai: z.string().default(""),
+    jenisDokumen: z
+      .array(z.enum(JENIS_DOKUMEN_PENANDATANGAN))
+      .min(1, "Pilih minimal satu jenis dokumen"),
+    status: z.enum(["Aktif", "Nonaktif"]).default("Aktif"),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.berlakuMulai &&
+      data.berlakuSampai &&
+      data.berlakuSampai < data.berlakuMulai
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["berlakuSampai"],
+        message: "Tanggal selesai tidak boleh sebelum tanggal mulai",
+      });
+    }
+  });
+
 export type Penandatangan = z.infer<typeof penandatanganSchema>;
+export type JenisDokumenPenandatangan =
+  (typeof JENIS_DOKUMEN_PENANDATANGAN)[number];
+export type PenandatanganSnapshot = z.infer<
+  typeof penandatanganSnapshotSchema
+>;

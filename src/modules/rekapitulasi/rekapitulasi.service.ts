@@ -1,5 +1,4 @@
-import type { Spj } from "@/modules/keuangan/keuangan.schema";
-import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
+import type { DokumenKeuangan, Spj } from "@/modules/keuangan/keuangan.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import type { Sppd } from "@/modules/sppd/sppd.schema";
 import type { Spt } from "@/modules/spt/spt.schema";
@@ -11,23 +10,89 @@ const monthLabel = (date: string) =>
   new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric" }).format(
     new Date(date),
   );
+
+interface KuitansiCandidate {
+  document: DokumenKeuangan;
+  spj: Spj;
+}
+
+const isCompletedPayment = (document: DokumenKeuangan) =>
+  document.status === "Selesai" &&
+  Boolean(document.pembayaran?.tanggalPembayaran);
+
+const resolveKuitansi = (
+  candidates: KuitansiCandidate[],
+  sppd: Sppd,
+  spt: Spt | undefined,
+  pegawaiId: string,
+  sppds: Sppd[],
+) => {
+  const scored = candidates.flatMap((candidate) => {
+    const { document, spj } = candidate;
+    if (!document.rincian.some((row) => row.pegawaiId === pegawaiId)) {
+      return [];
+    }
+
+    const documentSppd = sppds.find((item) => item.id === document.sppdId);
+    const spjSppd = sppds.find((item) => item.id === spj.sppdId);
+    let relationScore = 0;
+
+    if (document.sppdId === sppd.id) relationScore = 50;
+    else if (document.sptId && document.sptId === sppd.sptId) {
+      relationScore = 40;
+    } else if (documentSppd?.sptId === sppd.sptId) relationScore = 30;
+    else if (spjSppd?.sptId === sppd.sptId) relationScore = 20;
+    else if (
+      document.notaDinasId &&
+      document.notaDinasId === spt?.notaDinasId
+    ) {
+      relationScore = 10;
+    }
+
+    if (!relationScore) return [];
+
+    return [
+      {
+        ...candidate,
+        score: relationScore + (isCompletedPayment(document) ? 100 : 0),
+      },
+    ];
+  });
+
+  return scored.sort((left, right) => {
+    if (right.score !== left.score) return right.score - left.score;
+    return (
+      right.document.pembayaran?.tanggalPembayaran ?? right.document.tanggal
+    ).localeCompare(
+      left.document.pembayaran?.tanggalPembayaran ?? left.document.tanggal,
+    );
+  })[0]?.document;
+};
+
 export function buildRekap(
   sppds: Sppd[],
   pegawais: Pegawai[],
-  notas: NotaDinas[],
   spjs: Spj[],
   spts: Spt[],
 ): RekapRow[] {
+  const kuitansi = spjs.flatMap((spj) =>
+    spj.dokumen.flatMap((document) =>
+      document.jenis === "Kuitansi" ? [{ document, spj }] : [],
+    ),
+  );
+
   return sppds.flatMap((sppd) =>
     sppd.personil.map(({ pegawaiId }, index) => {
       const employee = pegawais.find((x) => x.id === pegawaiId);
       const spt = spts.find((item) => item.id === sppd.sptId);
-      const note = notas.find((item) => item.id === spt?.notaDinasId);
-      const detail = note?.lampiran.find((x) => x.pegawaiId === pegawaiId);
-      const paid = spjs.some(
-        (x) =>
-          x.sppdId === sppd.id && x.dokumen.some((d) => d.jenis === "Kuitansi"),
+      const receipt = resolveKuitansi(kuitansi, sppd, spt, pegawaiId, sppds);
+      const paymentRow = receipt?.rincian.find(
+        (row) => row.pegawaiId === pegawaiId,
       );
+      const paid = Boolean(receipt && isCompletedPayment(receipt));
+      const paymentDate = paid
+        ? receipt?.pembayaran?.tanggalPembayaran
+        : undefined;
       return {
         id: `${sppd.id}-${pegawaiId}-${index}`,
         sppdId: sppd.id ?? "",
@@ -38,9 +103,14 @@ export function buildRekap(
         tanggalBerangkat: sppd.tanggalBerangkat,
         tanggalKembali: sppd.tanggalKembali,
         jumlahHari: sppd.lamaPerjalanan,
-        biaya: paid ? (detail?.total ?? 0) : 0,
-        status: paid ? "Pembayaran Selesai" : sppd.status,
+        biaya: paid ? (paymentRow?.jumlah ?? receipt.total) : 0,
+        status: paid
+          ? "Pembayaran Selesai"
+          : receipt
+            ? "Menunggu Pembayaran"
+            : sppd.status,
         bulan: monthLabel(sppd.tanggalBerangkat),
+        bulanPembayaran: paymentDate ? monthLabel(paymentDate) : "",
       };
     }),
   );
@@ -58,16 +128,26 @@ export function filterRekap(rows: RekapRow[], filters: RekapFilters) {
 export function chartRekap(rows: RekapRow[]): ChartPoint[] {
   const map = new Map<string, ChartPoint>();
   rows.forEach((x) => {
-    const current = map.get(x.bulan) ?? {
+    const travelPoint = map.get(x.bulan) ?? {
       label: x.bulan,
       perjalanan: 0,
       hari: 0,
       biaya: 0,
     };
-    current.perjalanan += 1;
-    current.hari += x.jumlahHari;
-    current.biaya += x.biaya;
-    map.set(x.bulan, current);
+    travelPoint.perjalanan += 1;
+    travelPoint.hari += x.jumlahHari;
+    map.set(x.bulan, travelPoint);
+
+    if (x.biaya > 0 && x.bulanPembayaran) {
+      const paymentPoint = map.get(x.bulanPembayaran) ?? {
+        label: x.bulanPembayaran,
+        perjalanan: 0,
+        hari: 0,
+        biaya: 0,
+      };
+      paymentPoint.biaya += x.biaya;
+      map.set(x.bulanPembayaran, paymentPoint);
+    }
   });
   return [...map.values()];
 }

@@ -1,4 +1,7 @@
 import { Pegawai } from "./pegawai.schema";
+import { jabatanService } from "@/modules/jabatan/jabatan.service";
+import { pangkatService } from "@/modules/pangkat/pangkat.service";
+import { sortPegawais } from "./pegawai-order";
 
 const STORAGE_KEY = "simpenas_pegawai";
 const DEFAULT_KATEGORI_PEGAWAI = "ASN/Sekretariat";
@@ -55,12 +58,20 @@ export const pegawaiService = {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultPegawai));
-      return defaultPegawai;
+      return sortPegawais(
+        defaultPegawai,
+        jabatanService.getAll(),
+        pangkatService.getAll(),
+      );
     }
     const parsed = JSON.parse(stored) as Pegawai[];
     const normalized = parsed.map(normalizePegawai);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-    return normalized;
+    return sortPegawais(
+      normalized,
+      jabatanService.getAll(),
+      pangkatService.getAll(),
+    );
   },
   saveAll: (data: Pegawai[]) => {
     if (typeof window !== "undefined") {

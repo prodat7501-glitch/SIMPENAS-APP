@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatTableDate } from "@/lib/formatters";
 import type { ApprovalItem } from "../approval.service";
 
 export function ApprovalTable({
@@ -70,13 +71,18 @@ export function ApprovalTable({
                   </TableCell>
                   <TableCell>
                     {item.documentType === "SPT"
-                      ? item.untuk[0]?.text ?? "-"
+                      ? (item.untuk[0]?.text ?? "-")
                       : item.perihal}
                   </TableCell>
                   <TableCell>
-                    {item.documentType === "SPT"
-                      ? `${item.tanggalMulai} – ${item.tanggalSelesai}`
-                      : item.tanggal}
+                    {item.documentType === "SPT" ? (
+                      <>
+                        {formatTableDate(item.tanggalMulai)} –{" "}
+                        {formatTableDate(item.tanggalSelesai)}
+                      </>
+                    ) : (
+                      formatTableDate(item.tanggal)
+                    )}
                   </TableCell>
                   <TableCell>
                     {item.documentType === "SPT"

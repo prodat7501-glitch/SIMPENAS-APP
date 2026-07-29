@@ -1,10 +1,34 @@
 import { Spt } from "./spt.schema";
 import { notaDinasService } from "@/modules/nota-dinas/nota-dinas.service";
 import { pegawaiService } from "@/modules/pegawai/pegawai.service";
-import { penandatanganService } from "@/modules/penandatangan/penandatangan.service";
+import {
+  createPenandatanganSnapshot,
+  penandatanganService,
+} from "@/modules/penandatangan/penandatangan.service";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
 
 const STORAGE_KEY = "simpenas_spt";
+const RESERVATION_MIGRATION_KEY = "simpenas_spt_reservation_reconciled_v2";
+
+const findUnpersistedNumberReservation = (items: Spt[]) => {
+  const storedNumbers = new Set(
+    items.map((item) => item.nomor.trim()).filter(Boolean),
+  );
+  return penomoranService
+    .history()
+    .find(
+      (entry) =>
+        entry.documentType === "SPT" &&
+        entry.status === "Terpakai" &&
+        !storedNumbers.has(entry.number),
+    );
+};
+
+const getHighestStoredSequence = (items: Spt[]) =>
+  items.reduce((highest, item) => {
+    const match = item.nomor.trim().match(/^(\d+)/);
+    return match ? Math.max(highest, Number(match[1])) : highest;
+  }, 0);
 
 const normalizeText = (value: string) => value.toLowerCase();
 const isKomisionerPegawai = (pegawaiId: string) => {
@@ -30,19 +54,38 @@ const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
       ? isKomisionerPegawai(person.pegawaiId)
       : !isKomisionerPegawai(person.pegawaiId),
   );
+  const signer = penandatanganService
+    .getAll()
+    .find((candidate) => candidate.id === item.penandatanganId);
+  const normalized = {
+    ...item,
+    createdByPegawaiId:
+      item.createdByPegawaiId ?? item.personil[0]?.pegawaiId ?? "",
+    catatanRevisi: item.catatanRevisi ?? "",
+    penandatanganSnapshot:
+      item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
+        ? item.penandatanganSnapshot
+        : signer
+          ? createPenandatanganSnapshot(signer, "SPT", item.tanggalMulai, true)
+          : null,
+  };
+
   return filteredPersonil.length > 0
-    ? { ...item, personil: filteredPersonil }
-    : item;
+    ? { ...normalized, personil: filteredPersonil }
+    : normalized;
 };
 
 const defaultSpts: Spt[] = [
   {
     id: "st1",
+    createdByPegawaiId: "pg1",
+    catatanRevisi: "",
     notaDinasId: "nd1",
     nomor: "001/ST.KPU-Kab.Gorontalo/VII/2026",
     tanggalMulai: "2026-07-12",
     tanggalSelesai: "2026-07-14",
     penandatanganId: "pe1",
+    penandatanganSnapshot: null,
     status: "Selesai",
     menimbang: [
       {
@@ -67,13 +110,26 @@ const defaultSpts: Spt[] = [
   },
 ];
 
+const withoutSignerSnapshot = (item: Spt) => {
+  const rest = { ...item };
+  delete rest.penandatanganSnapshot;
+  return rest;
+};
+
+export const isUnmodifiedSptDemoSeed = (item: Spt) =>
+  defaultSpts.some(
+    (seed) =>
+      JSON.stringify(withoutSignerSnapshot(item)) ===
+      JSON.stringify(withoutSignerSnapshot(seed)),
+  );
+
 export const sptService = {
   getAll: (): Spt[] => {
-    if (typeof window === "undefined") return defaultSpts;
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultSpts));
-      return defaultSpts;
+      localStorage.setItem(STORAGE_KEY, "[]");
+      return [];
     }
     const storedItems = JSON.parse(stored) as Array<
       Spt & { notaDinasId?: string }
@@ -95,11 +151,43 @@ export const sptService = {
     return synchronized;
   },
   saveAll: (data: Spt[]) => {
+    const normalized = data.map(normalizeSeparatedSptPersonil);
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
     }
+    return normalized;
   },
   generateNomor: (dateStr: string): string => {
-    return penomoranService.requestNumber("SPT", dateStr, sptService.getAll().length);
+    const items = sptService.getAll();
+    const storedNumbers = items.map((item) => item.nomor);
+    const needsLegacyReservationRepair =
+      typeof window !== "undefined" &&
+      localStorage.getItem(RESERVATION_MIGRATION_KEY) !== "complete";
+    if (items.length === 0 || needsLegacyReservationRepair) {
+      penomoranService.reconcileUsedNumbers(
+        "SPT",
+        storedNumbers,
+        "Riwayat Terpakai dibatalkan karena tidak memiliki SPT sumber.",
+      );
+      if (needsLegacyReservationRepair) {
+        localStorage.setItem(RESERVATION_MIGRATION_KEY, "complete");
+      }
+    }
+    const unpersistedReservation = findUnpersistedNumberReservation(items);
+    if (unpersistedReservation) {
+      throw new Error(
+        `Nomor SPT berikutnya belum dapat diambil. Nomor ${unpersistedReservation.number} masih direservasi pada form yang belum disimpan atau dibatalkan.`,
+      );
+    }
+    return penomoranService.requestNumber(
+      "SPT",
+      dateStr,
+      getHighestStoredSequence(items),
+    );
   },
+  releaseNomor: (
+    number: string,
+    note = "Nomor dilepas karena form SPT baru dibatalkan sebelum disimpan.",
+  ) =>
+    penomoranService.releaseNumber("SPT", number, note),
 };

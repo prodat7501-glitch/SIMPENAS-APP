@@ -9,7 +9,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  /* opsi konfigurasi Next.js lainnya */
+  devIndicators: false,
 };
 
 export default withPWA(nextConfig);

@@ -24,10 +24,23 @@ interface ToastState {
   removeToast: (id: string) => void;
 }
 
+let toastSequence = 0;
+
+const createToastId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `toast-${crypto.randomUUID()}`;
+  }
+
+  toastSequence += 1;
+  return `toast-${Date.now()}-${toastSequence}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+};
+
 export const useToast = create<ToastState>((set) => ({
   toasts: [],
   addToast: (message, type = "info", duration = 3000) => {
-    const id = `${Date.now()}`;
+    const id = createToastId();
     set((state) => ({
       toasts: [...state.toasts, { id, message, type, duration }],
     }));

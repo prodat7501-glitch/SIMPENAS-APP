@@ -12,7 +12,9 @@ import {
   canAccessLaporanByNotaDinas,
   canAccessSppdByNotaDinas,
   canAccessSptByNotaDinas,
+  canManageSptChain,
   resolveCurrentPegawai,
+  resolveSptChainManagerId,
 } from "@/lib/document-access";
 import { LaporanForm } from "@/modules/laporan/components/LaporanForm";
 import { LaporanPreview } from "@/modules/laporan/components/LaporanPreview";
@@ -20,8 +22,11 @@ import { LaporanTable } from "@/modules/laporan/components/LaporanTable";
 import type { Laporan } from "@/modules/laporan/laporan.schema";
 import type { LaporanStatus } from "@/modules/laporan/laporan.types";
 import { useLaporan } from "@/modules/laporan/useLaporan";
+import { useJabatan } from "@/modules/jabatan/useJabatan";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
+import { SPPD_REPORT_READY_STATUSES } from "@/modules/sppd/sppd.constants";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
 
@@ -32,6 +37,7 @@ export default function LaporanPage() {
   const { items: spts } = useSpt();
   const { items: notas } = useNotaDinas();
   const { items: pegawais } = usePegawai();
+  const { items: jabatans } = useJabatan();
   const laporan = useLaporan();
   const [open, setOpen] = useState(false);
   const [verifyItem, setVerifyItem] = useState<Laporan | null>(null);
@@ -44,35 +50,45 @@ export default function LaporanPage() {
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
   const scopeToNotaDinas = user?.role === "Pegawai";
+  const scopeMutationsToNotaDinas =
+    user?.role !== "Administrator" && user?.role !== "Sub Bagian Keuangan";
+  const isAdministrator = user?.role === "Administrator";
+  const canManageSeries = (sptId: string) =>
+    canManageSptChain(currentPegawaiId, sptId, spts, isAdministrator);
+  const getSeriesManagerName = (sptId: string) => {
+    const managerId = resolveSptChainManagerId(sptId, spts);
+    return (
+      pegawais.find((item) => item.id === managerId)?.nama ??
+      "pegawai pembuat SPT pertama"
+    );
+  };
   const eligibleSppds = sppds
-    .filter((item) => ["Disetujui", "Pelaksanaan"].includes(item.status))
+    .filter((item) => SPPD_REPORT_READY_STATUSES.includes(item.status))
     .filter(
       (item) =>
-        !scopeToNotaDinas ||
+        !scopeMutationsToNotaDinas ||
         canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notas),
     );
   const eligibleSpts = spts.filter(
     (spt) =>
       ["Disetujui", "Selesai"].includes(spt.status) &&
       eligibleSppds.some((sppd) => sppd.sptId === spt.id) &&
-      (!scopeToNotaDinas ||
+      (!scopeMutationsToNotaDinas ||
         canAccessSptByNotaDinas(currentPegawaiId, spt, notas)),
   );
   const getLaporanSptId = (item: Laporan) =>
     item.sptId || sppds.find((sppd) => sppd.id === item.sppdId)?.sptId || "";
-  const availableSpts = eligibleSpts.filter(
+  const manageableEligibleSpts = eligibleSpts.filter((spt) =>
+    canManageSeries(spt.id ?? ""),
+  );
+  const availableSpts = manageableEligibleSpts.filter(
     (spt) => !laporan.items.some((item) => getLaporanSptId(item) === spt.id),
   );
+  const lockedSeriesCount = eligibleSpts.length - manageableEligibleSpts.length;
   const formSpts = laporan.selected ? eligibleSpts : availableSpts;
   const visibleReports = scopeToNotaDinas
     ? laporan.filteredItems.filter((item) =>
-        canAccessLaporanByNotaDinas(
-          currentPegawaiId,
-          item,
-          sppds,
-          spts,
-          notas,
-        ),
+        canAccessLaporanByNotaDinas(currentPegawaiId, item, sppds, spts, notas),
       )
     : laporan.filteredItems;
   const getSptLabel = (item: Laporan) => {
@@ -82,10 +98,13 @@ export default function LaporanPage() {
   const getPelaksanaLabel = (item: Laporan) => {
     const sptId = getLaporanSptId(item);
     const spt = spts.find((data) => data.id === sptId);
-    const names =
-      spt?.personil
-        .map(({ pegawaiId }) => pegawais.find((p) => p.id === pegawaiId)?.nama)
-        .filter(Boolean) ?? [];
+    const names = sortByPegawaiOrder(
+      spt?.personil ?? [],
+      (person) => person.pegawaiId,
+      pegawais,
+    )
+      .map(({ pegawaiId }) => pegawais.find((p) => p.id === pegawaiId)?.nama)
+      .filter(Boolean);
     if (names.length) return names.join(", ");
     return pegawais.find((x) => x.id === item.pelaksanaId)?.nama ?? "-";
   };
@@ -96,9 +115,15 @@ export default function LaporanPage() {
       </Alert>
     );
   const create = () => {
-    if (scopeToNotaDinas && !availableSpts.length) {
+    if (!canCreate) {
+      addToast("Anda tidak memiliki izin untuk membuat Laporan", "error");
+      return;
+    }
+    if (!availableSpts.length) {
       addToast(
-        "Laporan hanya dapat dibuat dari SPT pada Nota Dinas yang mencantumkan Anda.",
+        lockedSeriesCount > 0
+          ? "Rangkaian Laporan dikelola pegawai pembuat SPT pertama. Anda hanya dapat melihat statusnya."
+          : "Tidak ada rangkaian SPPD lengkap yang masih memerlukan Laporan.",
         "error",
       );
       return;
@@ -107,8 +132,15 @@ export default function LaporanPage() {
     setOpen(true);
   };
   const edit = (item: Laporan) => {
+    if (!canManageSeries(getLaporanSptId(item))) {
+      addToast(
+        `Rangkaian dokumen ini dikelola oleh ${getSeriesManagerName(getLaporanSptId(item))}. Anda hanya dapat melihat status dan pratinjau.`,
+        "error",
+      );
+      return;
+    }
     if (
-      scopeToNotaDinas &&
+      scopeMutationsToNotaDinas &&
       !canAccessLaporanByNotaDinas(currentPegawaiId, item, sppds, spts, notas)
     ) {
       addToast(
@@ -122,6 +154,11 @@ export default function LaporanPage() {
   };
   const save = async (data: Omit<Laporan, "id">) => {
     try {
+      if (!canManageSeries(data.sptId)) {
+        throw new Error(
+          "Anda bukan pengelola rangkaian dokumen perjalanan ini.",
+        );
+      }
       await laporan.save(data, laporan.selected);
       addToast("Laporan berhasil disimpan", "success");
       setOpen(false);
@@ -134,6 +171,13 @@ export default function LaporanPage() {
     }
   };
   const remove = async (id: string) => {
+    if (!canDelete) {
+      addToast(
+        "Hanya Administrator yang dapat menghapus Laporan Perjalanan",
+        "error",
+      );
+      return;
+    }
     const target = laporan.items.find((item) => item.id === id);
     if (
       target &&
@@ -183,18 +227,28 @@ export default function LaporanPage() {
           </Button>
         )}
       </div>
-      {!availableSpts.length && (
-        <Alert variant="warning" title="SPT Belum Siap">
-          Laporan hanya dapat dibuat satu kali untuk Nomor SPT yang memiliki
-          SPPD berstatus Disetujui atau Pelaksanaan.
-        </Alert>
-      )}
+      {!availableSpts.length &&
+        (lockedSeriesCount > 0 ? (
+          <Alert variant="info" title="Pembuatan Laporan Dinonaktifkan">
+            Rangkaian pada Nota Dinas ini sudah dikelola pegawai pembuat SPT
+            pertama. Anda tetap dapat melihat status dan pratinjau Laporan,
+            tetapi pembuatan baru tersedia kembali hanya untuk Nota Dinas baru
+            yang telah disetujui dan mencantumkan Anda.
+          </Alert>
+        ) : (
+          <Alert variant="warning" title="SPPD Belum Lengkap">
+            Laporan hanya dapat dibuat satu kali setelah seluruh personil pada
+            Nomor SPT memiliki SPPD berstatus Selesai. SPPD yang telah
+            Diarsipkan tetap dikenali sebagai dokumen lengkap.
+          </Alert>
+        ))}
       {laporan.error && <Alert variant="error">Gagal memuat laporan.</Alert>}
       <LaporanTable
         items={visibleReports}
         search={laporan.filters.search}
         status={laporan.filters.status}
         canEdit={canUpdate}
+        canEditItem={(item) => canManageSeries(getLaporanSptId(item))}
         canDelete={canDelete}
         canApprove={canApprove}
         onSearch={laporan.setSearch}
@@ -259,6 +313,7 @@ export default function LaporanPage() {
         spts={spts}
         sppds={sppds}
         pegawais={pegawais}
+        jabatans={jabatans}
         onClose={() => laporan.setPreview(null)}
       />
     </div>

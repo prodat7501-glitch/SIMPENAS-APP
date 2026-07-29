@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { penandatanganSnapshotSchema } from "@/modules/penandatangan/penandatangan.schema";
 
 export const textItemSchema = z.object({
   text: z.string().min(3, "Isi butir teks minimal 3 karakter"),
@@ -10,11 +11,14 @@ export const personilItemSchema = z.object({
 
 export const sptSchema = z.object({
   id: z.string().optional(),
+  createdByPegawaiId: z.string().optional(),
+  catatanRevisi: z.string().optional(),
   notaDinasId: z.string().min(1, "Nota Dinas yang valid wajib dipilih"),
   nomor: z.string().min(1, "Nomor wajib diisi (gunakan Ambil Nomor)"),
   tanggalMulai: z.string().min(1, "Tanggal mulai wajib diisi"),
   tanggalSelesai: z.string().min(1, "Tanggal selesai wajib diisi"),
   penandatanganId: z.string().min(1, "Wajib memilih penandatangan"),
+  penandatanganSnapshot: penandatanganSnapshotSchema.nullable().optional(),
   status: z
     .enum([
       "Draft",

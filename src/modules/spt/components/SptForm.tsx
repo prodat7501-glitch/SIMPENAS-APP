@@ -5,13 +5,16 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Select } from "@/components/ui/select";
 import { Spt, sptSchema } from "../spt.schema";
 import { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
 import { Trash2, FileText, User, Hash, PlusCircle } from "lucide-react";
 import { z } from "zod";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
+import { isPenandatanganAvailable } from "@/modules/penandatangan/penandatangan.service";
 
 type JenisPersonilSpt = "Sekretariat" | "Komisioner";
 type SubmitAction = "save" | "saveAndNextKomisioner";
@@ -22,12 +25,10 @@ interface SptFormProps {
   notaDinasItems: NotaDinas[];
   pegawais: Pegawai[];
   penandatangans: Penandatangan[];
-  onSubmit: (
-    data: Omit<Spt, "id">,
-    options?: { keepOpen?: boolean },
-  ) => void;
+  onSubmit: (data: Omit<Spt, "id">, options?: { keepOpen?: boolean }) => void;
   onCancel: () => void;
   onGenerateNomor: (date: string) => string;
+  onNumberReserved: (number: string) => void;
 }
 
 export function SptForm({
@@ -39,10 +40,12 @@ export function SptForm({
   onSubmit,
   onCancel,
   onGenerateNomor,
+  onNumberReserved,
 }: SptFormProps) {
   const [jenisPersonilSpt, setJenisPersonilSpt] =
     React.useState<JenisPersonilSpt>("Sekretariat");
   const [submitAction, setSubmitAction] = React.useState<SubmitAction>("save");
+  const [numberError, setNumberError] = React.useState("");
   const {
     register,
     handleSubmit,
@@ -58,6 +61,7 @@ export function SptForm({
       tanggalMulai: new Date().toISOString().split("T")[0],
       tanggalSelesai: new Date().toISOString().split("T")[0],
       penandatanganId: "",
+      penandatanganSnapshot: null,
       status: "Draft",
       menimbang: [
         { text: "Bahwa untuk kelancaran pelaksanaan tugas-tugas dinas..." },
@@ -104,7 +108,6 @@ export function SptForm({
   const watchNotaDinasId = watch("notaDinasId");
   const watchPersonil = watch("personil") ?? [];
   const watchNomor = watch("nomor");
-  const watchStatus = watch("status");
   const selectedNotaDinas = notaDinasItems.find(
     (item) => item.id === watchNotaDinasId,
   );
@@ -129,17 +132,16 @@ export function SptForm({
       pegawai?.kategoriPegawai === "Anggota KPU"
     );
   };
-  const filterPersonilByJenis = (
-    nota: NotaDinas,
-    jenis: JenisPersonilSpt,
-  ) =>
-    nota.lampiran
-      .filter((lampiran) =>
+  const filterPersonilByJenis = (nota: NotaDinas, jenis: JenisPersonilSpt) =>
+    sortByPegawaiOrder(
+      nota.lampiran.filter((lampiran) =>
         jenis === "Komisioner"
           ? isPegawaiKomisioner(lampiran.pegawaiId)
           : !isPegawaiKomisioner(lampiran.pegawaiId),
-      )
-      .map((lampiran) => ({ pegawaiId: lampiran.pegawaiId }));
+      ),
+      (lampiran) => lampiran.pegawaiId,
+      pegawais,
+    ).map((lampiran) => ({ pegawaiId: lampiran.pegawaiId }));
   const notaHasKomisioner =
     selectedNotaDinas?.lampiran.some((lampiran) =>
       isPegawaiKomisioner(lampiran.pegawaiId),
@@ -154,31 +156,39 @@ export function SptForm({
   const isKomisionerSpt =
     watchPersonil.length > 0 &&
     watchPersonil.every((person) => isPegawaiKomisioner(person.pegawaiId));
+  const hasExistingSptForJenis = (
+    notaDinasId: string,
+    jenis: JenisPersonilSpt,
+  ) =>
+    existingSpts.some((item) => {
+      if (item.notaDinasId !== notaDinasId || item.id === initialValues?.id) {
+        return false;
+      }
+      const itemIsKomisioner =
+        item.personil.length > 0 &&
+        item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId));
+      return jenis === "Komisioner" ? itemIsKomisioner : !itemIsKomisioner;
+    });
   const penandatanganOptions = penandatangans.filter((item) => {
     const signerText = `${item.jabatanPenandatangan} ${item.peran}`;
-    return isKomisionerSpt
+    const roleMatches = isKomisionerSpt
       ? isKetuaKpuSigner(signerText)
       : isSekretarisSigner(signerText);
+    return (
+      (roleMatches &&
+        isPenandatanganAvailable(item, "SPT", watchTanggalMulai)) ||
+      item.id === initialValues?.penandatanganId
+    );
   });
   const canContinueToKomisionerSpt =
     !initialValues &&
     notaIsMixed &&
     jenisPersonilSpt === "Sekretariat" &&
-    notaHasKomisioner;
-  const hasPreviousSptInSameNotaDinas =
-    !initialValues &&
-    Boolean(watchNotaDinasId) &&
-    existingSpts.some(
-      (item) =>
-        item.notaDinasId === watchNotaDinasId &&
-        item.status !== "Draft" &&
-        item.nomor,
+    notaHasKomisioner &&
+    Boolean(
+      selectedNotaDinas?.id &&
+      !hasExistingSptForJenis(selectedNotaDinas.id, "Komisioner"),
     );
-  const canGenerateNomor =
-    !watchNomor ||
-    watchStatus === "Selesai" ||
-    watchStatus === "Draft" ||
-    hasPreviousSptInSameNotaDinas;
   const findReusableSptText = (notaDinasId: string) =>
     existingSpts.find(
       (item) =>
@@ -207,6 +217,10 @@ export function SptForm({
       setValue("tanggalMulai", initialValues.tanggalMulai);
       setValue("tanggalSelesai", initialValues.tanggalSelesai);
       setValue("penandatanganId", initialValues.penandatanganId);
+      setValue(
+        "penandatanganSnapshot",
+        initialValues.penandatanganSnapshot ?? null,
+      );
       setValue("status", initialValues.status);
       setValue("menimbang", initialValues.menimbang);
       setValue("dasar", initialValues.dasar);
@@ -225,37 +239,58 @@ export function SptForm({
       setJenisPersonilSpt(nextJenis);
       setValue(
         "personil",
-        nota ? filterPersonilByJenis(nota, nextJenis) : initialValues.personil,
+        nota
+          ? filterPersonilByJenis(nota, nextJenis)
+          : sortByPegawaiOrder(
+              initialValues.personil,
+              (person) => person.pegawaiId,
+              pegawais,
+            ),
       );
     }
   }, [initialValues, notaDinasItems, setValue]);
 
   // Handle Ambil Nomor
   const handleAmbilNomor = () => {
-    if (!canGenerateNomor) {
-      alert(
-        "Nomor SPT baru hanya dapat diambil apabila SPT belum bernomor, status SPT sudah Selesai, atau masih membuat SPT lanjutan dari Nota Dinas yang sama.",
+    if (watchNomor) return;
+    try {
+      const generated = onGenerateNomor(watchTanggalMulai);
+      setValue("nomor", generated);
+      setValue("status", "Nomor Diambil");
+      setNumberError("");
+      onNumberReserved(generated);
+    } catch (error) {
+      setNumberError(
+        error instanceof Error
+          ? error.message
+          : "Nomor SPT belum dapat diambil.",
       );
-      return;
     }
-    const generated = onGenerateNomor(watchTanggalMulai);
-    setValue("nomor", generated);
-    setValue("status", "Nomor Diambil");
   };
 
   const handleNotaDinasChange = (notaDinasId: string) => {
     const nota = notaDinasItems.find((item) => item.id === notaDinasId);
-    const nextJenis: JenisPersonilSpt =
-      nota?.lampiran.some((item) => !isPegawaiKomisioner(item.pegawaiId))
-        ? "Sekretariat"
-        : "Komisioner";
+    const hasSekretariat =
+      nota?.lampiran.some((item) => !isPegawaiKomisioner(item.pegawaiId)) ??
+      false;
+    const hasKomisioner =
+      nota?.lampiran.some((item) => isPegawaiKomisioner(item.pegawaiId)) ??
+      false;
+    const availableJenis: JenisPersonilSpt[] = [
+      ...(hasSekretariat && !hasExistingSptForJenis(notaDinasId, "Sekretariat")
+        ? (["Sekretariat"] as JenisPersonilSpt[])
+        : []),
+      ...(hasKomisioner && !hasExistingSptForJenis(notaDinasId, "Komisioner")
+        ? (["Komisioner"] as JenisPersonilSpt[])
+        : []),
+    ];
+    const nextJenis =
+      availableJenis[0] ?? (hasSekretariat ? "Sekretariat" : "Komisioner");
     setJenisPersonilSpt(nextJenis);
     setValue("notaDinasId", notaDinasId, { shouldValidate: true });
-    setValue(
-      "personil",
-      nota ? filterPersonilByJenis(nota, nextJenis) : [],
-      { shouldValidate: true },
-    );
+    setValue("personil", nota ? filterPersonilByJenis(nota, nextJenis) : [], {
+      shouldValidate: true,
+    });
     if (nota && !initialValues) {
       const copiedFromExistingSpt = applyReusableSptText(notaDinasId);
       if (!copiedFromExistingSpt) {
@@ -264,6 +299,13 @@ export function SptForm({
     }
   };
   const handleJenisPersonilChange = (jenis: JenisPersonilSpt) => {
+    if (
+      !initialValues &&
+      selectedNotaDinas?.id &&
+      hasExistingSptForJenis(selectedNotaDinas.id, jenis)
+    ) {
+      return;
+    }
     setJenisPersonilSpt(jenis);
     if (!selectedNotaDinas) return;
     setValue("personil", filterPersonilByJenis(selectedNotaDinas, jenis), {
@@ -286,10 +328,7 @@ export function SptForm({
           );
           return;
         }
-        if (
-          !isKomisionerSpt &&
-          !isSekretarisSigner(signerText)
-        ) {
+        if (!isKomisionerSpt && !isSekretarisSigner(signerText)) {
           alert(
             "SPT Sekretariat wajib ditandatangani oleh Sekretaris/PLT Sekretaris/PLH Sekretaris.",
           );
@@ -297,16 +336,17 @@ export function SptForm({
         }
         onSubmit(
           {
-          ...rest,
-          status: rest.status || "Draft",
-          menimbang: (rest.menimbang || []).map((m) => ({
-            text: m.text || "",
-          })),
-          dasar: (rest.dasar || []).map((d) => ({ text: d.text || "" })),
-          untuk: (rest.untuk || []).map((u) => ({ text: u.text || "" })),
-          personil: (rest.personil || []).map((p) => ({
-            pegawaiId: p.pegawaiId || "",
-          })),
+            ...rest,
+            penandatanganSnapshot: initialValues?.penandatanganSnapshot ?? null,
+            status: rest.status || "Draft",
+            menimbang: (rest.menimbang || []).map((m) => ({
+              text: m.text || "",
+            })),
+            dasar: (rest.dasar || []).map((d) => ({ text: d.text || "" })),
+            untuk: (rest.untuk || []).map((u) => ({ text: u.text || "" })),
+            personil: (rest.personil || []).map((p) => ({
+              pegawaiId: p.pegawaiId || "",
+            })),
           },
           { keepOpen: submitAction === "saveAndNextKomisioner" },
         );
@@ -367,27 +407,21 @@ export function SptForm({
                 type="button"
                 variant="outline"
                 onClick={handleAmbilNomor}
-                disabled={!canGenerateNomor}
+                disabled={Boolean(watchNomor)}
                 className="px-2.5 flex items-center gap-1 cursor-pointer whitespace-nowrap text-xs"
-                title={
-                  canGenerateNomor
-                    ? "Ambil nomor SPT"
-                    : "Nomor baru hanya dapat diambil setelah status SPT Selesai, kecuali untuk SPT lanjutan dari Nota Dinas yang sama"
-                }
+                title="Ambil nomor SPT"
               >
                 <Hash className="w-3.5 h-3.5" /> Ambil
               </Button>
             </div>
-            {!canGenerateNomor && (
-              <p className="text-[10px] text-warning font-bold mt-1">
-                SPT sudah memiliki nomor. Nomor baru hanya bisa diambil setelah
-                status SPT menjadi Selesai, kecuali untuk SPT lanjutan dari
-                Nota Dinas yang sama.
-              </p>
-            )}
             {errors.nomor && (
               <p className="text-[10px] text-danger font-bold mt-1">
                 {errors.nomor.message}
+              </p>
+            )}
+            {numberError && (
+              <p className="mt-1 text-[10px] font-bold text-danger">
+                {numberError}
               </p>
             )}
           </div>
@@ -500,11 +534,11 @@ export function SptForm({
             )}
             <div className="space-y-2">
               {fieldsMenimbang.map((field, idx) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                  <span className="text-xs font-bold text-muted-foreground">
+                <div key={field.id} className="flex items-start gap-2">
+                  <span className="pt-3 text-xs font-bold text-muted-foreground">
                     {idx + 1}.
                   </span>
-                  <Input
+                  <AutoResizeTextarea
                     placeholder="Butir Pertimbangan..."
                     {...register(`menimbang.${idx}.text` as const)}
                     error={!!errors.menimbang?.[idx]?.text}
@@ -515,7 +549,7 @@ export function SptForm({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeMenimbang(idx)}
-                    className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                    className="mt-1.5 h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -547,11 +581,11 @@ export function SptForm({
             )}
             <div className="space-y-2">
               {fieldsDasar.map((field, idx) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                  <span className="text-xs font-bold text-muted-foreground">
+                <div key={field.id} className="flex items-start gap-2">
+                  <span className="pt-3 text-xs font-bold text-muted-foreground">
                     {idx + 1}.
                   </span>
-                  <Input
+                  <AutoResizeTextarea
                     placeholder="Butir Landasan Hukum..."
                     {...register(`dasar.${idx}.text` as const)}
                     error={!!errors.dasar?.[idx]?.text}
@@ -562,7 +596,7 @@ export function SptForm({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeDasar(idx)}
-                    className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                    className="mt-1.5 h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -594,11 +628,11 @@ export function SptForm({
             )}
             <div className="space-y-2">
               {fieldsUntuk.map((field, idx) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                  <span className="text-xs font-bold text-muted-foreground">
+                <div key={field.id} className="flex items-start gap-2">
+                  <span className="pt-3 text-xs font-bold text-muted-foreground">
                     {idx + 1}.
                   </span>
-                  <Input
+                  <AutoResizeTextarea
                     placeholder="Butir Tugas/Kegiatan..."
                     {...register(`untuk.${idx}.text` as const)}
                     error={!!errors.untuk?.[idx]?.text}
@@ -609,7 +643,7 @@ export function SptForm({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeUntuk(idx)}
-                    className="h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
+                    className="mt-1.5 h-8 w-8 text-danger hover:bg-danger/10 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -656,17 +690,45 @@ export function SptForm({
                     className="sm:w-56"
                   >
                     {notaHasSekretariat && (
-                      <option value="Sekretariat">SPT Sekretariat</option>
+                      <option
+                        value="Sekretariat"
+                        disabled={
+                          !initialValues &&
+                          Boolean(
+                            selectedNotaDinas.id &&
+                            hasExistingSptForJenis(
+                              selectedNotaDinas.id,
+                              "Sekretariat",
+                            ),
+                          )
+                        }
+                      >
+                        SPT Sekretariat
+                      </option>
                     )}
                     {notaHasKomisioner && (
-                      <option value="Komisioner">SPT Komisioner</option>
+                      <option
+                        value="Komisioner"
+                        disabled={
+                          !initialValues &&
+                          Boolean(
+                            selectedNotaDinas.id &&
+                            hasExistingSptForJenis(
+                              selectedNotaDinas.id,
+                              "Komisioner",
+                            ),
+                          )
+                        }
+                      >
+                        SPT Komisioner
+                      </option>
                     )}
                   </Select>
                 </div>
                 {notaIsMixed && (
                   <p className="text-[10px] font-semibold text-warning">
-                    Nota Dinas ini berisi campuran personil. Sistem hanya
-                    memuat personil {jenisPersonilSpt} untuk SPT ini.
+                    Nota Dinas ini berisi campuran personil. Sistem hanya memuat
+                    personil {jenisPersonilSpt} untuk SPT ini.
                   </p>
                 )}
               </div>
@@ -684,7 +746,9 @@ export function SptForm({
                 const pegawai = pegawais.find(
                   (item) => item.id === person.pegawaiId,
                 );
-                const lampiran = selectedNotaDinas?.lampiran[idx];
+                const lampiran = selectedNotaDinas?.lampiran.find(
+                  (item) => item.pegawaiId === person.pegawaiId,
+                );
                 return (
                   <div
                     key={`${person.pegawaiId}-${idx}`}

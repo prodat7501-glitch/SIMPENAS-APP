@@ -17,12 +17,14 @@ import {
 import { LAPORAN_STATUS_OPTIONS } from "../laporan.constants";
 import type { Laporan } from "../laporan.schema";
 import type { LaporanStatus } from "../laporan.types";
+import { formatTableDate } from "@/lib/formatters";
 
 interface Props {
   items: Laporan[];
   search: string;
   status: LaporanStatus | "Semua";
   canEdit: boolean;
+  canEditItem?: (item: Laporan) => boolean;
   canDelete: boolean;
   canApprove: boolean;
   onSearch: (v: string) => void;
@@ -93,10 +95,18 @@ export function LaporanTable(props: Props) {
                   </TableCell>
                   <TableCell>{props.getPelaksana(item)}</TableCell>
                   <TableCell>{item.tujuan}</TableCell>
-                  <TableCell>{item.tanggalLaporan}</TableCell>
+                  <TableCell>{formatTableDate(item.tanggalLaporan)}</TableCell>
                   <TableCell>{item.dokumentasi.length} foto</TableCell>
                   <TableCell>
-                    <Badge variant={variant(item.status)}>{item.status}</Badge>
+                    <div className="space-y-1">
+                      <Badge variant={variant(item.status)}>{item.status}</Badge>
+                      {item.status === "Perlu Revisi" &&
+                        item.catatanVerifikasi && (
+                          <p className="max-w-64 text-[10px] font-semibold leading-relaxed text-danger">
+                            Catatan: {item.catatanVerifikasi}
+                          </p>
+                        )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -119,16 +129,18 @@ export function LaporanTable(props: Props) {
                             <CheckCircle className="w-4 h-4 text-success" />
                           </Button>
                         )}
-                      {props.canEdit && item.status !== "Terverifikasi" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => props.onEdit(item)}
-                          title="Ubah"
-                        >
-                          <Edit2 className="w-4 h-4 text-primary" />
-                        </Button>
-                      )}
+                      {props.canEdit &&
+                        (props.canEditItem?.(item) ?? true) &&
+                        item.status !== "Terverifikasi" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => props.onEdit(item)}
+                            title="Ubah"
+                          >
+                            <Edit2 className="w-4 h-4 text-primary" />
+                          </Button>
+                        )}
                       {props.canDelete && item.id && (
                         <Button
                           variant="ghost"

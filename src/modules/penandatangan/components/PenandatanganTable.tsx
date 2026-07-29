@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Penandatangan } from "../penandatangan.schema";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatTableDate } from "@/lib/formatters";
 
 interface PenandatanganTableProps {
   items: Penandatangan[];
@@ -80,6 +81,8 @@ export function PenandatanganTable({
                 <TableHead>NIP</TableHead>
                 <TableHead>Jabatan Cetak</TableHead>
                 <TableHead>Peran</TableHead>
+                <TableHead>Periode Berlaku</TableHead>
+                <TableHead>Jenis Dokumen</TableHead>
                 <TableHead className="w-24">Status</TableHead>
                 {canEdit && (
                   <TableHead className="w-32 text-right">Aksi</TableHead>
@@ -105,6 +108,24 @@ export function PenandatanganTable({
                     >
                       {item.peran}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-xs">
+                    {item.berlakuMulai
+                      ? formatTableDate(item.berlakuMulai)
+                      : "Tanpa batas awal"}
+                    {" s.d. "}
+                    {item.berlakuSampai
+                      ? formatTableDate(item.berlakuSampai)
+                      : "Seterusnya"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex max-w-72 flex-wrap gap-1">
+                      {item.jenisDokumen.map((jenis) => (
+                        <Badge key={jenis} variant="outline">
+                          {jenis}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge

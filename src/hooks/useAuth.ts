@@ -5,6 +5,17 @@ import { useRouter } from "next/navigation";
 import { useAuthStore, type UserRole } from "@/stores/auth.store";
 import type { LoginInput } from "@/schemas/auth.schema";
 
+const ADMIN_ONLY_DOCUMENT_DELETE = new Set([
+  "Nota Dinas",
+  "SPT",
+  "SPPD",
+  "Laporan Perjalanan Dinas",
+  "SPBY",
+  "Daftar Nominatif",
+  "Tanda Terima",
+  "Kuitansi",
+]);
+
 export function useAuth() {
   const router = useRouter();
   const {
@@ -25,16 +36,14 @@ export function useAuth() {
     setIsLoading(true);
     setError(null);
     try {
-      const success = await storeLogin(
-        input.username,
-        input.password,
-        input.role,
-      );
+      const success = await storeLogin(input.username, input.password);
       if (success) {
         router.push("/dashboard");
         return true;
       } else {
-        setError("Peran atau kredensial pengguna tidak valid.");
+        setError(
+          "Username atau kata sandi tidak valid, atau akun telah dinonaktifkan.",
+        );
         return false;
       }
     } catch (err) {
@@ -67,6 +76,17 @@ export function useAuth() {
     if (!user) return false;
     const role = user.role;
 
+    if (
+      action === "D" &&
+      ["Approval", "Log Aktivitas"].includes(moduleName)
+    ) {
+      return role === "Administrator";
+    }
+
+    if (action === "D" && ADMIN_ONLY_DOCUMENT_DELETE.has(moduleName)) {
+      return role === "Administrator";
+    }
+
     // Admin has access to almost everything (CRUD/etc.)
     if (role === "Administrator") {
       return true;
@@ -74,6 +94,8 @@ export function useAuth() {
 
     // Role Supervisor permissions mapping
     if (role === "Supervisor") {
+      if (moduleName === "Master Akun Pengguna") return false;
+      if (moduleName === "Arsip SPJ") return false;
       if (moduleName === "Pengaturan Penomoran") return action === "R";
       if (moduleName === "Approval") return ["R", "A"].includes(action);
       if (moduleName === "Rekapitulasi")
@@ -81,18 +103,23 @@ export function useAuth() {
       if (moduleName === "Nota Dinas")
         return ["C", "R", "U", "A", "G", "P", "N"].includes(action);
       if (moduleName === "SPT")
-        return ["C", "R", "U", "D", "A", "G", "P", "N"].includes(action);
+        return ["C", "R", "U", "A", "G", "P", "N"].includes(action);
       if (moduleName === "SPPD")
-        return ["C", "R", "U", "D", "A", "G", "P", "N"].includes(action);
+        return ["C", "R", "U", "A", "G", "P", "N"].includes(action);
       if (moduleName === "Laporan Perjalanan Dinas")
         return ["R", "U", "A", "G", "P"].includes(action);
-      if (moduleName === "Validasi SPJ") return ["R", "P"].includes(action); // Can read/print
+      if (
+        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
+      )
+        return ["R", "P"].includes(action); // Can read/print
       if (moduleName === "Dashboard") return action === "V";
       return ["R", "V"].includes(action); // Default read/view
     }
 
     // Role Pegawai permissions mapping
     if (role === "Pegawai") {
+      if (moduleName === "Master Akun Pengguna") return false;
+      if (moduleName === "Arsip SPJ") return false;
       if (moduleName === "Pengaturan Penomoran") return false;
       if (moduleName === "Approval") return false;
       if (["Log Aktivitas", "Template Dokumen"].includes(moduleName))
@@ -105,7 +132,10 @@ export function useAuth() {
         return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "Laporan Perjalanan Dinas")
         return ["C", "R", "U", "G", "P"].includes(action);
-      if (moduleName === "Validasi SPJ") return action === "R";
+      if (
+        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
+      )
+        return action === "R";
       if (moduleName === "Dashboard") return action === "V";
       if (moduleName === "Master Anggaran DIPA") return action === "R";
       if (moduleName === "Master Standar Biaya Masukan") return action === "R";
@@ -114,21 +144,26 @@ export function useAuth() {
 
     // Role Sub Bagian Keuangan permissions mapping
     if (role === "Sub Bagian Keuangan") {
+      if (moduleName === "Master Akun Pengguna") return false;
+      if (moduleName === "Arsip SPJ")
+        return ["C", "R", "U"].includes(action);
       if (moduleName === "Pengaturan Penomoran") return false;
       if (moduleName === "Approval") return false;
       if (moduleName === "Template Dokumen") return action === "R";
       if (moduleName === "Rekapitulasi")
         return ["R", "V", "P", "E"].includes(action);
-      if (moduleName === "Validasi SPJ")
+      if (
+        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
+      )
         return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
       if (moduleName === "SPBY")
-        return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
+        return ["C", "R", "U", "A", "G", "P"].includes(action);
       if (moduleName === "Daftar Nominatif")
-        return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
+        return ["C", "R", "U", "A", "G", "P"].includes(action);
       if (moduleName === "Tanda Terima")
-        return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
+        return ["C", "R", "U", "A", "G", "P"].includes(action);
       if (moduleName === "Kuitansi")
-        return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
+        return ["C", "R", "U", "A", "G", "P"].includes(action);
       if (moduleName === "Dashboard") return action === "V";
       return ["R", "V", "P", "E"].includes(action);
     }

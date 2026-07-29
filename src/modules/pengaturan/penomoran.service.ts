@@ -32,7 +32,7 @@ const defaults: NumberingConfig[] = [
     prefix: "ND-KPU",
     suffix: "",
     year: 2026,
-    runningNumber: 0,
+    runningNumber: 1,
     padding: 3,
   },
   {
@@ -41,7 +41,7 @@ const defaults: NumberingConfig[] = [
     prefix: "ST.KPU-Kab.Gorontalo",
     suffix: "",
     year: 2026,
-    runningNumber: 0,
+    runningNumber: 1,
     padding: 3,
   },
   {
@@ -50,7 +50,7 @@ const defaults: NumberingConfig[] = [
     prefix: "SPPD.KPU-Kab.Gorontalo",
     suffix: "",
     year: 2026,
-    runningNumber: 0,
+    runningNumber: 1,
     padding: 3,
   },
   {
@@ -59,12 +59,39 @@ const defaults: NumberingConfig[] = [
     prefix: "SPBY/KPU-KAB-GTLO",
     suffix: "",
     year: 2026,
-    runningNumber: 0,
+    runningNumber: 1,
+    padding: 3,
+  },
+  {
+    documentType: "Daftar Nominatif",
+    format: "{RUNNING}/{PREFIX}/{YEAR}{SUFFIX}",
+    prefix: "DAFTAR-NOMINATIF/KPU-KAB-GTLO",
+    suffix: "",
+    year: 2026,
+    runningNumber: 1,
+    padding: 3,
+  },
+  {
+    documentType: "Tanda Terima",
+    format: "{RUNNING}/{PREFIX}/{YEAR}{SUFFIX}",
+    prefix: "TANDA-TERIMA/KPU-KAB-GTLO",
+    suffix: "",
+    year: 2026,
+    runningNumber: 1,
+    padding: 3,
+  },
+  {
+    documentType: "Kuitansi",
+    format: "{RUNNING}/{PREFIX}/{YEAR}{SUFFIX}",
+    prefix: "KUITANSI/KPU-KAB-GTLO",
+    suffix: "",
+    year: 2026,
+    runningNumber: 1,
     padding: 3,
   },
 ];
 
-const read = <T,>(key: string, fallback: T): T =>
+const read = <T>(key: string, fallback: T): T =>
   typeof window === "undefined"
     ? fallback
     : JSON.parse(localStorage.getItem(key) ?? JSON.stringify(fallback));
@@ -89,11 +116,20 @@ const normalizeHistory = (items: NumberHistory[]): NumberHistory[] =>
     status: item.status ?? "Terpakai",
   }));
 
-const getHistory = () => normalizeHistory(read<NumberHistory[]>(HISTORY_KEY, []));
+const getHistory = () =>
+  normalizeHistory(read<NumberHistory[]>(HISTORY_KEY, []));
 
 const saveHistory = (items: NumberHistory[]) => {
   write(HISTORY_KEY, normalizeHistory(items));
 };
+
+const getHighestSequenceFromNumbers = (numbers: string[]) =>
+  numbers.reduce((highest, number) => {
+    const parsed = Number(number.trim().split("/")[0]);
+    return Number.isInteger(parsed) && parsed > 0
+      ? Math.max(highest, parsed)
+      : highest;
+  }, 0);
 
 const isActiveStatus = (status?: NumberStatus) =>
   status === "Terpakai" || status === "Booking";
@@ -111,47 +147,13 @@ const assertDocumentType = (type: DocumentType) => {
   }
 };
 
-const findReusableEntry = (
-  history: NumberHistory[],
-  type: DocumentType,
-  year: number,
-  minimumSequence: number,
-) =>
-  history
-    .filter(
-      (item) =>
-        item.documentType === type &&
-        item.year === year &&
-        item.status === "Dibatalkan" &&
-        item.sequence > minimumSequence,
-    )
-    .sort((a, b) => a.sequence - b.sequence)
-    .find(
-      (candidate) =>
-        !history.some(
-          (item) =>
-            item.documentType === type &&
-            item.year === year &&
-            item.sequence === candidate.sequence &&
-            isActiveStatus(item.status),
-        ),
-    );
-
 const findNextSequence = (
   config: NumberingConfig,
   date: Date,
   history: NumberHistory[],
   minimumSequence = 0,
 ) => {
-  const reusable = findReusableEntry(
-    history,
-    config.documentType,
-    date.getFullYear(),
-    minimumSequence,
-  );
-  if (reusable) return reusable.sequence;
-
-  let sequence = Math.max(config.runningNumber, minimumSequence) + 1;
+  let sequence = Math.max(config.runningNumber, minimumSequence + 1, 1);
   while (
     history.some(
       (item) =>
@@ -178,17 +180,45 @@ const updateOrCreateHistoryEntry = (
 };
 
 export const penomoranService = {
-  list: () => read<NumberingConfig[]>(CONFIG_KEY, defaults),
+  list: () => {
+    const stored = read<NumberingConfig[]>(CONFIG_KEY, []);
+    const storedByType = new Map(
+      stored.map((config) => [config.documentType, config]),
+    );
+    return defaults.map((fallback) => {
+      const config = storedByType.get(fallback.documentType) ?? fallback;
+      return {
+        ...config,
+        runningNumber: Math.max(1, config.runningNumber),
+      };
+    });
+  },
   history: () => getHistory(),
-  preview: (config: NumberingConfig, date = new Date()) => {
-    const history = getHistory();
-    const sequence = findNextSequence(config, date, history);
+  preview: (
+    config: NumberingConfig,
+    date = new Date(),
+    persistedNumbers?: string[],
+  ) => {
+    const persisted = persistedNumbers
+      ? new Set(persistedNumbers.map((number) => number.trim()))
+      : null;
+    const history = getHistory().filter(
+      (item) =>
+        !persisted ||
+        item.documentType !== config.documentType ||
+        item.status !== "Terpakai" ||
+        persisted.has(item.number),
+    );
+    const minimumSequence = persistedNumbers
+      ? getHighestSequenceFromNumbers(persistedNumbers)
+      : 0;
+    const sequence = findNextSequence(config, date, history, minimumSequence);
     return render(config, sequence, date);
   },
+  configuredNumber: (config: NumberingConfig, date = new Date()) =>
+    render(config, Math.max(1, config.runningNumber), date),
   formatNumber: (type: DocumentType, sequence: number, dateStr?: string) => {
-    const config = penomoranService
-      .list()
-      .find((x) => x.documentType === type);
+    const config = penomoranService.list().find((x) => x.documentType === type);
     if (!config) throw new Error(`Pengaturan ${type} tidak ditemukan.`);
     const date = new Date(dateStr || Date.now());
     if (Number.isNaN(date.getTime()))
@@ -211,6 +241,48 @@ export const penomoranService = {
     });
     return parsed;
   },
+  reconcileUsedNumbers: (
+    type: DocumentType,
+    persistedNumbers: string[],
+    note = "Riwayat Terpakai direkonsiliasi karena dokumen sumber tidak tersedia.",
+  ) => {
+    assertDocumentType(type);
+    const persisted = new Set(
+      persistedNumbers.map((number) => number.trim()).filter(Boolean),
+    );
+    const history = getHistory();
+    const orphaned = history.filter(
+      (item) =>
+        item.documentType === type &&
+        item.status === "Terpakai" &&
+        !persisted.has(item.number),
+    );
+    if (!orphaned.length) return [];
+
+    const orphanedIds = new Set(orphaned.map((item) => item.id));
+    const updatedAt = new Date().toISOString();
+    saveHistory(
+      history.map((item) =>
+        orphanedIds.has(item.id)
+          ? { ...item, status: "Dibatalkan", note, updatedAt }
+          : item,
+      ),
+    );
+
+    const { configs, config, index } = getConfigForType(type);
+    const firstReusable = Math.min(...orphaned.map((item) => item.sequence));
+    config.runningNumber = Math.min(config.runningNumber, firstReusable);
+    configs[index] = config;
+    write(CONFIG_KEY, configs);
+
+    useActivityStore.getState().add({
+      action: "Update",
+      module: "Pengaturan Penomoran",
+      description: `${orphaned.length} riwayat Terpakai ${type} tanpa dokumen direkonsiliasi`,
+      user: "Sistem",
+    });
+    return orphaned;
+  },
   requestNumber: (
     type: DocumentType,
     dateStr?: string,
@@ -228,7 +300,9 @@ export const penomoranService = {
     const locks = read<Record<string, number>>(LOCK_KEY, {});
     const now = Date.now();
     if (locks[type] && now - locks[type] < 5000)
-      throw new Error(`Penomoran ${type} sedang diproses. Silakan coba kembali.`);
+      throw new Error(
+        `Penomoran ${type} sedang diproses. Silakan coba kembali.`,
+      );
     write(LOCK_KEY, { ...locks, [type]: now });
 
     try {
@@ -239,25 +313,21 @@ export const penomoranService = {
       const { configs, config, index } = getConfigForType(type);
       if (config.year !== date.getFullYear()) {
         config.year = date.getFullYear();
-        config.runningNumber = 0;
+        config.runningNumber = 1;
       }
 
       const history = getHistory();
-      const sequence = findNextSequence(
-        config,
-        date,
-        history,
-        minimumSequence,
-      );
+      const sequence = findNextSequence(config, date, history, minimumSequence);
       const number = render(config, sequence, date);
-      config.runningNumber = Math.max(config.runningNumber, sequence);
+      config.runningNumber = sequence + 1;
       configs[index] = config;
 
-      const reusable = findReusableEntry(
-        history,
-        type,
-        date.getFullYear(),
-        minimumSequence,
+      const reusable = history.find(
+        (item) =>
+          item.documentType === type &&
+          item.year === date.getFullYear() &&
+          item.sequence === sequence &&
+          item.status === "Dibatalkan",
       );
       const entry: NumberHistory = {
         id: reusable?.id ?? `nomor-${now}-${sequence}`,
@@ -302,7 +372,7 @@ export const penomoranService = {
     const { config } = getConfigForType(input.documentType);
     if (config.year !== date.getFullYear()) {
       config.year = date.getFullYear();
-      config.runningNumber = 0;
+      config.runningNumber = 1;
     }
 
     const history = getHistory();
@@ -392,6 +462,15 @@ export const penomoranService = {
       updatedAt: new Date().toISOString(),
     };
     saveHistory(updateOrCreateHistoryEntry(history, updated));
+    const { configs, config, index } = getConfigForType(type);
+    if (
+      config.year === target.year &&
+      target.sequence === config.runningNumber - 1
+    ) {
+      config.runningNumber = target.sequence;
+      configs[index] = config;
+      write(CONFIG_KEY, configs);
+    }
     useActivityStore.getState().add({
       action: "Update",
       module: "Pengaturan Penomoran",

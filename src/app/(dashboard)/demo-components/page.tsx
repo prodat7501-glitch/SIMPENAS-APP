@@ -103,7 +103,10 @@ export default function DemoComponentsPage() {
   const mockSteps = [
     { label: "Draf Dokumen", description: "Nota Dinas & SPT" },
     { label: "Verifikasi Atasan", description: "Approval Kasubag" },
-    { label: "Validasi SPJ", description: "Pengecekan Keuangan" },
+    {
+      label: "Validasi SPJ dan Pembayaran",
+      description: "Pengecekan dan penyelesaian pembayaran",
+    },
     { label: "Selesai", description: "Pembayaran & Arsip" },
   ];
 

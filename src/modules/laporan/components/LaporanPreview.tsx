@@ -3,7 +3,9 @@
 import Image from "next/image";
 import { PrintPreview } from "@/components/ui/print-preview";
 import { DocumentTemplate } from "@/components/document/DocumentTemplate";
+import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import type { Sppd } from "@/modules/sppd/sppd.schema";
 import type { Spt } from "@/modules/spt/spt.schema";
 import { useDocumentTemplate } from "@/providers/TemplateProvider";
@@ -83,12 +85,14 @@ export function LaporanPreview({
   spts,
   sppds,
   pegawais,
+  jabatans,
   onClose,
 }: {
   item: Laporan | null;
   spts: Spt[];
   sppds: Sppd[];
   pegawais: Pegawai[];
+  jabatans: Jabatan[];
   onClose: () => void;
 }) {
   const template = useDocumentTemplate();
@@ -99,9 +103,13 @@ export function LaporanPreview({
   const spt = spts.find((x) => x.id === item.sptId) ??
     spts.find((x) => x.id === sppd?.sptId);
   const pelaksana =
-    spt?.personil
+    sortByPegawaiOrder(
+      spt?.personil ?? [],
+      (person) => person.pegawaiId,
+      pegawais,
+    )
       .map(({ pegawaiId }) => pegawais.find((pegawai) => pegawai.id === pegawaiId))
-      .filter(Boolean) ?? [];
+      .filter(Boolean);
   const fallbackPegawai = pegawais.find((x) => x.id === item.pelaksanaId);
   const daftarPelaksana = pelaksana.length
     ? pelaksana
@@ -113,22 +121,40 @@ export function LaporanPreview({
   const suratTugas = item.suratTugas || "Sekretaris KPU";
   const judulLaporan = item.judulLaporan || "Laporan Perjalanan Dinas";
   const tempatLaporan = item.tempatLaporan || "Limboto";
+  const isKomisioner = (pegawai?: Pegawai) =>
+    pegawai?.kategoriPegawai === "Ketua KPU" ||
+    pegawai?.kategoriPegawai === "Anggota KPU";
+  const getJabatanPelaksana = (pegawai?: Pegawai) =>
+    jabatans.find((jabatan) => jabatan.id === pegawai?.jabatanId)?.nama ||
+    pegawai?.kategoriPegawai ||
+    "-";
+  const isLaporanKomisioner =
+    daftarPelaksana.length > 0 && daftarPelaksana.every(isKomisioner);
 
   return (
     <PrintPreview
       isOpen
       title="Pratinjau Laporan Perjalanan Dinas"
       onClose={onClose}
+      printPageSize="215mm 330mm"
       className="laporan-print-sheet w-[215mm] min-h-[330mm] print:overflow-visible"
     >
       <DocumentTemplate includeHeader={false}>
-        <header className="grid grid-cols-[64px_1fr_64px] items-center border-b-[3px] border-double border-black pb-3 text-center">
+        <header
+          className={
+            isLaporanKomisioner
+              ? "flex flex-col items-center border-b-[3px] border-double border-black pb-3 text-center"
+              : "grid grid-cols-[64px_1fr_64px] items-center border-b-[3px] border-double border-black pb-3 text-center"
+          }
+        >
           <Image
             src={template.logo}
             alt="Logo instansi"
             width={56}
             height={56}
-            className="h-14 w-14 object-contain"
+            className={`h-14 w-14 object-contain ${
+              isLaporanKomisioner ? "mb-2" : ""
+            }`}
           />
           <div>
             <h1 className="text-base font-black uppercase tracking-wide leading-tight">
@@ -141,7 +167,7 @@ export function LaporanPreview({
               {template.alamat}
             </p>
           </div>
-          <span aria-hidden />
+          {!isLaporanKomisioner && <span aria-hidden />}
         </header>
 
         <div className="text-center my-6">
@@ -203,28 +229,13 @@ export function LaporanPreview({
           <SectionBlock code="F." title="Hasil Pelaksanaan">
             {renderNumberedList(item.hasilPelaksanaan)}
           </SectionBlock>
-        </div>
 
-        <section className="mt-8 grid grid-cols-[24px_1fr] gap-x-2 laporan-section laporan-documentation-section">
-          <h3 className="font-bold laporan-section-code">G.</h3>
-          <div>
-            <h3 className="font-bold mb-4 laporan-section-title">Dokumentasi</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {item.dokumentasi.map((foto) => (
-                <figure key={foto.id}>
-                  <Image
-                    src={foto.dataUrl}
-                    alt={foto.nama}
-                    width={320}
-                    height={176}
-                    unoptimized
-                    className="w-full h-44 object-cover border"
-                  />
-                </figure>
-              ))}
-            </div>
-          </div>
-        </section>
+          {item.kalimatPenutup.trim() && (
+            <p className="whitespace-pre-wrap text-justify laporan-closing-sentence">
+              {item.kalimatPenutup}
+            </p>
+          )}
+        </div>
 
         <section className="mt-10 laporan-signature-section">
           <table className="w-full table-fixed border-0 text-sm">
@@ -253,7 +264,11 @@ export function LaporanPreview({
                     <p className="font-bold leading-snug">
                       {index + 1}. {pegawai?.nama ?? "-"}
                     </p>
-                    <p className="pl-4 leading-snug">NIP. {pegawai?.nip || "-"}</p>
+                    <p className="pl-4 leading-snug">
+                      {isKomisioner(pegawai)
+                        ? `Jabatan: ${getJabatanPelaksana(pegawai)}`
+                        : `NIP. ${pegawai?.nip || "-"}`}
+                    </p>
                   </td>
                   <td className="border-0 py-3 align-middle">
                     <span className="tracking-[0.16em]">
@@ -271,10 +286,31 @@ export function LaporanPreview({
             <strong>Catatan verifikasi:</strong> {item.catatanVerifikasi}
           </div>
         )}
+
+        <section className="mt-12 grid grid-cols-[24px_1fr] gap-x-2 laporan-section laporan-documentation-section">
+          <h3 className="font-bold laporan-section-code">G.</h3>
+          <div>
+            <h3 className="font-bold mb-4 laporan-section-title">Dokumentasi</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {item.dokumentasi.map((foto) => (
+                <figure key={foto.id}>
+                  <Image
+                    src={foto.dataUrl}
+                    alt={foto.nama}
+                    width={320}
+                    height={176}
+                    unoptimized
+                    className="w-full h-44 object-cover border"
+                  />
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
       </DocumentTemplate>
       <style jsx global>{`
         .laporan-print-sheet > .pt-10 > div {
-          padding-top: 10mm !important;
+          font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
         }
 
         .laporan-print-sheet {
@@ -285,15 +321,13 @@ export function LaporanPreview({
         @media print {
           @page {
             size: 215mm 330mm;
-            margin: 10mm 0 0 0;
-          }
-
-          @page:first {
-            margin: 0;
+            margin: ${template.margin}mm;
           }
 
           .laporan-print-sheet {
             box-sizing: border-box;
+            width: 100% !important;
+            min-height: 0 !important;
             page-break-after: auto;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
@@ -302,10 +336,6 @@ export function LaporanPreview({
 
           .laporan-print-sheet > .pt-10 {
             padding-top: 0 !important;
-          }
-
-          .laporan-print-sheet > .pt-10 > div {
-            padding-top: 8mm !important;
           }
 
           .laporan-section {
@@ -325,14 +355,22 @@ export function LaporanPreview({
             page-break-inside: auto;
           }
 
+          .laporan-closing-sentence {
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+
           .laporan-signature-section {
             break-inside: auto;
             page-break-inside: auto;
           }
 
           .laporan-documentation-section {
-            break-inside: avoid;
-            page-break-inside: avoid;
+            break-before: page;
+            page-break-before: always;
+            break-inside: auto;
+            page-break-inside: auto;
+            margin-top: 0 !important;
           }
 
           .laporan-signature-row {

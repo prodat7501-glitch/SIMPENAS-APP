@@ -102,7 +102,7 @@ export default function Home() {
             </div>
             <h2 className="text-xl font-bold mb-2">Administrasi Keuangan</h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              Validasi SPJ, serta otomatisasi pembuatan dokumen SPBY, Daftar
+              Validasi SPJ dan Pembayaran, serta otomatisasi pembuatan dokumen SPBY, Daftar
               Nominatif, Tanda Terima, dan Kuitansi.
             </p>
             <Link

@@ -35,6 +35,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { resolveCurrentPegawai } from "@/lib/document-access";
+import { useDipa } from "@/modules/dipa/useDipa";
 import { useKeuangan } from "@/modules/keuangan/useKeuangan";
 import { useLaporan } from "@/modules/laporan/useLaporan";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
@@ -48,6 +50,7 @@ import {
 import type { RekapFilters } from "@/modules/rekapitulasi/rekapitulasi.types";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
+import { formatTableDate } from "@/lib/formatters";
 import { formatRupiah } from "@/lib/formatters";
 
 const RekapPrintPreview = dynamic(
@@ -58,13 +61,23 @@ const RekapPrintPreview = dynamic(
   { ssr: false },
 );
 export default function RekapitulasiPage() {
-  const { hasPermission } = useAuth();
-  const { items: sppds } = useSppd();
+  const { user, hasPermission } = useAuth();
+  const { items: sppds, isLoading: sppdsLoading } = useSppd();
   const { items: spts } = useSpt();
   const { items: pegawais } = usePegawai();
+  const { items: dipas } = useDipa();
   const { items: notas } = useNotaDinas();
-  const { items: reports } = useLaporan();
-  const { items: spjs } = useKeuangan(reports);
+  const { items: reports, isLoading: reportsLoading } = useLaporan();
+  const { items: spjs } = useKeuangan(
+    reports,
+    {
+      sppds,
+      spts,
+      notas,
+      dipas,
+    },
+    !reportsLoading && !sppdsLoading,
+  );
   const [filters, setFilters] = useState<RekapFilters>({
     dari: "",
     sampai: "",
@@ -72,11 +85,23 @@ export default function RekapitulasiPage() {
     tujuan: "",
   });
   const [pdfOpen, setPdfOpen] = useState(false);
+  const currentPegawai = resolveCurrentPegawai(user, pegawais);
+  const isPegawaiRole = user?.role === "Pegawai";
+  const scopedPegawaiId = isPegawaiRole
+    ? (currentPegawai?.id ?? user?.pegawaiId ?? "__pegawai_tidak_terhubung__")
+    : filters.pegawaiId;
   const allRows = useMemo(
-    () => buildRekap(sppds, pegawais, notas, spjs, spts),
-    [sppds, pegawais, notas, spjs, spts],
+    () => buildRekap(sppds, pegawais, spjs, spts),
+    [sppds, pegawais, spjs, spts],
   );
-  const rows = useMemo(() => filterRekap(allRows, filters), [allRows, filters]);
+  const rows = useMemo(
+    () =>
+      filterRekap(allRows, {
+        ...filters,
+        pegawaiId: scopedPegawaiId,
+      }),
+    [allRows, filters, scopedPegawaiId],
+  );
   const chart = useMemo(() => chartRekap(rows), [rows]);
   const canRead = hasPermission("Rekapitulasi", "R");
   const canExport = hasPermission("Rekapitulasi", "E");
@@ -110,6 +135,12 @@ export default function RekapitulasiPage() {
           </div>
         )}
       </div>
+      {isPegawaiRole && !currentPegawai && (
+        <Alert variant="error" title="Identitas Pegawai Belum Terhubung">
+          Akun ini belum terhubung dengan Master Pegawai. Hubungi Administrator
+          agar rekap perjalanan dan pembayaran dapat ditampilkan.
+        </Alert>
+      )}
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Metric
           icon={<MapPinned />}
@@ -159,19 +190,28 @@ export default function RekapitulasiPage() {
           </label>
           <label className="text-xs space-y-1">
             <span className="font-bold">Pegawai</span>
-            <Select
-              value={filters.pegawaiId}
-              onChange={(e) =>
-                setFilters((x) => ({ ...x, pegawaiId: e.target.value }))
-              }
-            >
-              <option value="">Semua Pegawai</option>
-              {pegawais.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.nama}
-                </option>
-              ))}
-            </Select>
+            {isPegawaiRole ? (
+              <Input
+                value={currentPegawai?.nama ?? user?.name ?? "-"}
+                readOnly
+                aria-label="Pegawai pada akun aktif"
+                className="bg-muted font-semibold"
+              />
+            ) : (
+              <Select
+                value={filters.pegawaiId}
+                onChange={(e) =>
+                  setFilters((x) => ({ ...x, pegawaiId: e.target.value }))
+                }
+              >
+                <option value="">Semua Pegawai</option>
+                {pegawais.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.nama}
+                  </option>
+                ))}
+              </Select>
+            )}
           </label>
           <label className="text-xs space-y-1">
             <span className="font-bold">Tujuan</span>
@@ -263,7 +303,8 @@ export default function RekapitulasiPage() {
                 <TableCell>{x.namaPegawai}</TableCell>
                 <TableCell>{x.tujuan}</TableCell>
                 <TableCell>
-                  {x.tanggalBerangkat} – {x.tanggalKembali}
+                  {formatTableDate(x.tanggalBerangkat)} –{" "}
+                  {formatTableDate(x.tanggalKembali)}
                 </TableCell>
                 <TableCell className="text-center font-bold">
                   {x.jumlahHari}
