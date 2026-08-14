@@ -4,10 +4,12 @@
  */
 
 const getApiBaseUrl = (): string => {
+  let rawUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined" && (window as unknown as { __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL) {
-    return (window as unknown as { __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } } }).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
+    rawUrl = (window as unknown as { __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } } }).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
   }
-  return process.env.NEXT_PUBLIC_API_URL || "https://simpenas-api.up.railway.app/api";
+  const url = rawUrl || "https://simpenas-api.up.railway.app";
+  return url.replace(/\/api\/?$/, "").replace(/\/$/, "");
 };
 
 /**
