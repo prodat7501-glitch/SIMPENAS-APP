@@ -11,10 +11,22 @@ interface UserAccountState {
 
 export const useUserAccountStore = create<UserAccountState>((set) => ({
   items: [],
-  load: () => set({ items: userAccountService.getAll() }),
+  load: async () => {
+    try {
+      const items = await userAccountService.apiGetAll();
+      set({ items });
+    } catch {
+      set({ items: userAccountService.getAll() });
+    }
+  },
   update: async (id, input) => {
-    await userAccountService.update(id, input);
-    set({ items: userAccountService.getAll() });
+    try {
+      await userAccountService.apiUpdate(id, input);
+      set({ items: await userAccountService.apiGetAll() });
+    } catch {
+      await userAccountService.update(id, input);
+      set({ items: userAccountService.getAll() });
+    }
   },
 }));
 

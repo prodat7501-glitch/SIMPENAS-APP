@@ -4,54 +4,90 @@ import { penandatanganService } from "./penandatangan.service";
 
 interface PenandatanganState {
   items: Penandatangan[];
-  load: () => void;
-  add: (item: Omit<Penandatangan, "id">) => void;
-  update: (id: string, item: Omit<Penandatangan, "id">) => void;
-  remove: (id: string) => void;
-  toggleStatus: (id: string) => void;
+  isLoading: boolean;
+  load: () => Promise<void>;
+  add: (item: Omit<Penandatangan, "id">) => Promise<void>;
+  update: (id: string, item: Omit<Penandatangan, "id">) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+  toggleStatus: (id: string) => Promise<void>;
 }
 
 export const usePenandatanganStore = create<PenandatanganState>((set) => ({
   items: [],
-  load: () => {
-    set({ items: penandatanganService.getAll() });
+  isLoading: false,
+  load: async () => {
+    set({ isLoading: true });
+    try {
+      const items = await penandatanganService.apiGetAll();
+      set({ items, isLoading: false });
+    } catch {
+      set({ items: penandatanganService.getAll(), isLoading: false });
+    }
   },
-  add: (newItem) => {
-    set((state) => {
-      const updated = [...state.items, { ...newItem, id: `pe-${Date.now()}` }];
-      penandatanganService.saveAll(updated);
-      return { items: updated };
-    });
+  add: async (newItem) => {
+    try {
+      const created = await penandatanganService.apiCreate(newItem);
+      set((state) => {
+        const updated = [...state.items, created];
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    } catch {
+      set((state) => {
+        const updated = [...state.items, { ...newItem, id: `pe-${Date.now()}` }];
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    }
   },
-  update: (id, updatedItem) => {
+  update: async (id, updatedItem) => {
+    try {
+      const updatedData = await penandatanganService.apiUpdate(id, updatedItem);
+      set((state) => {
+        const updated = state.items.map((item) =>
+          item.id === id ? { ...item, ...updatedData } : item,
+        );
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    } catch {
+      set((state) => {
+        const updated = state.items.map((item) =>
+          item.id === id ? { ...item, ...updatedItem } : item,
+        );
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    }
+  },
+  remove: async (id) => {
+    try {
+      await penandatanganService.apiDelete(id);
+      set((state) => {
+        const updated = state.items.filter((item) => item.id !== id);
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    } catch {
+      set((state) => {
+        const updated = state.items.filter((item) => item.id !== id);
+        penandatanganService.saveAll(updated);
+        return { items: updated };
+      });
+    }
+  },
+  toggleStatus: async (id) => {
     set((state) => {
+      const target = state.items.find((item) => item.id === id);
+      if (!target) return state;
+      const newStatus = target.status === "Aktif" ? "Nonaktif" : "Aktif";
+      void penandatanganService.apiUpdate(id, { status: newStatus });
       const updated = state.items.map((item) =>
-        item.id === id ? { ...item, ...updatedItem } : item,
-      );
-      penandatanganService.saveAll(updated);
-      return { items: updated };
-    });
-  },
-  remove: (id) => {
-    set((state) => {
-      const updated = state.items.filter((item) => item.id !== id);
-      penandatanganService.saveAll(updated);
-      return { items: updated };
-    });
-  },
-  toggleStatus: (id) => {
-    set((state) => {
-      const updated = state.items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: (item.status === "Aktif" ? "Nonaktif" : "Aktif") as
-                "Aktif" | "Nonaktif",
-            }
-          : item,
+        item.id === id ? { ...item, status: newStatus as "Aktif" | "Nonaktif" } : item,
       );
       penandatanganService.saveAll(updated);
       return { items: updated };
     });
   },
 }));
+

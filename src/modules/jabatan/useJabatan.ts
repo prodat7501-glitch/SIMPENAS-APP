@@ -16,8 +16,8 @@ export function useJabatan() {
 
   return {
     items,
-    add: (...args: Parameters<typeof add>) => {
-      const result = add(...args);
+    add: async (...args: Parameters<typeof add>) => {
+      const result = await add(...args);
       log({
         action: "Create",
         module: "Master Data",
@@ -26,8 +26,8 @@ export function useJabatan() {
       });
       return result;
     },
-    update: (...args: Parameters<typeof update>) => {
-      const result = update(...args);
+    update: async (...args: Parameters<typeof update>) => {
+      const result = await update(...args);
       log({
         action: "Update",
         module: "Master Data",
@@ -36,8 +36,8 @@ export function useJabatan() {
       });
       return result;
     },
-    remove: (...args: Parameters<typeof remove>) => {
-      const result = remove(...args);
+    remove: async (...args: Parameters<typeof remove>) => {
+      const result = await remove(...args);
       log({
         action: "Delete",
         module: "Master Data",

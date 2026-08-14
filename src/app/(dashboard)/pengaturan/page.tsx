@@ -44,7 +44,7 @@ const getStatusVariant = (status?: NumberStatus) => {
 };
 
 export default function PengaturanPage() {
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const { configs, history, loading, error, save, refresh, previewNext } =
     usePenomoran();
   const [editing, setEditing] = useState<NumberingConfig | null>(null);
