@@ -4,10 +4,12 @@ import { apiClient, withApiFallback } from "@/services/api";
 const STORAGE_KEY = "simpenas_jabatan";
 
 const defaultJabatan: Jabatan[] = [
-  { id: "j1", kode: "JAB001", nama: "Kepala Sekretariat" },
-  { id: "j2", kode: "JAB002", nama: "Kasubag Keuangan" },
-  { id: "j3", kode: "JAB003", nama: "Kasubag Umum & Logistik" },
+  { id: "j1", kode: "JAB001", nama: "Sekretaris KPU" },
+  { id: "j2", kode: "JAB002", nama: "Kepala Sub Bagian Keuangan" },
+  { id: "j3", kode: "JAB003", nama: "Kepala Sub Bagian Teknis dan Hukum" },
   { id: "j4", kode: "JAB004", nama: "Staf Pelaksana" },
+  { id: "j5", kode: "JAB005", nama: "Ketua KPU" },
+  { id: "j6", kode: "JAB006", nama: "Anggota KPU" },
 ];
 
 export const jabatanService = {
