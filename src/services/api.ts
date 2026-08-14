@@ -4,7 +4,7 @@
  */
 
 const getApiBaseUrl = (): string => {
-  if (typeof window !== "undefined" && (window as Record<string, unknown>).__NEXT_DATA__ && (window as unknown as { __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL) {
+  if (typeof window !== "undefined" && (window as unknown as { __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL) {
     return (window as unknown as { __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } } }).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
   }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";

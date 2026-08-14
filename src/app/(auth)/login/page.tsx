@@ -1,28 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Mail, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/schemas/auth.schema";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  DEFAULT_MOCK_PASSWORD,
-  DEFAULT_MOCK_PASSWORD_HASH,
-  userAccountService,
-} from "@/modules/user-account/user-account.service";
-import type { UserAccount } from "@/modules/user-account/user-account.types";
-import { DEMO_DATA_IMPORTED_KEY } from "@/modules/demo-data/demo-data.constants";
 
 export default function LoginPage() {
   const { login, isLoading, error } = useAuth();
-  const [mockAccounts, setMockAccounts] = useState<UserAccount[]>([]);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -32,32 +22,8 @@ export default function LoginPage() {
     },
   });
 
-  useEffect(() => {
-    // Daftar akun dibaca setelah hydration karena sumber mock menggunakan localStorage.
-    const hasImportedDemoData = Boolean(
-      localStorage.getItem(DEMO_DATA_IMPORTED_KEY),
-    );
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMockAccounts(
-      userAccountService
-        .getAll()
-        .filter(
-          (account) =>
-            userAccountService.canLogin(account) &&
-            account.passwordHash === DEFAULT_MOCK_PASSWORD_HASH &&
-            (!hasImportedDemoData || account.role === "Pegawai"),
-        ),
-    );
-  }, []);
-
   const onSubmit = async (data: LoginInput) => {
     await login(data);
-  };
-
-  // Helper function to fill mock logins quickly for testing
-  const selectMockUser = (account: UserAccount) => {
-    setValue("username", account.username);
-    setValue("password", DEFAULT_MOCK_PASSWORD);
   };
 
   return (
@@ -165,33 +131,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        {/* Quick Mock Login shortcuts for developer convenience */}
-        <div className="mt-8 pt-6 border-t border-border/80">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center mb-3">
-            Pintasan Pengujian (Mock Login)
-          </p>
-          <p className="mb-3 text-center text-[10px] text-muted-foreground">
-            Setiap username mewakili satu pegawai. Role dibaca otomatis dari
-            Master Pegawai.
-          </p>
-          <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto text-[10px] font-bold">
-            {mockAccounts.map((account) => (
-              <button
-                key={account.id}
-                type="button"
-                onClick={() => selectMockUser(account)}
-                className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/50"
-                title={`${account.username} - ${account.role}`}
-              >
-                <span className="block truncate">{account.name}</span>
-                <span className="block truncate font-normal text-muted-foreground">
-                  {account.username}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
