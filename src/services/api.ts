@@ -7,7 +7,7 @@ const getApiBaseUrl = (): string => {
   if (typeof window !== "undefined" && (window as unknown as { __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL) {
     return (window as unknown as { __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } } }).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  return process.env.NEXT_PUBLIC_API_URL || "https://simpenas-api.up.railway.app/api";
 };
 
 /**
