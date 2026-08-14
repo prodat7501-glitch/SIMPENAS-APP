@@ -12,15 +12,26 @@ const defaultJabatan: Jabatan[] = [
   { id: "j6", kode: "JAB006", nama: "Anggota KPU" },
 ];
 
+const sortJabatan = (list: Jabatan[]): Jabatan[] => {
+  return [...list].sort((a, b) => {
+    const codeA = a.kode || "";
+    const codeB = b.kode || "";
+    if (codeA !== codeB) {
+      return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
+    }
+    return (a.id || "").localeCompare(b.id || "", undefined, { numeric: true, sensitivity: "base" });
+  });
+};
+
 export const jabatanService = {
   getAll: (): Jabatan[] => {
-    if (typeof window === "undefined") return defaultJabatan;
+    if (typeof window === "undefined") return sortJabatan(defaultJabatan);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultJabatan));
-      return defaultJabatan;
+      return sortJabatan(defaultJabatan);
     }
-    return JSON.parse(stored);
+    return sortJabatan(JSON.parse(stored));
   },
   saveAll: (data: Jabatan[]) => {
     if (typeof window !== "undefined") {
@@ -32,7 +43,8 @@ export const jabatanService = {
     return withApiFallback(
       async () => {
         const res = await apiClient.get<Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }>("/api/jabatan", params);
-        return Array.isArray(res) ? res : res.data || res.items || [];
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return sortJabatan(list);
       },
       () => jabatanService.getAll()
     );
