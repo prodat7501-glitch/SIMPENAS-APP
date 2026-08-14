@@ -48,7 +48,8 @@ export const unitKerjaService = {
   apiCreate: async (data: Partial<UnitKerja>): Promise<UnitKerja> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<UnitKerja | { data?: UnitKerja }>("/api/unit_kerja", data);
+        const payload = { id: data.id || `u-${Date.now()}`, ...data };
+        const res = await apiClient.post<UnitKerja | { data?: UnitKerja }>("/api/unit_kerja", payload);
         return (res as { data?: UnitKerja }).data || (res as UnitKerja);
       },
       async () => {

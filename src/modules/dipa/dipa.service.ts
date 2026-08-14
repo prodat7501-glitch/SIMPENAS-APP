@@ -152,7 +152,8 @@ export const dipaService = {
   apiCreate: async (data: Partial<DIPA>): Promise<DIPA> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<DIPA | { data?: DIPA }>("/api/anggaran_dipa", data);
+        const payload = { id: data.id || `dipa-${Date.now()}`, ...data };
+        const res = await apiClient.post<DIPA | { data?: DIPA }>("/api/anggaran_dipa", payload);
         const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
         return normalizeDipa(unwrapped, 0);
       },

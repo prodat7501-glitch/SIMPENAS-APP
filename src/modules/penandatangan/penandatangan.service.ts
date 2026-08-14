@@ -193,7 +193,8 @@ export const penandatanganService = {
   apiCreate: async (data: Partial<Penandatangan>): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/pejabat_penandatangan", data);
+        const payload = { id: data.id || `pe-${Date.now()}`, ...data };
+        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/pejabat_penandatangan", payload);
         const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
       },

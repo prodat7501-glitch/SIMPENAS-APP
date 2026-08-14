@@ -82,7 +82,8 @@ export const sbmService = {
   apiCreate: async (data: Partial<SBM>): Promise<SBM> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<SBM | { data?: SBM }>("/api/sbm", data);
+        const payload = { id: data.id || `sbm-${Date.now()}`, ...data };
+        const res = await apiClient.post<SBM | { data?: SBM }>("/api/sbm", payload);
         const unwrapped = (res as { data?: SBM }).data || (res as SBM);
         return unwrapped;
       },

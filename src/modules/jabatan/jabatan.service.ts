@@ -49,7 +49,8 @@ export const jabatanService = {
   apiCreate: async (data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/jabatan", data);
+        const payload = { id: data.id || `j-${Date.now()}`, ...data };
+        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/jabatan", payload);
         return (res as { data?: Jabatan }).data || (res as Jabatan);
       },
       async () => {

@@ -107,7 +107,8 @@ export const pegawaiService = {
   apiCreate: async (data: Partial<Pegawai>): Promise<Pegawai> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Pegawai | { data?: Pegawai }>("/api/pegawai", data);
+        const payload = { id: data.id || `pg-${Date.now()}`, ...data };
+        const res = await apiClient.post<Pegawai | { data?: Pegawai }>("/api/pegawai", payload);
         const unwrapped = (res as { data?: Pegawai }).data || (res as Pegawai);
         return normalizePegawai(unwrapped);
       },

@@ -235,7 +235,8 @@ export const userAccountService = {
   apiCreate: async (data: Partial<UserAccount>): Promise<UserAccount> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<UserAccount | { data?: UserAccount }>("/api/akun_pengguna", data);
+        const payload = { id: data.id || `user-${Date.now()}`, ...data };
+        const res = await apiClient.post<UserAccount | { data?: UserAccount }>("/api/akun_pengguna", payload);
         const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
         return unwrapped;
       },

@@ -49,7 +49,8 @@ export const pangkatService = {
   apiCreate: async (data: Partial<Pangkat>): Promise<Pangkat> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Pangkat | { data?: Pangkat }>("/api/pangkat_golongan", data);
+        const payload = { id: data.id || `p-${Date.now()}`, ...data };
+        const res = await apiClient.post<Pangkat | { data?: Pangkat }>("/api/pangkat_golongan", payload);
         return (res as { data?: Pangkat }).data || (res as Pangkat);
       },
       async () => {
