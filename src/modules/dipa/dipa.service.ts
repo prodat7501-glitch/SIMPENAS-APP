@@ -141,8 +141,9 @@ export const dipaService = {
   apiGetById: async (id: string): Promise<DIPA | null> => {
     return withApiFallback(
       async () => {
-        const item = await apiClient.get<DIPA | null>(`/api/anggaran_dipa/${id}`);
-        return item ? normalizeDipa(item, 0) : null;
+        const item = await apiClient.get<DIPA | { data?: DIPA }>(`/api/anggaran_dipa/${id}`);
+        const unwrapped = (item as { data?: DIPA }).data || (item as DIPA);
+        return unwrapped ? normalizeDipa(unwrapped, 0) : null;
       },
       () => dipaService.getAll().find((d) => d.id === id) || null
     );
@@ -151,8 +152,9 @@ export const dipaService = {
   apiCreate: async (data: Partial<DIPA>): Promise<DIPA> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<DIPA>("/api/anggaran_dipa", data);
-        return normalizeDipa(res, 0);
+        const res = await apiClient.post<DIPA | { data?: DIPA }>("/api/anggaran_dipa", data);
+        const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
+        return normalizeDipa(unwrapped, 0);
       },
       async () => {
         const items = dipaService.getAll();
@@ -166,8 +168,9 @@ export const dipaService = {
   apiUpdate: async (id: string, data: Partial<DIPA>): Promise<DIPA> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<DIPA>(`/api/anggaran_dipa/${id}`, data);
-        return normalizeDipa(res, 0);
+        const res = await apiClient.patch<DIPA | { data?: DIPA }>(`/api/anggaran_dipa/${id}`, data);
+        const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
+        return normalizeDipa(unwrapped, 0);
       },
       async () => {
         const items = dipaService.getAll();

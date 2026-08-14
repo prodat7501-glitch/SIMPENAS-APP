@@ -39,13 +39,19 @@ export const jabatanService = {
   },
   apiGetById: async (id: string): Promise<Jabatan | null> => {
     return withApiFallback(
-      async () => apiClient.get<Jabatan>(`/api/jabatan/${id}`),
+      async () => {
+        const res = await apiClient.get<Jabatan | { data?: Jabatan }>(`/api/jabatan/${id}`);
+        return (res as { data?: Jabatan }).data || (res as Jabatan) || null;
+      },
       () => jabatanService.getAll().find((j) => j.id === id) || null
     );
   },
   apiCreate: async (data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
-      async () => apiClient.post<Jabatan>("/api/jabatan", data),
+      async () => {
+        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/jabatan", data);
+        return (res as { data?: Jabatan }).data || (res as Jabatan);
+      },
       async () => {
         const items = jabatanService.getAll();
         const newItem = { ...data, id: data.id || `j${Date.now()}` } as Jabatan;
@@ -56,7 +62,10 @@ export const jabatanService = {
   },
   apiUpdate: async (id: string, data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
-      async () => apiClient.patch<Jabatan>(`/api/jabatan/${id}`, data),
+      async () => {
+        const res = await apiClient.patch<Jabatan | { data?: Jabatan }>(`/api/jabatan/${id}`, data);
+        return (res as { data?: Jabatan }).data || (res as Jabatan);
+      },
       async () => {
         const items = jabatanService.getAll();
         const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));

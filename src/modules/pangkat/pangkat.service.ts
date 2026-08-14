@@ -39,13 +39,19 @@ export const pangkatService = {
   },
   apiGetById: async (id: string): Promise<Pangkat | null> => {
     return withApiFallback(
-      async () => apiClient.get<Pangkat>(`/api/pangkat_golongan/${id}`),
+      async () => {
+        const res = await apiClient.get<Pangkat | { data?: Pangkat }>(`/api/pangkat_golongan/${id}`);
+        return (res as { data?: Pangkat }).data || (res as Pangkat) || null;
+      },
       () => pangkatService.getAll().find((p) => p.id === id) || null
     );
   },
   apiCreate: async (data: Partial<Pangkat>): Promise<Pangkat> => {
     return withApiFallback(
-      async () => apiClient.post<Pangkat>("/api/pangkat_golongan", data),
+      async () => {
+        const res = await apiClient.post<Pangkat | { data?: Pangkat }>("/api/pangkat_golongan", data);
+        return (res as { data?: Pangkat }).data || (res as Pangkat);
+      },
       async () => {
         const items = pangkatService.getAll();
         const newItem = { ...data, id: data.id || `p${Date.now()}` } as Pangkat;
@@ -56,7 +62,10 @@ export const pangkatService = {
   },
   apiUpdate: async (id: string, data: Partial<Pangkat>): Promise<Pangkat> => {
     return withApiFallback(
-      async () => apiClient.patch<Pangkat>(`/api/pangkat_golongan/${id}`, data),
+      async () => {
+        const res = await apiClient.patch<Pangkat | { data?: Pangkat }>(`/api/pangkat_golongan/${id}`, data);
+        return (res as { data?: Pangkat }).data || (res as Pangkat);
+      },
       async () => {
         const items = pangkatService.getAll();
         const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));

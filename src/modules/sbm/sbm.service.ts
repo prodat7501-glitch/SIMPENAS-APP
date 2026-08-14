@@ -70,14 +70,22 @@ export const sbmService = {
 
   apiGetById: async (id: string): Promise<SBM | null> => {
     return withApiFallback(
-      async () => apiClient.get<SBM>(`/api/sbm/${id}`),
+      async () => {
+        const item = await apiClient.get<SBM | { data?: SBM }>(`/api/sbm/${id}`);
+        const unwrapped = (item as { data?: SBM }).data || (item as SBM);
+        return unwrapped || null;
+      },
       () => sbmService.getAll().find((s) => s.id === id) || null
     );
   },
 
   apiCreate: async (data: Partial<SBM>): Promise<SBM> => {
     return withApiFallback(
-      async () => apiClient.post<SBM>("/api/sbm", data),
+      async () => {
+        const res = await apiClient.post<SBM | { data?: SBM }>("/api/sbm", data);
+        const unwrapped = (res as { data?: SBM }).data || (res as SBM);
+        return unwrapped;
+      },
       async () => {
         const items = sbmService.getAll();
         const newItem = { ...data, id: data.id || `sbm-${Date.now()}` } as SBM;
@@ -89,7 +97,11 @@ export const sbmService = {
 
   apiUpdate: async (id: string, data: Partial<SBM>): Promise<SBM> => {
     return withApiFallback(
-      async () => apiClient.patch<SBM>(`/api/sbm/${id}`, data),
+      async () => {
+        const res = await apiClient.patch<SBM | { data?: SBM }>(`/api/sbm/${id}`, data);
+        const unwrapped = (res as { data?: SBM }).data || (res as SBM);
+        return unwrapped;
+      },
       async () => {
         const items = sbmService.getAll();
         const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));

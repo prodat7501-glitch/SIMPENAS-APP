@@ -223,14 +223,22 @@ export const userAccountService = {
 
   apiGetById: async (id: string): Promise<UserAccount | null> => {
     return withApiFallback(
-      async () => apiClient.get<UserAccount>(`/api/akun_pengguna/${id}`),
+      async () => {
+        const res = await apiClient.get<UserAccount | { data?: UserAccount }>(`/api/akun_pengguna/${id}`);
+        const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
+        return unwrapped || null;
+      },
       () => userAccountService.findById(id) || null
     );
   },
 
   apiCreate: async (data: Partial<UserAccount>): Promise<UserAccount> => {
     return withApiFallback(
-      async () => apiClient.post<UserAccount>("/api/akun_pengguna", data),
+      async () => {
+        const res = await apiClient.post<UserAccount | { data?: UserAccount }>("/api/akun_pengguna", data);
+        const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
+        return unwrapped;
+      },
       async () => {
         const items = userAccountService.getAll();
         const newItem = { ...data, id: data.id || `user-${Date.now()}` } as UserAccount;
@@ -242,7 +250,11 @@ export const userAccountService = {
 
   apiUpdate: async (id: string, data: Partial<UserAccount>): Promise<UserAccount> => {
     return withApiFallback(
-      async () => apiClient.patch<UserAccount>(`/api/akun_pengguna/${id}`, data),
+      async () => {
+        const res = await apiClient.patch<UserAccount | { data?: UserAccount }>(`/api/akun_pengguna/${id}`, data);
+        const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
+        return unwrapped;
+      },
       async () => {
         const items = userAccountService.getAll();
         const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));

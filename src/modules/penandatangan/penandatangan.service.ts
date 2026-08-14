@@ -182,8 +182,9 @@ export const penandatanganService = {
   apiGetById: async (id: string): Promise<Penandatangan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Penandatangan>(`/api/pejabat_penandatangan/${id}`);
-        return res ? normalizePenandatangan(res) : null;
+        const res = await apiClient.get<Penandatangan | { data?: Penandatangan }>(`/api/pejabat_penandatangan/${id}`);
+        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        return unwrapped ? normalizePenandatangan(unwrapped) : null;
       },
       () => penandatanganService.getAll().find((p) => p.id === id) || null
     );
@@ -192,8 +193,9 @@ export const penandatanganService = {
   apiCreate: async (data: Partial<Penandatangan>): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Penandatangan>("/api/pejabat_penandatangan", data);
-        return normalizePenandatangan(res);
+        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/pejabat_penandatangan", data);
+        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        return normalizePenandatangan(unwrapped);
       },
       async () => {
         const items = penandatanganService.getAll();
@@ -207,8 +209,9 @@ export const penandatanganService = {
   apiUpdate: async (id: string, data: Partial<Penandatangan>): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Penandatangan>(`/api/pejabat_penandatangan/${id}`, data);
-        return normalizePenandatangan(res);
+        const res = await apiClient.patch<Penandatangan | { data?: Penandatangan }>(`/api/pejabat_penandatangan/${id}`, data);
+        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        return normalizePenandatangan(unwrapped);
       },
       async () => {
         const items = penandatanganService.getAll();

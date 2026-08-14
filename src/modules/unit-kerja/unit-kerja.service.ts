@@ -38,13 +38,19 @@ export const unitKerjaService = {
   },
   apiGetById: async (id: string): Promise<UnitKerja | null> => {
     return withApiFallback(
-      async () => apiClient.get<UnitKerja>(`/api/unit_kerja/${id}`),
+      async () => {
+        const res = await apiClient.get<UnitKerja | { data?: UnitKerja }>(`/api/unit_kerja/${id}`);
+        return (res as { data?: UnitKerja }).data || (res as UnitKerja) || null;
+      },
       () => unitKerjaService.getAll().find((u) => u.id === id) || null
     );
   },
   apiCreate: async (data: Partial<UnitKerja>): Promise<UnitKerja> => {
     return withApiFallback(
-      async () => apiClient.post<UnitKerja>("/api/unit_kerja", data),
+      async () => {
+        const res = await apiClient.post<UnitKerja | { data?: UnitKerja }>("/api/unit_kerja", data);
+        return (res as { data?: UnitKerja }).data || (res as UnitKerja);
+      },
       async () => {
         const items = unitKerjaService.getAll();
         const newItem = { ...data, id: data.id || `u${Date.now()}` } as UnitKerja;
@@ -55,7 +61,10 @@ export const unitKerjaService = {
   },
   apiUpdate: async (id: string, data: Partial<UnitKerja>): Promise<UnitKerja> => {
     return withApiFallback(
-      async () => apiClient.patch<UnitKerja>(`/api/unit_kerja/${id}`, data),
+      async () => {
+        const res = await apiClient.patch<UnitKerja | { data?: UnitKerja }>(`/api/unit_kerja/${id}`, data);
+        return (res as { data?: UnitKerja }).data || (res as UnitKerja);
+      },
       async () => {
         const items = unitKerjaService.getAll();
         const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));

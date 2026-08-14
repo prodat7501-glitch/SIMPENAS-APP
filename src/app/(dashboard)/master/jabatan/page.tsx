@@ -45,23 +45,23 @@ export default function JabatanPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
     if (confirm("Apakah Anda yakin ingin menghapus data jabatan ini?")) {
-      remove(id);
+      await remove(id);
       addToast("Data jabatan berhasil dihapus", "success");
     }
   };
 
-  const handleFormSubmit = (data: Omit<Jabatan, "id">) => {
+  const handleFormSubmit = async (data: Omit<Jabatan, "id">) => {
     if (editingItem) {
-      update(editingItem.id!, data);
+      await update(editingItem.id!, data);
       addToast("Data jabatan berhasil diperbarui", "success");
     } else {
-      add(data);
+      await add(data);
       addToast("Data jabatan berhasil ditambahkan", "success");
     }
     setModalOpen(false);
