@@ -13,7 +13,6 @@ import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
-import { DemoDataTransferCard } from "@/modules/demo-data/components/DemoDataTransferCard";
 import {
   documentTypes,
   type DocumentType,
@@ -165,10 +164,6 @@ export default function PengaturanPage() {
         <Alert variant="error" title="Gagal Memuat">
           {error}
         </Alert>
-      )}
-
-      {user?.role === "Administrator" && (
-        <DemoDataTransferCard administratorName={user.name} />
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
