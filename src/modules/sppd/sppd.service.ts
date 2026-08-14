@@ -6,6 +6,7 @@ import {
   penandatanganService,
 } from "@/modules/penandatangan/penandatangan.service";
 import { sptService } from "@/modules/spt/spt.service";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_sppd";
 
@@ -73,7 +74,7 @@ const normalizeSinglePersonilSppd = (item: Sppd): Sppd => {
   return {
     ...item,
     status: normalizeStoredStatus(item.status),
-    personil: item.personil.slice(0, 1),
+    personil: (item.personil || []).slice(0, 1),
     jumlahKolomHalaman2: item.jumlahKolomHalaman2 ?? 6,
     tandaTanganHalaman2: (item.tandaTanganHalaman2 ?? []).map(
       normalizePage2Signer,
@@ -220,100 +221,140 @@ export const sppdService = {
   },
 
   list: async (): Promise<Sppd[]> => {
-    return getStoredItems();
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Sppd[] | { data?: Sppd[]; items?: Sppd[] }>("/api/sppd");
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return applySeriesLifecycle(list.map(normalizeSinglePersonilSppd));
+      },
+      () => getStoredItems()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<Sppd | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Sppd | null>(`/api/sppd/${id}`);
+        return res ? normalizeSinglePersonilSppd(res) : null;
+      },
+      () => getStoredItems().find((s) => s.id === id) || null
+    );
   },
 
   create: async (payload: SppdMutationPayload): Promise<Sppd> => {
-    const items = getStoredItems();
-    const pegawaiId = payload.personil[0]?.pegawaiId;
-    if (!pegawaiId) throw new Error("Personil SPPD wajib dipilih.");
-    if (
-      items.some(
-        (item) =>
-          item.sptId === payload.sptId &&
-          item.personil.some((person) => person.pegawaiId === pegawaiId),
-      )
-    ) {
-      throw new Error("Personil tersebut sudah memiliki SPPD pada SPT ini.");
-    }
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<Sppd>("/api/sppd", payload);
+        return normalizeSinglePersonilSppd(res);
+      },
+      async () => {
+        const items = getStoredItems();
+        const pegawaiId = payload.personil[0]?.pegawaiId;
+        if (!pegawaiId) throw new Error("Personil SPPD wajib dipilih.");
+        if (
+          items.some(
+            (item) =>
+              item.sptId === payload.sptId &&
+              item.personil.some((person) => person.pegawaiId === pegawaiId),
+          )
+        ) {
+          throw new Error("Personil tersebut sudah memiliki SPPD pada SPT ini.");
+        }
 
-    const documentDate = new Date(payload.tanggalBerangkat);
-    if (Number.isNaN(documentDate.getTime())) {
-      throw new Error("Tanggal berangkat SPPD tidak valid.");
-    }
-    const number = penomoranService.requestNumber(
-      "SPPD",
-      payload.tanggalBerangkat,
-      getHighestSequenceForYear(items, documentDate.getFullYear()),
+        const documentDate = new Date(payload.tanggalBerangkat);
+        if (Number.isNaN(documentDate.getTime())) {
+          throw new Error("Tanggal berangkat SPPD tidak valid.");
+        }
+        const number = penomoranService.requestNumber(
+          "SPPD",
+          payload.tanggalBerangkat,
+          getHighestSequenceForYear(items, documentDate.getFullYear()),
+        );
+
+        try {
+          const numberedPayload: SppdMutationPayload = {
+            ...payload,
+            nomor: number,
+          };
+          const newItem: Sppd = normalizeSinglePersonilSppd({
+            ...numberedPayload,
+            id: createId(),
+            status: "Diproses",
+          });
+          const sharedFields = getSharedSppdFields(numberedPayload);
+          const synchronizedItems = items.map((item) =>
+            item.sptId === numberedPayload.sptId
+              ? { ...item, ...sharedFields }
+              : item,
+          );
+          const updated = applySeriesLifecycle([...synchronizedItems, newItem]);
+          saveStoredItems(updated);
+          return updated.find((item) => item.id === newItem.id) ?? newItem;
+        } catch (error) {
+          penomoranService.releaseNumber(
+            "SPPD",
+            number,
+            "Nomor dilepas karena penyimpanan SPPD gagal.",
+          );
+          throw error;
+        }
+      }
     );
-
-    try {
-      const numberedPayload: SppdMutationPayload = {
-        ...payload,
-        nomor: number,
-      };
-      const newItem: Sppd = normalizeSinglePersonilSppd({
-        ...numberedPayload,
-        id: createId(),
-        status: "Diproses",
-      });
-      const sharedFields = getSharedSppdFields(numberedPayload);
-      const synchronizedItems = items.map((item) =>
-        item.sptId === numberedPayload.sptId
-          ? { ...item, ...sharedFields }
-          : item,
-      );
-      const updated = applySeriesLifecycle([...synchronizedItems, newItem]);
-      saveStoredItems(updated);
-      return updated.find((item) => item.id === newItem.id) ?? newItem;
-    } catch (error) {
-      penomoranService.releaseNumber(
-        "SPPD",
-        number,
-        "Nomor dilepas karena penyimpanan SPPD gagal.",
-      );
-      throw error;
-    }
   },
 
   update: async (id: string, payload: SppdMutationPayload): Promise<Sppd> => {
-    const items = getStoredItems();
-    const existing = items.find((item) => item.id === id);
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Sppd>(`/api/sppd/${id}`, payload);
+        return normalizeSinglePersonilSppd(res);
+      },
+      async () => {
+        const items = getStoredItems();
+        const existing = items.find((item) => item.id === id);
 
-    if (!existing) {
-      throw new Error("Data SPPD tidak ditemukan.");
-    }
+        if (!existing) {
+          throw new Error("Data SPPD tidak ditemukan.");
+        }
 
-    const updatedItem: Sppd = normalizeSinglePersonilSppd({
-      ...payload,
-      nomor: existing.nomor,
-      id,
-      status: existing.status,
-    });
-    const sharedFields = getSharedSppdFields(payload);
-    const updated = items.map((item) => {
-      if (item.id === id) return updatedItem;
-      if (item.sptId === payload.sptId) return { ...item, ...sharedFields };
-      return item;
-    });
-    const lifecycleItems = applySeriesLifecycle(updated);
-    saveStoredItems(lifecycleItems);
-    return lifecycleItems.find((item) => item.id === id) ?? updatedItem;
+        const updatedItem: Sppd = normalizeSinglePersonilSppd({
+          ...payload,
+          nomor: existing.nomor,
+          id,
+          status: existing.status,
+        });
+        const sharedFields = getSharedSppdFields(payload);
+        const updated = items.map((item) => {
+          if (item.id === id) return updatedItem;
+          if (item.sptId === payload.sptId) return { ...item, ...sharedFields };
+          return item;
+        });
+        const lifecycleItems = applySeriesLifecycle(updated);
+        saveStoredItems(lifecycleItems);
+        return lifecycleItems.find((item) => item.id === id) ?? updatedItem;
+      }
+    );
   },
 
   remove: async (id: string): Promise<void> => {
-    const items = getStoredItems();
-    const existing = items.find((item) => item.id === id);
-    saveStoredItems(
-      applySeriesLifecycle(items.filter((item) => item.id !== id)),
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/sppd/${id}`);
+      },
+      async () => {
+        const items = getStoredItems();
+        const existing = items.find((item) => item.id === id);
+        saveStoredItems(
+          applySeriesLifecycle(items.filter((item) => item.id !== id)),
+        );
+        if (existing) {
+          penomoranService.releaseNumber(
+            "SPPD",
+            existing.nomor,
+            "Nomor dilepas karena SPPD dihapus oleh Administrator.",
+          );
+        }
+      }
     );
-    if (existing) {
-      penomoranService.releaseNumber(
-        "SPPD",
-        existing.nomor,
-        "Nomor dilepas karena SPPD dihapus oleh Administrator.",
-      );
-    }
   },
 
   markArchivedByNotaDinas: (notaDinasId: string): number => {
@@ -337,3 +378,4 @@ export const sppdService = {
     return updatedCount;
   },
 };
+

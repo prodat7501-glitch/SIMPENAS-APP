@@ -2,6 +2,7 @@ import { Pegawai } from "./pegawai.schema";
 import { jabatanService } from "@/modules/jabatan/jabatan.service";
 import { pangkatService } from "@/modules/pangkat/pangkat.service";
 import { sortPegawais } from "./pegawai-order";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_pegawai";
 const DEFAULT_KATEGORI_PEGAWAI = "ASN/Sekretariat";
@@ -78,4 +79,70 @@ export const pegawaiService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
   },
+  // REST API Integration (/api/pegawai)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Pegawai[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }>("/api/pegawai", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return sortPegawais(
+          list.map(normalizePegawai),
+          jabatanService.getAll(),
+          pangkatService.getAll()
+        );
+      },
+      () => pegawaiService.getAll()
+    );
+  },
+  apiGetById: async (id: string): Promise<Pegawai | null> => {
+    return withApiFallback(
+      async () => {
+        const item = await apiClient.get<Pegawai>(`/api/pegawai/${id}`);
+        return item ? normalizePegawai(item) : null;
+      },
+      () => pegawaiService.getAll().find((p) => p.id === id) || null
+    );
+  },
+  apiCreate: async (data: Partial<Pegawai>): Promise<Pegawai> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<Pegawai>("/api/pegawai", data);
+        return normalizePegawai(res);
+      },
+      async () => {
+        const items = pegawaiService.getAll();
+        const newItem = normalizePegawai({ ...data, id: data.id || `pg-${Date.now()}` } as Pegawai);
+        pegawaiService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+  apiUpdate: async (id: string, data: Partial<Pegawai>): Promise<Pegawai> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Pegawai>(`/api/pegawai/${id}`, data);
+        return normalizePegawai(res);
+      },
+      async () => {
+        const items = pegawaiService.getAll();
+        const updated = items.map((item) => (item.id === id ? normalizePegawai({ ...item, ...data }) : item));
+        pegawaiService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/pegawai/${id}`);
+        return true;
+      },
+      async () => {
+        const items = pegawaiService.getAll();
+        pegawaiService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
+

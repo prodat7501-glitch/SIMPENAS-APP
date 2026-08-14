@@ -5,6 +5,7 @@ import {
   type ArsipSpjRecord,
 } from "./arsip-spj.schema";
 import type { UploadArsipSpjInput } from "./arsip-spj.types";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const DATABASE_NAME = "simpenas-arsip-spj";
 const DATABASE_VERSION = 1;
@@ -62,22 +63,33 @@ const toMetadata = (record: ArsipSpjRecord): ArsipSpj =>
     diunggahOleh: record.diunggahOleh,
   });
 
+const localList = async (): Promise<ArsipSpj[]> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readonly");
+    const records = await runRequest(
+      transaction.objectStore(STORE_NAME).getAll() as IDBRequest<
+        ArsipSpjRecord[]
+      >,
+    );
+    return records
+      .map(toMetadata)
+      .sort((a, b) => b.diunggahPada.localeCompare(a.diunggahPada));
+  } finally {
+    database.close();
+  }
+};
+
 export const arsipSpjService = {
   list: async (): Promise<ArsipSpj[]> => {
-    const database = await openDatabase();
-    try {
-      const transaction = database.transaction(STORE_NAME, "readonly");
-      const records = await runRequest(
-        transaction.objectStore(STORE_NAME).getAll() as IDBRequest<
-          ArsipSpjRecord[]
-        >,
-      );
-      return records
-        .map(toMetadata)
-        .sort((a, b) => b.diunggahPada.localeCompare(a.diunggahPada));
-    } finally {
-      database.close();
-    }
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<ArsipSpj[] | { data?: ArsipSpj[]; items?: ArsipSpj[] }>("/api/arsip_spj");
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map((item: unknown) => arsipSpjSchema.parse(item));
+      },
+      () => localList()
+    );
   },
 
   upload: async ({
@@ -86,27 +98,39 @@ export const arsipSpjService = {
     diunggahOleh,
   }: UploadArsipSpjInput): Promise<ArsipSpj> => {
     validatePdf(file);
-    const database = await openDatabase();
-    try {
-      const transaction = database.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const existing = (await runRequest(store.get(notaDinasId))) as
-        ArsipSpjRecord | undefined;
-      const record: ArsipSpjRecord = {
-        id: existing?.id ?? createId(),
-        notaDinasId,
-        namaFile: file.name,
-        ukuranFile: file.size,
-        tipeFile: "application/pdf",
-        diunggahPada: new Date().toISOString(),
-        diunggahOleh,
-        file,
-      };
-      await runRequest(store.put(record));
-      return toMetadata(record);
-    } finally {
-      database.close();
-    }
+    return withApiFallback(
+      async () => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("nota_dinas_id", notaDinasId);
+        formData.append("diunggah_oleh", diunggahOleh);
+        const res = await apiClient.post<unknown>("/api/arsip_spj", formData, { skipTransform: true });
+        return arsipSpjSchema.parse(res);
+      },
+      async () => {
+        const database = await openDatabase();
+        try {
+          const transaction = database.transaction(STORE_NAME, "readwrite");
+          const store = transaction.objectStore(STORE_NAME);
+          const existing = (await runRequest(store.get(notaDinasId))) as
+            ArsipSpjRecord | undefined;
+          const record: ArsipSpjRecord = {
+            id: existing?.id ?? createId(),
+            notaDinasId,
+            namaFile: file.name,
+            ukuranFile: file.size,
+            tipeFile: "application/pdf",
+            diunggahPada: new Date().toISOString(),
+            diunggahOleh,
+            file,
+          };
+          await runRequest(store.put(record));
+          return toMetadata(record);
+        } finally {
+          database.close();
+        }
+      }
+    );
   },
 
   getFile: async (notaDinasId: string): Promise<ArsipSpjRecord> => {
@@ -173,3 +197,4 @@ export const arsipSpjService = {
     }
   },
 };
+

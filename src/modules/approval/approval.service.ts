@@ -12,6 +12,7 @@ import {
   canUserApproveDocument,
   getNotaDinasCreatorPegawaiId,
 } from "./approval-access";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const HISTORY_KEY = "simpenas_approval_history";
 export type ApprovalItem =
@@ -62,7 +63,16 @@ export const approvalService = {
     ];
     return pending.filter((item) => canUserApproveDocument(user, item, notas));
   },
-  listHistory: async (): Promise<ApprovalHistory[]> => getHistory(),
+  listHistory: async (): Promise<ApprovalHistory[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<ApprovalHistory[] | { data?: ApprovalHistory[]; items?: ApprovalHistory[] }>("/api/riwayat_approval");
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map(normalizeHistory);
+      },
+      () => getHistory()
+    );
+  },
   clearHistory: async (role: UserRole): Promise<number> => {
     if (role !== "Administrator") {
       throw new Error(
@@ -123,7 +133,17 @@ export const approvalService = {
       catatan: data.catatan.trim(),
       recipientPegawaiId,
     };
-    saveHistory([history, ...getHistory()]);
-    return history;
+
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<ApprovalHistory>("/api/riwayat_approval", history);
+        return normalizeHistory(res);
+      },
+      async () => {
+        saveHistory([history, ...getHistory()]);
+        return history;
+      }
+    );
   },
 };
+

@@ -2,6 +2,7 @@ import { pegawaiService } from "@/modules/pegawai/pegawai.service";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import type { UserAccountFormInput } from "./user-account.schema";
 import type { UserAccount } from "./user-account.types";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_user_accounts";
 
@@ -208,5 +209,62 @@ export const userAccountService = {
     saveAccounts(accounts);
     return updated;
   },
+
+  // REST API Integration (/api/akun_pengguna)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<UserAccount[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }>("/api/akun_pengguna", params);
+        return Array.isArray(res) ? res : res.data || res.items || [];
+      },
+      () => userAccountService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<UserAccount | null> => {
+    return withApiFallback(
+      async () => apiClient.get<UserAccount>(`/api/akun_pengguna/${id}`),
+      () => userAccountService.findById(id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<UserAccount>): Promise<UserAccount> => {
+    return withApiFallback(
+      async () => apiClient.post<UserAccount>("/api/akun_pengguna", data),
+      async () => {
+        const items = userAccountService.getAll();
+        const newItem = { ...data, id: data.id || `user-${Date.now()}` } as UserAccount;
+        saveAccounts([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<UserAccount>): Promise<UserAccount> => {
+    return withApiFallback(
+      async () => apiClient.patch<UserAccount>(`/api/akun_pengguna/${id}`, data),
+      async () => {
+        const items = userAccountService.getAll();
+        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        saveAccounts(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/akun_pengguna/${id}`);
+        return true;
+      },
+      async () => {
+        const items = userAccountService.getAll();
+        saveAccounts(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
+
 

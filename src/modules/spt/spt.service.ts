@@ -6,6 +6,7 @@ import {
   penandatanganService,
 } from "@/modules/penandatangan/penandatangan.service";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_spt";
 const RESERVATION_MIGRATION_KEY = "simpenas_spt_reservation_reconciled_v2";
@@ -49,7 +50,7 @@ const getSignerText = (penandatanganId: string) => {
 const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
   const signerText = getSignerText(item.penandatanganId);
   const isKetuaKpuSpt = signerText.includes("ketua kpu");
-  const filteredPersonil = item.personil.filter((person) =>
+  const filteredPersonil = (item.personil || []).filter((person) =>
     isKetuaKpuSpt
       ? isKomisionerPegawai(person.pegawaiId)
       : !isKomisionerPegawai(person.pegawaiId),
@@ -60,7 +61,7 @@ const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
   const normalized = {
     ...item,
     createdByPegawaiId:
-      item.createdByPegawaiId ?? item.personil[0]?.pegawaiId ?? "",
+      item.createdByPegawaiId ?? item.personil?.[0]?.pegawaiId ?? "",
     catatanRevisi: item.catatanRevisi ?? "",
     penandatanganSnapshot:
       item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
@@ -139,7 +140,7 @@ export const sptService = {
       if (item.notaDinasId) return normalizeSeparatedSptPersonil(item as Spt);
       const nota = notas.find((candidate) => {
         const ids = new Set(candidate.lampiran.map((row) => row.pegawaiId));
-        return item.personil.every((person) => ids.has(person.pegawaiId));
+        return (item.personil || []).every((person) => ids.has(person.pegawaiId));
       });
       if (!nota?.id) return item as Spt;
       return normalizeSeparatedSptPersonil({
@@ -157,6 +158,73 @@ export const sptService = {
     }
     return normalized;
   },
+
+  // REST API Integration (/api/spt)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Spt[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Spt[] | { data?: Spt[]; items?: Spt[] }>("/api/spt", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map(normalizeSeparatedSptPersonil);
+      },
+      () => sptService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<Spt | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Spt | null>(`/api/spt/${id}`);
+        return res ? normalizeSeparatedSptPersonil(res) : null;
+      },
+      () => sptService.getAll().find((s) => s.id === id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<Spt>): Promise<Spt> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<Spt>("/api/spt", data);
+        return normalizeSeparatedSptPersonil(res);
+      },
+      async () => {
+        const items = sptService.getAll();
+        const newItem = normalizeSeparatedSptPersonil({ ...data, id: data.id || `st-${Date.now()}` } as Spt);
+        sptService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<Spt>): Promise<Spt> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Spt>(`/api/spt/${id}`, data);
+        return normalizeSeparatedSptPersonil(res);
+      },
+      async () => {
+        const items = sptService.getAll();
+        const updated = items.map((item) => (item.id === id ? normalizeSeparatedSptPersonil({ ...item, ...data } as Spt) : item));
+        sptService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/spt/${id}`);
+        return true;
+      },
+      async () => {
+        const items = sptService.getAll();
+        sptService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
+
   generateNomor: (dateStr: string): string => {
     const items = sptService.getAll();
     const storedNumbers = items.map((item) => item.nomor);
@@ -191,3 +259,4 @@ export const sptService = {
   ) =>
     penomoranService.releaseNumber("SPT", number, note),
 };
+

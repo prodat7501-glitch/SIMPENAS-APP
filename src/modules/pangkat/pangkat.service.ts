@@ -1,4 +1,5 @@
 import { Pangkat } from "./pangkat.schema";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_pangkat";
 
@@ -26,4 +27,56 @@ export const pangkatService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
   },
+  // REST API Integration (/api/pangkat_golongan)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Pangkat[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Pangkat[] | { data?: Pangkat[]; items?: Pangkat[] }>("/api/pangkat_golongan", params);
+        return Array.isArray(res) ? res : res.data || res.items || [];
+      },
+      () => pangkatService.getAll()
+    );
+  },
+  apiGetById: async (id: string): Promise<Pangkat | null> => {
+    return withApiFallback(
+      async () => apiClient.get<Pangkat>(`/api/pangkat_golongan/${id}`),
+      () => pangkatService.getAll().find((p) => p.id === id) || null
+    );
+  },
+  apiCreate: async (data: Partial<Pangkat>): Promise<Pangkat> => {
+    return withApiFallback(
+      async () => apiClient.post<Pangkat>("/api/pangkat_golongan", data),
+      async () => {
+        const items = pangkatService.getAll();
+        const newItem = { ...data, id: data.id || `p${Date.now()}` } as Pangkat;
+        pangkatService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+  apiUpdate: async (id: string, data: Partial<Pangkat>): Promise<Pangkat> => {
+    return withApiFallback(
+      async () => apiClient.patch<Pangkat>(`/api/pangkat_golongan/${id}`, data),
+      async () => {
+        const items = pangkatService.getAll();
+        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        pangkatService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/pangkat_golongan/${id}`);
+        return true;
+      },
+      async () => {
+        const items = pangkatService.getAll();
+        pangkatService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
+

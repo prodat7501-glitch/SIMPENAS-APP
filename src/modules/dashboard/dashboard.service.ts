@@ -2,7 +2,7 @@ import type { ActivityItem } from "@/stores/activity.store";
 import type { UserRole, UserSession } from "@/stores/auth.store";
 import { dipaService } from "@/modules/dipa/dipa.service";
 import { keuanganService } from "@/modules/keuangan/keuangan.service";
-import type { DokumenKeuangan } from "@/modules/keuangan/keuangan.schema";
+import type { DokumenKeuangan, Spj } from "@/modules/keuangan/keuangan.schema";
 import { laporanService } from "@/modules/laporan/laporan.service";
 import { notaDinasService } from "@/modules/nota-dinas/nota-dinas.service";
 import { pegawaiService } from "@/modules/pegawai/pegawai.service";
@@ -184,7 +184,7 @@ export const dashboardService = {
     const sppds = sppdService.getAllSync();
     const reports = await laporanService.list();
     const spjs = await keuanganService.list(reports, { sppds, spts, notas });
-    const documents = spjs.flatMap((spj) => spj.dokumen);
+    const documents = spjs.flatMap((spj: Spj) => spj.dokumen);
     const travelTasks = buildTravelTasks({
       user,
       notas,

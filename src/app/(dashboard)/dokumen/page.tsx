@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useKeuangan } from "@/modules/keuangan/useKeuangan";
+import type { DokumenKeuangan, RincianKeuangan, Spj } from "@/modules/keuangan/keuangan.schema";
 import { useLaporan } from "@/modules/laporan/useLaporan";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
@@ -140,8 +141,8 @@ export default function DokumenPage() {
           }),
         };
       }),
-      ...spj.flatMap((x) =>
-        x.dokumen.map((d) => ({
+      ...spj.flatMap((x: Spj) =>
+        x.dokumen.map((d: DokumenKeuangan) => ({
           id: d.id,
           nomor: d.nomor,
           jenis: d.jenis,
@@ -177,10 +178,10 @@ export default function DokumenPage() {
                 title: "Rincian Penerima",
                 lines: sortByPegawaiOrder(
                   d.rincian,
-                  (row) => row.pegawaiId,
+                  (row: RincianKeuangan) => row.pegawaiId,
                   pegawai,
                 ).map(
-                  (r, index) =>
+                  (r: RincianKeuangan, index: number) =>
                     `${index + 1}. ${getPegawai(r.pegawaiId)} - Transport ${formatRupiah(r.uangTransport)}, Harian ${formatRupiah(r.uangHarian)}, Penginapan ${formatRupiah(r.penginapan)}, Jumlah ${formatRupiah(r.jumlah)}`,
                 ),
               },

@@ -4,6 +4,7 @@ import {
   type DIPA,
   type DipaFormData,
 } from "./dipa.schema";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_dipa";
 const LEGACY_PLACEHOLDER = "Belum diisi";
@@ -124,4 +125,71 @@ export const dipaService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
     }
   },
+
+  // REST API Integration (/api/anggaran_dipa)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<DIPA[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<DIPA[] | { data?: DIPA[]; items?: DIPA[] }>("/api/anggaran_dipa", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map((item: unknown, idx: number) => normalizeDipa(item as Partial<DIPA>, idx));
+      },
+      () => dipaService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<DIPA | null> => {
+    return withApiFallback(
+      async () => {
+        const item = await apiClient.get<DIPA | null>(`/api/anggaran_dipa/${id}`);
+        return item ? normalizeDipa(item, 0) : null;
+      },
+      () => dipaService.getAll().find((d) => d.id === id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<DIPA>): Promise<DIPA> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<DIPA>("/api/anggaran_dipa", data);
+        return normalizeDipa(res, 0);
+      },
+      async () => {
+        const items = dipaService.getAll();
+        const newItem = normalizeDipa({ ...data, id: data.id || `dipa-${Date.now()}` }, items.length);
+        dipaService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<DIPA>): Promise<DIPA> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<DIPA>(`/api/anggaran_dipa/${id}`, data);
+        return normalizeDipa(res, 0);
+      },
+      async () => {
+        const items = dipaService.getAll();
+        const updated = items.map((item, idx) => (item.id === id ? normalizeDipa({ ...item, ...data }, idx) : item));
+        dipaService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/anggaran_dipa/${id}`);
+        return true;
+      },
+      async () => {
+        const items = dipaService.getAll();
+        dipaService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
+

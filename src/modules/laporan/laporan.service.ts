@@ -1,5 +1,6 @@
 import type { Laporan } from "./laporan.schema";
 import type { LaporanPayload, LaporanStatus } from "./laporan.types";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const DATABASE_NAME = "simpenas-laporan-perjalanan";
 const DATABASE_VERSION = 1;
@@ -189,8 +190,17 @@ const ensureLegacyMigration = async () => {
 };
 
 const getItems = async (): Promise<Laporan[]> => {
-  await ensureLegacyMigration();
-  return (await readDatabaseItems()).map(normalizeLaporan);
+  return withApiFallback(
+    async () => {
+      const res = await apiClient.get<Laporan[] | { data?: Laporan[]; items?: Laporan[] }>("/api/laporan_perjalanan");
+      const list = Array.isArray(res) ? res : res.data || res.items || [];
+      return list.map(normalizeLaporan);
+    },
+    async () => {
+      await ensureLegacyMigration();
+      return (await readDatabaseItems()).map(normalizeLaporan);
+    }
+  );
 };
 
 const replaceAll = async (items: Laporan[]): Promise<void> => {
@@ -201,50 +211,94 @@ const replaceAll = async (items: Laporan[]): Promise<void> => {
 
 export const laporanService = {
   list: getItems,
+  apiGetById: async (id: string): Promise<Laporan | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Laporan | null>(`/api/laporan_perjalanan/${id}`);
+        return res ? normalizeLaporan(res) : null;
+      },
+      async () => {
+        const items = await getItems();
+        return items.find((l) => l.id === id) || null;
+      }
+    );
+  },
   create: async (payload: LaporanPayload) => {
-    const items = await getItems();
-    if (items.some((item) => item.sptId === payload.sptId)) {
-      throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
-    }
-    const item: Laporan = normalizeLaporan({ ...payload, id: createId() });
-    await putDatabaseItem(item);
-    return item;
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<Laporan>("/api/laporan_perjalanan", payload);
+        return normalizeLaporan(res);
+      },
+      async () => {
+        const items = await getItems();
+        if (items.some((item) => item.sptId === payload.sptId)) {
+          throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
+        }
+        const item: Laporan = normalizeLaporan({ ...payload, id: createId() });
+        await putDatabaseItem(item);
+        return item;
+      }
+    );
   },
   update: async (id: string, payload: LaporanPayload) => {
-    const items = await getItems();
-    if (!items.some((item) => item.id === id)) {
-      throw new Error("Laporan tidak ditemukan.");
-    }
-    if (items.some((item) => item.id !== id && item.sptId === payload.sptId)) {
-      throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
-    }
-    const updated: Laporan = normalizeLaporan({ ...payload, id });
-    await putDatabaseItem(updated);
-    return updated;
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Laporan>(`/api/laporan_perjalanan/${id}`, payload);
+        return normalizeLaporan(res);
+      },
+      async () => {
+        const items = await getItems();
+        if (!items.some((item) => item.id === id)) {
+          throw new Error("Laporan tidak ditemukan.");
+        }
+        if (items.some((item) => item.id !== id && item.sptId === payload.sptId)) {
+          throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
+        }
+        const updated: Laporan = normalizeLaporan({ ...payload, id });
+        await putDatabaseItem(updated);
+        return updated;
+      }
+    );
   },
   remove: async (id: string) => {
-    await ensureLegacyMigration();
-    await deleteDatabaseItem(id);
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/laporan_perjalanan/${id}`);
+      },
+      async () => {
+        await ensureLegacyMigration();
+        await deleteDatabaseItem(id);
+      }
+    );
   },
   verify: async (
     id: string,
     status: Extract<LaporanStatus, "Perlu Revisi" | "Terverifikasi">,
     catatan: string,
   ) => {
-    const items = await getItems();
-    const target = items.find((item) => item.id === id);
-    if (!target) throw new Error("Laporan tidak ditemukan.");
-    if (status === "Perlu Revisi" && catatan.trim().length < 3) {
-      throw new Error("Catatan revisi wajib diisi.");
-    }
-    const updated = normalizeLaporan({
-      ...target,
-      status,
-      catatanVerifikasi: catatan,
-    });
-    await putDatabaseItem(updated);
-    return updated;
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Laporan>(`/api/laporan_perjalanan/${id}`, { status, catatanVerifikasi: catatan });
+        return normalizeLaporan(res);
+      },
+      async () => {
+        const items = await getItems();
+        const target = items.find((item) => item.id === id);
+        if (!target) throw new Error("Laporan tidak ditemukan.");
+        if (status === "Perlu Revisi" && catatan.trim().length < 3) {
+          throw new Error("Catatan revisi wajib diisi.");
+        }
+        const updated = normalizeLaporan({
+          ...target,
+          status,
+          catatanVerifikasi: catatan,
+        });
+        await putDatabaseItem(updated);
+        return updated;
+      }
+    );
   },
   exportRecords: getItems,
   replaceAll,
 };
+

@@ -3,6 +3,7 @@ import type {
   Penandatangan,
   PenandatanganSnapshot,
 } from "./penandatangan.schema";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_penandatangan";
 
@@ -165,7 +166,74 @@ export const penandatanganService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
   },
+
+  // REST API Integration (/api/pejabat_penandatangan)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Penandatangan[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }>("/api/pejabat_penandatangan", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return ensureRequiredSigners(list).map(normalizePenandatangan);
+      },
+      () => penandatanganService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<Penandatangan | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Penandatangan>(`/api/pejabat_penandatangan/${id}`);
+        return res ? normalizePenandatangan(res) : null;
+      },
+      () => penandatanganService.getAll().find((p) => p.id === id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<Penandatangan>): Promise<Penandatangan> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<Penandatangan>("/api/pejabat_penandatangan", data);
+        return normalizePenandatangan(res);
+      },
+      async () => {
+        const items = penandatanganService.getAll();
+        const newItem = normalizePenandatangan({ ...data, id: data.id || `pe-${Date.now()}` } as Penandatangan);
+        penandatanganService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<Penandatangan>): Promise<Penandatangan> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<Penandatangan>(`/api/pejabat_penandatangan/${id}`, data);
+        return normalizePenandatangan(res);
+      },
+      async () => {
+        const items = penandatanganService.getAll();
+        const updated = items.map((item) => (item.id === id ? normalizePenandatangan({ ...item, ...data }) : item));
+        penandatanganService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/pejabat_penandatangan/${id}`);
+        return true;
+      },
+      async () => {
+        const items = penandatanganService.getAll();
+        penandatanganService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
+
 
 export const isPenandatanganAvailable = (
   item: Penandatangan,

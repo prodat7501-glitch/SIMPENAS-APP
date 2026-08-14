@@ -7,6 +7,7 @@ import {
   createPenandatanganSnapshot,
   penandatanganService,
 } from "@/modules/penandatangan/penandatangan.service";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_nota_dinas";
 
@@ -189,7 +190,7 @@ const normalizeNotaDinas = (item: LegacyNotaDinas): NotaDinas => {
   const signer = penandatanganService
     .getAll()
     .find((candidate) => candidate.id === item.penandatanganId);
-  const lampiran = item.lampiran.map((row) =>
+  const lampiran = (item.lampiran || []).map((row) =>
     normalizeLampiranItem(row, item.jenis),
   );
 
@@ -365,6 +366,73 @@ export const notaDinasService = {
     }
     return normalized;
   },
+
+  // REST API Integration (/api/nota_dinas)
+  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<NotaDinas[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NotaDinas[] | { data?: NotaDinas[]; items?: NotaDinas[] }>("/api/nota_dinas", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map(normalizeNotaDinas);
+      },
+      () => notaDinasService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<NotaDinas | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NotaDinas | null>(`/api/nota_dinas/${id}`);
+        return res ? normalizeNotaDinas(res) : null;
+      },
+      () => notaDinasService.getAll().find((n) => n.id === id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<NotaDinas>): Promise<NotaDinas> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.post<NotaDinas>("/api/nota_dinas", data);
+        return normalizeNotaDinas(res);
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        const newItem = normalizeNotaDinas({ ...data, id: data.id || `nd-${Date.now()}` } as LegacyNotaDinas);
+        notaDinasService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<NotaDinas>): Promise<NotaDinas> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.patch<NotaDinas>(`/api/nota_dinas/${id}`, data);
+        return normalizeNotaDinas(res);
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        const updated = items.map((item) => (item.id === id ? normalizeNotaDinas({ ...item, ...data } as LegacyNotaDinas) : item));
+        notaDinasService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/nota_dinas/${id}`);
+        return true;
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        notaDinasService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
+
   generateNomor: (dateStr: string): string => {
     const items = notaDinasService.getAll();
     const storedNumbers = items.map((item) => item.nomor);
@@ -453,3 +521,4 @@ export const notaDinasService = {
     );
   },
 };
+

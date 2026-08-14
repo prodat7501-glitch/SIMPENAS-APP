@@ -7,6 +7,7 @@ import {
   type NumberStatus,
   type NumberingConfig,
 } from "./penomoran.schema";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const CONFIG_KEY = "simpenas_numbering_config";
 const HISTORY_KEY = "simpenas_numbering_history";
@@ -193,7 +194,30 @@ export const penomoranService = {
       };
     });
   },
+
+  apiListConfigs: async (): Promise<NumberingConfig[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NumberingConfig[] | { data?: NumberingConfig[]; items?: NumberingConfig[] }>("/api/pengaturan_penomoran");
+        return Array.isArray(res) ? res : res.data || res.items || [];
+      },
+      () => penomoranService.list()
+    );
+  },
+
   history: () => getHistory(),
+
+  apiListHistory: async (): Promise<NumberHistory[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NumberHistory[] | { data?: NumberHistory[]; items?: NumberHistory[] }>("/api/riwayat_penomoran");
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return normalizeHistory(list);
+      },
+      () => getHistory()
+    );
+  },
+
   preview: (
     config: NumberingConfig,
     date = new Date(),
@@ -480,3 +504,4 @@ export const penomoranService = {
     return updated;
   },
 };
+
