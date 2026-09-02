@@ -7,6 +7,9 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { usePegawai } from "@/modules/pegawai/usePegawai";
+import { useJabatan } from "@/modules/jabatan/useJabatan";
+import { UserCheck, Sparkles } from "lucide-react";
 import {
   DEFAULT_PERAN_DOKUMEN,
   JENIS_DOKUMEN_PENANDATANGAN,
@@ -40,6 +43,18 @@ export function PenandatanganForm({
   onSubmit,
   onCancel,
 }: PenandatanganFormProps) {
+  const { items: pegawais } = usePegawai();
+  const { items: jabatans } = useJabatan();
+  const [selectedPegawaiId, setSelectedPegawaiId] = useState<string>(() => {
+    if (!initialValues) return "";
+    const matched = pegawais.find(
+      (p) =>
+        (p.nip && p.nip === initialValues.nip) ||
+        p.nama.toLowerCase() === initialValues.nama.toLowerCase(),
+    );
+    return matched?.id || "";
+  });
+
   const [customRoles, setCustomRoles] = useState<string[]>(readCustomRoles);
   const [showRoleInput, setShowRoleInput] = useState(false);
   const [newRole, setNewRole] = useState("");
@@ -80,6 +95,24 @@ export function PenandatanganForm({
     }
   }, [initialValues, setValue]);
 
+  const handleSelectPegawai = (pegawaiId: string) => {
+    setSelectedPegawaiId(pegawaiId);
+    if (!pegawaiId) return;
+
+    const selected = pegawais.find((p) => p.id === pegawaiId);
+    if (selected) {
+      setValue("nama", selected.nama, { shouldValidate: true });
+      setValue("nip", selected.nip || "", { shouldValidate: true });
+
+      const currentJabatan = jabatans.find((j) => j.id === selected.jabatanId);
+      if (currentJabatan?.nama) {
+        setValue("jabatanPenandatangan", currentJabatan.nama, {
+          shouldValidate: true,
+        });
+      }
+    }
+  };
+
   const handleAddRole = () => {
     const role = newRole.trim();
     if (!role || roleOptions.includes(role)) return;
@@ -105,41 +138,76 @@ export function PenandatanganForm({
       })}
       className="space-y-4"
     >
-      <div>
-        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          NIP Pejabat
+      {/* Selector Pegawai Otomatis */}
+      <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-1.5">
+        <label className="block text-xs font-bold text-primary uppercase flex items-center gap-1.5">
+          <UserCheck className="w-4 h-4 text-primary" />
+          <span>
+            Pilih dari Master Pegawai (Otomatis Isi Nama, NIP & Jabatan)
+          </span>
         </label>
-        <Input
-          placeholder="Contoh: 19800411 200801 1 003"
-          {...register("nip")}
-          error={!!errors.nip}
-        />
-        {errors.nip && (
-          <p className="text-[10px] text-danger font-bold mt-1">
-            {errors.nip.message}
-          </p>
-        )}
+        <Select
+          value={selectedPegawaiId}
+          onChange={(e) => handleSelectPegawai(e.target.value)}
+          className="text-xs bg-card"
+        >
+          <option value="">-- Pilih Pegawai dari Daftar --</option>
+          {pegawais.map((pegawai) => {
+            const jab = jabatans.find((j) => j.id === pegawai.jabatanId);
+            return (
+              <option key={pegawai.id} value={pegawai.id}>
+                {pegawai.nama} — NIP: {pegawai.nip || "Tanpa NIP"}
+                {jab ? ` (${jab.nama})` : ""}
+              </option>
+            );
+          })}
+        </Select>
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-primary shrink-0" />
+          Memilih pegawai akan otomatis mengisi kolom <strong>
+            Nama
+          </strong>, <strong>NIP</strong>, dan <strong>Jabatan Cetak</strong> di
+          bawah.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
+            NIP Pejabat <span className="text-destructive">*</span>
+          </label>
+          <Input
+            placeholder="Contoh: 19800411 200801 1 003"
+            {...register("nip")}
+            error={!!errors.nip}
+          />
+          {errors.nip && (
+            <p className="text-[10px] text-danger font-bold mt-1">
+              {errors.nip.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
+            Nama Pejabat <span className="text-destructive">*</span>
+          </label>
+          <Input
+            placeholder="Contoh: Faisal Yusuf, S.E"
+            {...register("nama")}
+            error={!!errors.nama}
+          />
+          {errors.nama && (
+            <p className="text-[10px] text-danger font-bold mt-1">
+              {errors.nama.message}
+            </p>
+          )}
+        </div>
       </div>
 
       <div>
         <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          Nama Pejabat
-        </label>
-        <Input
-          placeholder="Contoh: Faisal Yusuf, S.E"
-          {...register("nama")}
-          error={!!errors.nama}
-        />
-        {errors.nama && (
-          <p className="text-[10px] text-danger font-bold mt-1">
-            {errors.nama.message}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">
-          Jabatan Cetak (Kop Surat)
+          Jabatan Cetak (Kop Surat) <span className="text-destructive">*</span>
         </label>
         <Input
           placeholder="Contoh: Pejabat Pembuat Komitmen (PPK)"
@@ -153,11 +221,11 @@ export function PenandatanganForm({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <div className="mb-2 flex items-center justify-between gap-2">
             <label className="block text-xs font-bold text-muted-foreground uppercase">
-              Peran Dokumen
+              Peran Dokumen <span className="text-destructive">*</span>
             </label>
             <Button
               type="button"
@@ -237,13 +305,14 @@ export function PenandatanganForm({
 
       <fieldset className="space-y-2 rounded-xl border border-border p-3">
         <legend className="px-1 text-xs font-bold uppercase text-muted-foreground">
-          Digunakan pada Jenis Dokumen
+          Digunakan pada Jenis Dokumen{" "}
+          <span className="text-destructive">*</span>
         </legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {JENIS_DOKUMEN_PENANDATANGAN.map((jenis) => (
             <label
               key={jenis}
-              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground"
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
             >
               <input
                 type="checkbox"
