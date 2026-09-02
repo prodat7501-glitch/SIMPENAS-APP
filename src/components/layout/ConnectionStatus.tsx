@@ -222,6 +222,10 @@ export function ConnectionStatus() {
                   <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
                     <CheckCircle2 className="w-3 h-3 shrink-0" /> Terhubung
                   </span>
+                ) : isServerOnline ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
+                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Siap / Cloud
+                  </span>
                 ) : (
                   <span className="text-muted-foreground">Otomatis saat Online</span>
                 )}
