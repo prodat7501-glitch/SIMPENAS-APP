@@ -220,10 +220,60 @@ export const userAccountService = {
   }): Promise<UserAccount[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<
-          UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }
-        >("/api/v1/akun-pengguna", params);
-        return Array.isArray(res) ? res : res.data || res.items || [];
+        const [res, pegawais] = await Promise.all([
+          apiClient.get<
+            UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }
+          >("/api/v1/akun-pengguna", params),
+          pegawaiService.apiGetAll(),
+        ]);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        const accounts = [...list];
+
+        // 1. Pastikan akun admin utama ada
+        if (
+          !accounts.some(
+            (account) =>
+              account.id === "user-admin" ||
+              account.username.toLowerCase() === "admin",
+          )
+        ) {
+          const adminAccount = createAdministratorAccount();
+          try {
+            await apiClient.post("/api/v1/akun-pengguna", adminAccount);
+            accounts.unshift(adminAccount);
+          } catch {
+            accounts.unshift(adminAccount);
+          }
+        }
+
+        const usedUsernames = new Set(
+          accounts.map((account) => account.username.toLowerCase().trim()),
+        );
+
+        // 2. Buat akun otomatis untuk setiap pegawai yang belum memiliki akun
+        for (const pegawai of pegawais) {
+          if (!pegawai.id) continue;
+
+          const accountIndex = accounts.findIndex(
+            (account) => account.pegawaiId === pegawai.id,
+          );
+
+          if (accountIndex === -1) {
+            const newAccount = createEmployeeAccount(pegawai, usedUsernames);
+            try {
+              await apiClient.post("/api/v1/akun-pengguna", newAccount);
+              accounts.push(newAccount);
+            } catch {
+              accounts.push(newAccount);
+            }
+          }
+        }
+
+        return accounts.sort((left, right) => {
+          if (left.id === "user-admin" || left.username === "admin") return -1;
+          if (right.id === "user-admin" || right.username === "admin") return 1;
+          return (left.name || "").localeCompare(right.name || "", "id");
+        });
       },
       () => userAccountService.getAll(),
     );
