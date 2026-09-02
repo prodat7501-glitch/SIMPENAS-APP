@@ -77,7 +77,9 @@ export const syncService = {
       }
 
       // Coba root endpoint API
-      const rootUrl = baseUrl.endsWith("/api/v1") ? baseUrl : `${baseUrl}/api/v1`;
+      const rootUrl = baseUrl.endsWith("/api/v1")
+        ? baseUrl
+        : `${baseUrl}/api/v1`;
       const rootRes = await fetch(rootUrl, { method: "GET" }).catch(() => null);
       if (rootRes && (rootRes.status === 200 || rootRes.status === 404)) {
         return {
@@ -102,7 +104,10 @@ export const syncService = {
         online: false,
         latency: 0,
         dbConnected: false,
-        message: err instanceof Error ? err.message : "Tidak dapat terhubung ke server",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Tidak dapat terhubung ke server",
         testedUrl: baseUrl,
       };
     }
@@ -226,7 +231,8 @@ export const syncService = {
         success: false,
         totalSynced,
         details,
-        error: err instanceof Error ? err.message : "Sinkronisasi sebagian gagal.",
+        error:
+          err instanceof Error ? err.message : "Sinkronisasi sebagian gagal.",
       };
     }
   },

@@ -198,16 +198,19 @@ export function ConnectionStatus() {
           <div className="py-3 space-y-2.5 text-xs">
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
               <span className="text-muted-foreground flex items-center gap-1.5">
-                <Cloud className="w-3.5 h-3.5 text-primary shrink-0" /> Server Backend
+                <Cloud className="w-3.5 h-3.5 text-primary shrink-0" /> Server
+                Backend
               </span>
               <span className="font-semibold text-foreground text-right">
                 {isServerOnline ? (
                   <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
-                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Terhubung ({latency}ms)
+                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Terhubung (
+                    {latency}ms)
                   </span>
                 ) : (
                   <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 justify-end">
-                    <AlertTriangle className="w-3 h-3 shrink-0" /> Offline / Standby
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Offline /
+                    Standby
                   </span>
                 )}
               </span>
@@ -215,7 +218,8 @@ export function ConnectionStatus() {
 
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
               <span className="text-muted-foreground flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-primary shrink-0" /> Database MySQL
+                <Database className="w-3.5 h-3.5 text-primary shrink-0" />{" "}
+                Database MySQL
               </span>
               <span className="font-semibold text-foreground text-right">
                 {dbConnected ? (
@@ -227,7 +231,9 @@ export function ConnectionStatus() {
                     <CheckCircle2 className="w-3 h-3 shrink-0" /> Siap / Cloud
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">Otomatis saat Online</span>
+                  <span className="text-muted-foreground">
+                    Otomatis saat Online
+                  </span>
                 )}
               </span>
             </div>
@@ -235,9 +241,7 @@ export function ConnectionStatus() {
             <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
               <span>Pemeriksaan terakhir</span>
               <span>
-                {lastChecked
-                  ? lastChecked.toLocaleTimeString("id-ID")
-                  : "-"}
+                {lastChecked ? lastChecked.toLocaleTimeString("id-ID") : "-"}
               </span>
             </div>
           </div>
@@ -254,7 +258,8 @@ export function ConnectionStatus() {
             <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
               <Radio className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
-                Data Anda aman tersimpan di browser perangkat ini. Saat server terhubung kembali, klik tombol sinkronisasi di bawah.
+                Data Anda aman tersimpan di browser perangkat ini. Saat server
+                terhubung kembali, klik tombol sinkronisasi di bawah.
               </span>
             </div>
           )}
