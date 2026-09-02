@@ -18,8 +18,12 @@ export default function UserAccountPage() {
   const { hasPermission } = useAuth();
   const { items, update, remove } = useUserAccounts();
   const { addToast } = useToast();
-  const [editingAccount, setEditingAccount] = useState<UserAccount | null>(null);
-  const [deletingAccount, setDeletingAccount] = useState<UserAccount | null>(null);
+  const [editingAccount, setEditingAccount] = useState<UserAccount | null>(
+    null,
+  );
+  const [deletingAccount, setDeletingAccount] = useState<UserAccount | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canRead = hasPermission("Master Akun Pengguna", "R");
@@ -97,8 +101,9 @@ export default function UserAccountPage() {
 
       <Alert variant="info" title="Akun Individual">
         Akun dibuat otomatis untuk setiap data Master Pegawai. Kata sandi awal
-        akun baru adalah <strong>{DEFAULT_MOCK_PASSWORD}</strong>. Gunakan tombol
-        Ubah untuk mengganti username/password, atau tombol Hapus untuk menghapus akun yang sudah tidak digunakan.
+        akun baru adalah <strong>{DEFAULT_MOCK_PASSWORD}</strong>. Gunakan
+        tombol Ubah untuk mengganti username/password, atau tombol Hapus untuk
+        menghapus akun yang sudah tidak digunakan.
       </Alert>
 
       <UserAccountTable
@@ -151,15 +156,21 @@ export default function UserAccountPage() {
             <div className="p-3 rounded-xl bg-muted/60 space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Nama Pegawai:</span>
-                <span className="font-bold text-foreground">{deletingAccount.name}</span>
+                <span className="font-bold text-foreground">
+                  {deletingAccount.name}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Username:</span>
-                <span className="font-mono font-semibold text-foreground">@{deletingAccount.username}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  @{deletingAccount.username}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Role:</span>
-                <span className="font-semibold text-foreground">{deletingAccount.role}</span>
+                <span className="font-semibold text-foreground">
+                  {deletingAccount.role}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Email:</span>
@@ -168,7 +179,8 @@ export default function UserAccountPage() {
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Tindakan ini akan menghapus akses login untuk pengguna ini. Data riwayat dokumen dan transaksi pegawai tetap tersimpan aman.
+              Tindakan ini akan menghapus akses login untuk pengguna ini. Data
+              riwayat dokumen dan transaksi pegawai tetap tersimpan aman.
             </p>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-border">

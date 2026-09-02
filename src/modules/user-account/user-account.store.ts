@@ -40,4 +40,3 @@ export const useUserAccountStore = create<UserAccountState>((set) => ({
     }
   },
 }));
-

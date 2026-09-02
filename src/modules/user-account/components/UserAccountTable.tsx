@@ -61,7 +61,8 @@ export function UserAccountTable({
           <tbody className="divide-y divide-border">
             {filteredItems.map((item, index) => {
               const isMainAdmin =
-                item.id === "user-admin" || item.username.toLowerCase() === "admin";
+                item.id === "user-admin" ||
+                item.username.toLowerCase() === "admin";
 
               return (
                 <tr key={item.id} className="hover:bg-muted/30">
