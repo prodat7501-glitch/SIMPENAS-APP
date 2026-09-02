@@ -52,114 +52,19 @@ const normalizePenandatangan = (item: Penandatangan): Penandatangan => ({
       : inferDocumentTypes(item),
 });
 
-const defaultPenandatangan: Penandatangan[] = [
-  {
-    id: "pe1",
-    nip: "19750824 200212 1 002",
-    nama: "Herman Monoarfa, M.Si",
-    jabatanPenandatangan: "Kuasa Pengguna Anggaran (KPA)",
-    peran: "KPA",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: [...FINANCIAL_DOCUMENT_TYPES],
-    status: "Aktif",
-  },
-  {
-    id: "pe2",
-    nip: "19800411 200801 1 003",
-    nama: "Faisal Yusuf, S.E",
-    jabatanPenandatangan: "Pejabat Pembuat Komitmen (PPK)",
-    peran: "PPK",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: ["SPPD", ...FINANCIAL_DOCUMENT_TYPES],
-    status: "Aktif",
-  },
-  {
-    id: "pe3",
-    nip: "19880215 201401 2 001",
-    nama: "Sri Wahyuni, A.Md",
-    jabatanPenandatangan: "Bendahara Pengeluaran KPU Kabupaten Gorontalo",
-    peran: "Bendahara",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: [...FINANCIAL_DOCUMENT_TYPES],
-    status: "Aktif",
-  },
-  {
-    id: "pe4",
-    nip: "19790315 200501 1 001",
-    nama: "Sekretaris KPU Kabupaten Gorontalo",
-    jabatanPenandatangan: "Sekretaris KPU Kabupaten Gorontalo",
-    peran: "Sekretaris KPU",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: ["SPT"],
-    status: "Aktif",
-  },
-  {
-    id: "pe5",
-    nip: "19700101 200001 1 001",
-    nama: "Ketua KPU Kabupaten Gorontalo",
-    jabatanPenandatangan: "Ketua KPU Kabupaten Gorontalo",
-    peran: "Ketua KPU",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: ["SPT"],
-    status: "Aktif",
-  },
-  {
-    id: "pe6",
-    nip: "19850212 201201 1 001",
-    nama: "Kepala Sub Bagian Keuangan, Umum dan Logistik",
-    jabatanPenandatangan: "Kepala Sub Bagian Keuangan, Umum dan Logistik",
-    peran: "Kepala Sub Bagian",
-    berlakuMulai: "",
-    berlakuSampai: "",
-    jenisDokumen: ["Nota Dinas"],
-    status: "Aktif",
-  },
-];
-
-const ensureRequiredSigners = (items: Penandatangan[]) => {
-  const text = items
-    .map((item) => `${item.jabatanPenandatangan} ${item.peran}`)
-    .join(" ")
-    .toLowerCase();
-  const requiredDefaults = defaultPenandatangan.filter((item) => {
-    const signerText =
-      `${item.jabatanPenandatangan} ${item.peran}`.toLowerCase();
-    if (signerText.includes("sekretaris")) return !text.includes("sekretaris");
-    if (signerText.includes("ketua kpu")) return !text.includes("ketua kpu");
-    if (
-      signerText.includes("kasubbag") ||
-      signerText.includes("kepala sub bagian") ||
-      signerText.includes("kepala subbagian")
-    ) {
-      return (
-        !text.includes("kasubbag") &&
-        !text.includes("kepala sub bagian") &&
-        !text.includes("kepala subbagian")
-      );
-    }
-    return false;
-  });
-  return [...items, ...requiredDefaults];
-};
-
 export const penandatanganService = {
   getAll: (): Penandatangan[] => {
-    if (typeof window === "undefined") return defaultPenandatangan;
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultPenandatangan));
-      return defaultPenandatangan.map(normalizePenandatangan);
+      return [];
     }
-    const merged = ensureRequiredSigners(JSON.parse(stored)).map(
-      normalizePenandatangan,
-    );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    return merged;
+    try {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed.map(normalizePenandatangan) : [];
+    } catch {
+      return [];
+    }
   },
   saveAll: (data: Penandatangan[]) => {
     if (typeof window !== "undefined") {
@@ -168,25 +73,36 @@ export const penandatanganService = {
   },
 
   // REST API Integration (/api/v1/pejabat-penandatangan)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Penandatangan[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Penandatangan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }>("/api/v1/pejabat-penandatangan", params);
+        const res = await apiClient.get<
+          Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }
+        >("/api/v1/pejabat-penandatangan", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return ensureRequiredSigners(list).map(normalizePenandatangan);
+        return list.map(normalizePenandatangan);
       },
-      () => penandatanganService.getAll()
+      () => penandatanganService.getAll(),
     );
   },
 
   apiGetById: async (id: string): Promise<Penandatangan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Penandatangan | { data?: Penandatangan }>(`/api/v1/pejabat-penandatangan/${id}`);
-        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        const res = await apiClient.get<
+          Penandatangan | { data?: Penandatangan }
+        >(`/api/v1/pejabat-penandatangan/${id}`);
+        const unwrapped =
+          (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return unwrapped ? normalizePenandatangan(unwrapped) : null;
       },
-      () => penandatanganService.getAll().find((p) => p.id === id) || null
+      () => penandatanganService.getAll().find((p) => p.id === id) || null,
     );
   },
 
@@ -194,32 +110,46 @@ export const penandatanganService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `pe-${Date.now()}`, ...data };
-        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/v1/pejabat-penandatangan", payload);
-        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        const res = await apiClient.post<
+          Penandatangan | { data?: Penandatangan }
+        >("/api/v1/pejabat-penandatangan", payload);
+        const unwrapped =
+          (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
       },
       async () => {
         const items = penandatanganService.getAll();
-        const newItem = normalizePenandatangan({ ...data, id: data.id || `pe-${Date.now()}` } as Penandatangan);
+        const newItem = normalizePenandatangan({
+          ...data,
+          id: data.id || `pe-${Date.now()}`,
+        } as Penandatangan);
         penandatanganService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
 
-  apiUpdate: async (id: string, data: Partial<Penandatangan>): Promise<Penandatangan> => {
+  apiUpdate: async (
+    id: string,
+    data: Partial<Penandatangan>,
+  ): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Penandatangan | { data?: Penandatangan }>(`/api/v1/pejabat-penandatangan/${id}`, data);
-        const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
+        const res = await apiClient.put<
+          Penandatangan | { data?: Penandatangan }
+        >(`/api/v1/pejabat-penandatangan/${id}`, data);
+        const unwrapped =
+          (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
       },
       async () => {
         const items = penandatanganService.getAll();
-        const updated = items.map((item) => (item.id === id ? normalizePenandatangan({ ...item, ...data }) : item));
+        const updated = items.map((item) =>
+          item.id === id ? normalizePenandatangan({ ...item, ...data }) : item,
+        );
         penandatanganService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
 
@@ -233,27 +163,32 @@ export const penandatanganService = {
         const items = penandatanganService.getAll();
         penandatanganService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
 
-  apiBulkCreate: async (data: Partial<Penandatangan>[]): Promise<Penandatangan[]> => {
+  apiBulkCreate: async (
+    data: Partial<Penandatangan>[],
+  ): Promise<Penandatangan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Penandatangan[] | { data?: Penandatangan[] }>("/api/v1/pejabat-penandatangan", data);
+        const res = await apiClient.bulkPost<
+          Penandatangan[] | { data?: Penandatangan[] }
+        >("/api/v1/pejabat-penandatangan", data);
         const list = Array.isArray(res) ? res : res.data || [];
         return list.map(normalizePenandatangan);
       },
       async () => {
         const items = penandatanganService.getAll();
-        const normalized = data.map((d) => normalizePenandatangan(d as Penandatangan));
+        const normalized = data.map((d) =>
+          normalizePenandatangan(d as Penandatangan),
+        );
         penandatanganService.saveAll([...items, ...normalized]);
         return normalized;
-      }
+      },
     );
   },
 };
-
 
 export const isPenandatanganAvailable = (
   item: Penandatangan,
