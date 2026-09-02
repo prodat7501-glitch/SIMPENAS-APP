@@ -92,7 +92,7 @@ export function ConnectionStatus() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Badge Button */}
+      {/* Badge Button (Icon Bernapas Saja Tanpa Tulisan) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Status Koneksi Server Backend"
@@ -104,22 +104,31 @@ export function ConnectionStatus() {
               : "Memeriksa Status Server..."
         }
         className={cn(
-          "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer",
+          "relative flex items-center justify-center p-2 rounded-xl transition-all border shadow-xs cursor-pointer",
           isServerOnline
-            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
             : isServerOffline
-              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
               : "bg-muted text-muted-foreground border-border hover:bg-muted/80",
         )}
       >
-        {/* Pulsing Dot */}
-        <span className="relative flex h-2 w-2 shrink-0">
+        {/* Breathing Animated Icon */}
+        <div className="relative flex items-center justify-center">
           {isServerOnline && (
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-40" />
           )}
+          {isServerOnline ? (
+            <Cloud className="w-4 h-4 shrink-0 transition-transform" />
+          ) : isServerOffline ? (
+            <CloudOff className="w-4 h-4 shrink-0 text-amber-500" />
+          ) : (
+            <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+          )}
+
+          {/* Indicator Dot */}
           <span
             className={cn(
-              "relative inline-flex rounded-full h-2 w-2",
+              "absolute -top-1 -right-1 flex h-2 w-2 rounded-full ring-2 ring-background",
               isServerOnline
                 ? "bg-emerald-500"
                 : isServerOffline
@@ -127,25 +136,7 @@ export function ConnectionStatus() {
                   : "bg-muted-foreground",
             )}
           />
-        </span>
-
-        {/* Icon & Text */}
-        {isServerOnline ? (
-          <>
-            <Cloud className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-xs">Server Online</span>
-          </>
-        ) : isServerOffline ? (
-          <>
-            <CloudOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="text-xs">Mode Lokal</span>
-          </>
-        ) : (
-          <>
-            <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
-            <span className="text-xs">Memeriksa...</span>
-          </>
-        )}
+        </div>
       </button>
 
       {/* Backdrop for Mobile */}

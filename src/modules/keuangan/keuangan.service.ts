@@ -500,7 +500,31 @@ export const keuanganService = {
           Spj[] | { data?: Spj[]; items?: Spj[] }
         >("/api/v1/spj", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.length > 0 ? list : [];
+        if (list.length === 0) return [];
+
+        try {
+          const docsRes = await apiClient.get<
+            | DokumenKeuangan[]
+            | { data?: DokumenKeuangan[]; items?: DokumenKeuangan[] }
+          >("/api/v1/dokumen-keuangan");
+          const docs = Array.isArray(docsRes)
+            ? docsRes
+            : docsRes.data || docsRes.items || [];
+          return list.map((spj) => ({
+            ...spj,
+            dokumen:
+              Array.isArray(spj.dokumen) && spj.dokumen.length > 0
+                ? spj.dokumen
+                : docs.filter(
+                    (d) => d.spjId === spj.id || d.sppdId === spj.sppdId,
+                  ),
+          }));
+        } catch {
+          return list.map((spj) => ({
+            ...spj,
+            dokumen: spj.dokumen || [],
+          }));
+        }
       },
       async () => {
         const current = get();

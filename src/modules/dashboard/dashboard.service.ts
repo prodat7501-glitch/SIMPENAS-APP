@@ -15,13 +15,19 @@ import {
   buildTravelTasks,
   syncTravelTaskNotifications,
 } from "@/modules/tugas-perjalanan/travel-task.service";
-import { dashboardDataMigrationService } from "./dashboard-data-migration.service";
 import type {
   DashboardChartData,
   DashboardData,
   DashboardMetric,
   DashboardQuickAction,
 } from "./dashboard.types";
+import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
+import type { DIPA } from "@/modules/dipa/dipa.schema";
+import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
+import type { Spt } from "@/modules/spt/spt.schema";
+import type { Sppd } from "@/modules/sppd/sppd.schema";
+import type { Laporan } from "@/modules/laporan/laporan.schema";
+import { dashboardDataMigrationService } from "./dashboard-data-migration.service";
 import { apiClient, withApiFallback } from "@/services/api";
 
 const MONTH_NAMES = [
@@ -61,12 +67,16 @@ const getMonthIndex = (dateValue: string | undefined, year: string) => {
 const getCurrentYear = () => String(new Date().getFullYear());
 
 const getPaidKuitansi = (documents: DokumenKeuangan[]) =>
-  documents.filter(
-    (document) =>
-      document.jenis === "Kuitansi" &&
-      document.status === "Selesai" &&
-      document.pembayaran,
-  );
+  (documents || [])
+    .filter((doc): doc is DokumenKeuangan =>
+      Boolean(doc && typeof doc === "object"),
+    )
+    .filter(
+      (document) =>
+        document.jenis === "Kuitansi" &&
+        document.status === "Selesai" &&
+        Boolean(document.pembayaran),
+    );
 
 const buildActivities = (
   role: UserRole,
@@ -178,53 +188,66 @@ export const dashboardService = {
       migration.removedNotaDinas + migration.removedSpt + migration.removedSppd;
 
     const year = getCurrentYear();
-    const pegawais = pegawaiService.getAll();
-    const dipas = dipaService.getAll();
-    const notas = notaDinasService.getAll();
-    const spts = sptService.getAll();
-    const sppds = sppdService.getAllSync();
-    const reports = await laporanService.list();
+    const [pegawais, dipas, notas, spts, sppds, reports]: [
+      Pegawai[],
+      DIPA[],
+      NotaDinas[],
+      Spt[],
+      Sppd[],
+      Laporan[],
+    ] = await Promise.all([
+      pegawaiService.apiGetAll(),
+      dipaService.apiGetAll(),
+      notaDinasService.apiGetAll(),
+      sptService.apiGetAll(),
+      sppdService.list(),
+      laporanService.list(),
+    ]);
     const spjs = await keuanganService.list(reports, { sppds, spts, notas });
-    const documents = spjs.flatMap((spj: Spj) => spj.dokumen);
+    const documents = (spjs || [])
+      .flatMap((spj: Spj) => spj?.dokumen || [])
+      .filter(Boolean);
     const travelTasks = buildTravelTasks({
       user,
-      notas,
-      spts,
-      sppds,
-      reports,
-      spjs,
+      notas: notas || [],
+      spts: spts || [],
+      sppds: sppds || [],
+      reports: reports || [],
+      spjs: spjs || [],
     });
     syncTravelTaskNotifications(user, travelTasks);
     const paidKuitansi = getPaidKuitansi(documents);
     const allEmployeeSummaries = sortPegawais(
-      pegawais,
+      pegawais || [],
       jabatanService.getAll(),
       pangkatService.getAll(),
     ).map((pegawai, index) => ({
-      pegawaiId: pegawai.id ?? `pegawai-tanpa-id-${index}`,
-      nama: pegawai.nama,
-      nip: pegawai.nip || "",
-      jumlahHariSppd: sppds
+      pegawaiId: pegawai?.id ?? `pegawai-tanpa-id-${index}`,
+      nama: pegawai?.nama || "",
+      nip: pegawai?.nip || "",
+      jumlahHariSppd: (sppds || [])
         .filter(
           (sppd) =>
-            isInYear(sppd.tanggalBerangkat, year) &&
-            sppd.personil.some((person) => person.pegawaiId === pegawai.id),
+            isInYear(sppd?.tanggalBerangkat, year) &&
+            (sppd?.personil || []).some(
+              (person) => person?.pegawaiId === pegawai?.id,
+            ),
         )
-        .reduce((total, sppd) => total + Number(sppd.lamaPerjalanan || 0), 0),
-      jumlahDibayarkan: paidKuitansi
+        .reduce((total, sppd) => total + Number(sppd?.lamaPerjalanan || 0), 0),
+      jumlahDibayarkan: (paidKuitansi || [])
         .filter((document) =>
-          isInYear(document.pembayaran?.tanggalPembayaran, year),
+          isInYear(document?.pembayaran?.tanggalPembayaran, year),
         )
-        .flatMap((document) => document.rincian)
-        .filter((row) => row.pegawaiId === pegawai.id)
-        .reduce((total, row) => total + row.jumlah, 0),
+        .flatMap((document) => document?.rincian || [])
+        .filter((row) => row?.pegawaiId === pegawai?.id)
+        .reduce((total, row) => total + (row?.jumlah || 0), 0),
     }));
     const sessionPegawaiId =
       user.pegawaiId ||
-      pegawais.find(
+      (pegawais || []).find(
         (pegawai) =>
-          pegawai.nama.trim().toLocaleLowerCase("id-ID") ===
-          user.name.trim().toLocaleLowerCase("id-ID"),
+          pegawai?.nama?.trim().toLocaleLowerCase("id-ID") ===
+          user.name?.trim().toLocaleLowerCase("id-ID"),
       )?.id;
     const employeeSummaries =
       user.role === "Administrator"
@@ -232,8 +255,13 @@ export const dashboardService = {
         : allEmployeeSummaries.filter(
             (summary) => summary.pegawaiId === sessionPegawaiId,
           );
-    const activeDipas = dipas.filter((dipa) => dipa.tahunAnggaran === year);
-    const totalPagu = activeDipas.reduce((sum, dipa) => sum + dipa.pagu, 0);
+    const activeDipas = (dipas || []).filter(
+      (dipa) => dipa?.tahunAnggaran === year,
+    );
+    const totalPagu = activeDipas.reduce(
+      (sum, dipa) => sum + (dipa?.pagu || 0),
+      0,
+    );
 
     let metrics: DashboardMetric[] = [];
     let chart: DashboardChartData;
@@ -545,7 +573,9 @@ export const dashboardService = {
   apiGetStats: async (): Promise<Record<string, unknown> | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Record<string, unknown> | { data?: Record<string, unknown> }>("/api/v1/stats/dashboard");
+        const res = await apiClient.get<
+          Record<string, unknown> | { data?: Record<string, unknown> }
+        >("/api/v1/stats/dashboard");
         return (res as { data?: Record<string, unknown> }).data || res;
       },
       () => null,
