@@ -34,25 +34,42 @@ export const syncService = {
     try {
       // 1. Coba endpoint health check
       try {
-        const res = await apiClient.get<Record<string, unknown>>("/api/v1/health");
+        const res = await apiClient.get<{
+          success?: boolean;
+          message?: string;
+          data?: {
+            status?: string;
+            serverTime?: string;
+            database?: { connected?: boolean; error?: string; host?: string };
+          };
+        }>("/api/v1/health");
         const latency = Math.round(performance.now() - start);
+        const dbConnected =
+          res.data?.database?.connected !== false &&
+          res.data?.status !== "degraded";
+        const dbError = res.data?.database?.error;
+
         return {
           online: true,
-          latency: latency > 0 ? latency : 12,
-          dbConnected: true,
-          message: "Server Backend Vercel & Database Terhubung",
-          serverTime: (res.timestamp as string) || new Date().toISOString(),
+          latency: latency > 0 ? latency : 35,
+          dbConnected,
+          message: dbConnected
+            ? "Server Backend Vercel & Database Terhubung"
+            : `Server Vercel Aktif (${dbError ? "MySQL: " + dbError : "Database MySQL Disconnected"})`,
+          serverTime: res.data?.serverTime || new Date().toISOString(),
           testedUrl: "/api/v1/health",
         };
       } catch {
         // 2. Fallback cek endpoint master pegawai jika health check belum ada
-        await apiClient.get<unknown>("/api/v1/pegawai", { params: { limit: 1 } });
+        await apiClient.get<unknown>("/api/v1/pegawai", {
+          params: { limit: 1 },
+        });
         const latency = Math.round(performance.now() - start);
         return {
           online: true,
           latency: latency > 0 ? latency : 18,
           dbConnected: true,
-          message: "Server Backend Vercel & Database Terhubung",
+          message: "Server Backend Vercel Terhubung",
           serverTime: new Date().toISOString(),
           testedUrl: "/api/v1/pegawai",
         };
@@ -62,7 +79,10 @@ export const syncService = {
         online: false,
         latency: 0,
         dbConnected: false,
-        message: err instanceof Error ? err.message : "Tidak dapat terhubung ke server",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Tidak dapat terhubung ke server",
         testedUrl: getApiBaseUrl() || "/api/v1",
       };
     }
@@ -186,7 +206,8 @@ export const syncService = {
         success: false,
         totalSynced,
         details,
-        error: err instanceof Error ? err.message : "Sinkronisasi sebagian gagal.",
+        error:
+          err instanceof Error ? err.message : "Sinkronisasi sebagian gagal.",
       };
     }
   },

@@ -21,17 +21,17 @@ export const getApiBaseUrl = (): string => {
     ).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
   }
 
-  // Jika diakses di browser remote/Vercel dan env URL kosong atau localhost, gunakan relative / origin sendiri
+  // Jika diakses di browser remote/Vercel dan env URL kosong atau localhost, gunakan backend Vercel resmi
   if (
     typeof window !== "undefined" &&
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1" &&
     (!rawUrl || rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1"))
   ) {
-    return "";
+    return "https://simpenas-api.vercel.app/api/v1";
   }
 
-  const url = rawUrl || "";
+  const url = rawUrl || "https://simpenas-api.vercel.app/api/v1";
   return url.replace(/\/+$/, "");
 };
 
