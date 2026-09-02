@@ -35,6 +35,7 @@ import {
   isNotificationVisibleFor,
   useNotificationStore,
 } from "@/stores/notification.store";
+import { ConnectionStatus } from "./ConnectionStatus";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -612,6 +613,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Status Koneksi Backend */}
+            <ConnectionStatus />
+
             {mounted && (
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
