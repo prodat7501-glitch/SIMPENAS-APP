@@ -25,7 +25,6 @@ import {
   Map,
   ShieldCheck,
   ClipboardList,
-  Sparkles,
   Archive,
   UserCog,
 } from "lucide-react";
@@ -543,20 +542,6 @@ export function AppLayout({ children }: AppLayoutProps) {
               <span>Log Aktivitas</span>
             </Link>
           )}
-
-          {/* Demo Components Gallery Link */}
-          <Link
-            href="/demo-components"
-            className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all",
-              isActive("/demo-components")
-                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            )}
-          >
-            <Sparkles className="w-5 h-5" />
-            <span>Demo Komponen</span>
-          </Link>
         </nav>
 
         {/* Sidebar User Footer */}
