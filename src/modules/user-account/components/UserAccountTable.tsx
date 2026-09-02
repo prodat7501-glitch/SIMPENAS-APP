@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Trash2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,16 @@ import type { UserAccount } from "../user-account.types";
 interface UserAccountTableProps {
   items: UserAccount[];
   onEdit: (account: UserAccount) => void;
+  onDelete?: (account: UserAccount) => void;
+  canDelete?: boolean;
 }
 
-export function UserAccountTable({ items, onEdit }: UserAccountTableProps) {
+export function UserAccountTable({
+  items,
+  onEdit,
+  onDelete,
+  canDelete = true,
+}: UserAccountTableProps) {
   const [search, setSearch] = useState("");
   const filteredItems = useMemo(() => {
     const keyword = search.toLowerCase().trim();
@@ -52,43 +59,69 @@ export function UserAccountTable({ items, onEdit }: UserAccountTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filteredItems.map((item, index) => (
-              <tr key={item.id} className="hover:bg-muted/30">
-                <td className="px-4 py-3 text-center">{index + 1}</td>
-                <td className="px-4 py-3">
-                  <p className="font-bold text-foreground">{item.name}</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    {item.pegawaiId
-                      ? `ID Pegawai: ${item.pegawaiId}`
-                      : "Akun sistem"}
-                  </p>
-                </td>
-                <td className="px-4 py-3 font-mono font-semibold text-foreground">
-                  {item.username}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline">{item.role}</Badge>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {item.email}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <Badge variant={item.isActive ? "success" : "danger"}>
-                    {item.isActive ? "Aktif" : "Nonaktif"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(item)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Ubah
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {filteredItems.map((item, index) => {
+              const isMainAdmin =
+                item.id === "user-admin" || item.username.toLowerCase() === "admin";
+
+              return (
+                <tr key={item.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 text-center">{index + 1}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-bold text-foreground">{item.name}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {item.pegawaiId
+                        ? `ID Pegawai: ${item.pegawaiId}`
+                        : "Akun sistem"}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3 font-mono font-semibold text-foreground">
+                    {item.username}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline">{item.role}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {item.email}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <Badge variant={item.isActive ? "success" : "danger"}>
+                      {item.isActive ? "Aktif" : "Nonaktif"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEdit(item)}
+                        title="Ubah Akun"
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Ubah
+                      </Button>
+
+                      {onDelete && canDelete && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={isMainAdmin}
+                          onClick={() => !isMainAdmin && onDelete(item)}
+                          title={
+                            isMainAdmin
+                              ? "Akun Administrator utama tidak dapat dihapus"
+                              : "Hapus Akun Pengguna"
+                          }
+                          className="px-2"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filteredItems.length === 0 && (
               <tr>
                 <td
@@ -105,4 +138,3 @@ export function UserAccountTable({ items, onEdit }: UserAccountTableProps) {
     </div>
   );
 }
-

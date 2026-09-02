@@ -265,6 +265,16 @@ export const userAccountService = {
     );
   },
 
+  delete: (id: string): boolean => {
+    const items = userAccountService.getAll();
+    saveAccounts(items.filter((item) => item.id !== id));
+    return true;
+  },
+
+  saveAccounts: (accounts: UserAccount[]) => {
+    saveAccounts(accounts);
+  },
+
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
