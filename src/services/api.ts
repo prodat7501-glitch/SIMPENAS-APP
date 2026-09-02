@@ -4,18 +4,34 @@
  * Mendukung otomatis fallback ke Local Storage saat mode offline / development
  */
 
-const getApiBaseUrl = (): string => {
+export const getApiBaseUrl = (): string => {
   let rawUrl = process.env.NEXT_PUBLIC_API_URL;
   if (
     typeof window !== "undefined" &&
-    (window as unknown as { __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } } })
-      .__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL
+    (
+      window as unknown as {
+        __NEXT_DATA__?: { env?: { NEXT_PUBLIC_API_URL?: string } };
+      }
+    ).__NEXT_DATA__?.env?.NEXT_PUBLIC_API_URL
   ) {
     rawUrl = (
-      window as unknown as { __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } } }
+      window as unknown as {
+        __NEXT_DATA__: { env: { NEXT_PUBLIC_API_URL: string } };
+      }
     ).__NEXT_DATA__.env.NEXT_PUBLIC_API_URL;
   }
-  const url = rawUrl || "https://simpenas-api.vercel.app/api/v1";
+
+  // Jika diakses di browser remote/Vercel dan env URL kosong atau localhost, gunakan relative / origin sendiri
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1" &&
+    (!rawUrl || rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1"))
+  ) {
+    return "";
+  }
+
+  const url = rawUrl || "";
   return url.replace(/\/+$/, "");
 };
 
@@ -63,7 +79,10 @@ export function toSnakeCase<T = unknown>(data: unknown): T {
     const record = data as Record<string, unknown>;
     const newObj: Record<string, unknown> = {};
     for (const key of Object.keys(record)) {
-      const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+      const snakeKey = key.replace(
+        /[A-Z]/g,
+        (letter) => `_${letter.toLowerCase()}`,
+      );
       newObj[snakeKey] = toSnakeCase(record[key]);
     }
     return newObj as T;
@@ -105,8 +124,16 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
-  const { params, skipTransform = false, headers: customHeaders, ...customOptions } = options;
+async function request<T>(
+  endpoint: string,
+  options: ApiOptions = {},
+): Promise<T> {
+  const {
+    params,
+    skipTransform = false,
+    headers: customHeaders,
+    ...customOptions
+  } = options;
   const baseUrl = getApiBaseUrl();
   let cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
@@ -264,7 +291,10 @@ export async function withApiFallback<T>(
   try {
     return await apiFn();
   } catch (error) {
-    console.warn("REST API request failed, falling back to local storage:", error);
+    console.warn(
+      "REST API request failed, falling back to local storage:",
+      error,
+    );
     return await fallbackFn();
   }
 }

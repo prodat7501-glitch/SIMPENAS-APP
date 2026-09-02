@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Radio,
   Zap,
+  X,
 } from "lucide-react";
 import { syncService } from "@/services/sync.service";
 import { cn } from "@/lib/utils";
@@ -97,13 +98,13 @@ export function ConnectionStatus() {
         aria-label="Status Koneksi Server Backend"
         title={
           isServerOnline
-            ? `Server Vercel Online (${latency}ms) - Database Aiven Terhubung`
+            ? `Server Online (${latency}ms) - Database Aiven Terhubung`
             : isServerOffline
-              ? "Server Offline - Berjalan dalam Mode Penyimpanan Lokal"
+              ? "Mode Lokal - Server Sedang Tidak Terjangkau"
               : "Memeriksa Status Server..."
         }
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-sm cursor-pointer",
+          "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer",
           isServerOnline
             ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
             : isServerOffline
@@ -112,7 +113,7 @@ export function ConnectionStatus() {
         )}
       >
         {/* Pulsing Dot */}
-        <span className="relative flex h-2 w-2">
+        <span className="relative flex h-2 w-2 shrink-0">
           {isServerOnline && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           )}
@@ -131,25 +132,33 @@ export function ConnectionStatus() {
         {/* Icon & Text */}
         {isServerOnline ? (
           <>
-            <Cloud className="w-3.5 h-3.5" />
-            <span className="inline">Server Online</span>
+            <Cloud className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-xs">Server Online</span>
           </>
         ) : isServerOffline ? (
           <>
-            <CloudOff className="w-3.5 h-3.5 text-amber-500" />
-            <span className="inline">Mode Lokal</span>
+            <CloudOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="text-xs">Mode Lokal</span>
           </>
         ) : (
           <>
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            <span className="inline">Memeriksa...</span>
+            <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <span className="text-xs">Memeriksa...</span>
           </>
         )}
       </button>
 
+      {/* Backdrop for Mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 sm:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-card border border-border shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:right-0 sm:left-auto sm:top-full sm:mt-2 sm:w-96 sm:inset-x-auto rounded-2xl bg-card border border-border shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-[85vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2">
@@ -158,39 +167,47 @@ export function ConnectionStatus() {
                 Status Koneksi Backend
               </h4>
             </div>
-            <span
-              className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                isServerOnline
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+            <div className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                  isServerOnline
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    : isServerOffline
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                      : "bg-muted text-muted-foreground",
+                )}
+              >
+                {isServerOnline
+                  ? "Connected"
                   : isServerOffline
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                    : "bg-muted text-muted-foreground",
-              )}
-            >
-              {isServerOnline
-                ? "Connected"
-                : isServerOffline
-                  ? "Offline"
-                  : "Checking"}
-            </span>
+                    ? "Offline"
+                    : "Checking"}
+              </span>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground sm:hidden"
+                aria-label="Tutup modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Details */}
           <div className="py-3 space-y-2.5 text-xs">
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
               <span className="text-muted-foreground flex items-center gap-1.5">
-                <Cloud className="w-3.5 h-3.5 text-primary" /> Server Backend
-                (Vercel)
+                <Cloud className="w-3.5 h-3.5 text-primary shrink-0" /> Server Backend
               </span>
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-foreground text-right">
                 {isServerOnline ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Aktif ({latency}ms)
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
+                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Terhubung ({latency}ms)
                   </span>
                 ) : (
-                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Offline / Standby
+                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 justify-end">
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Offline / Standby
                   </span>
                 )}
               </span>
@@ -198,26 +215,25 @@ export function ConnectionStatus() {
 
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
               <span className="text-muted-foreground flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-primary" /> Database
-                (MySQL Aiven)
+                <Database className="w-3.5 h-3.5 text-primary shrink-0" /> Database MySQL
               </span>
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-foreground text-right">
                 {dbConnected ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Terhubung
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
+                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Terhubung
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">
-                    Otomatis saat Online
-                  </span>
+                  <span className="text-muted-foreground">Otomatis saat Online</span>
                 )}
               </span>
             </div>
 
-            <div className="flex items-center justify-between px-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
               <span>Pemeriksaan terakhir</span>
               <span>
-                {lastChecked ? lastChecked.toLocaleTimeString("id-ID") : "-"}
+                {lastChecked
+                  ? lastChecked.toLocaleTimeString("id-ID")
+                  : "-"}
               </span>
             </div>
           </div>
@@ -234,8 +250,7 @@ export function ConnectionStatus() {
             <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
               <Radio className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
-                Data Anda aman disimpan di browser lokal perangkat ini. Saat
-                server aktif kembali, klik tombol sinkronisasi di bawah.
+                Data Anda aman tersimpan di browser perangkat ini. Saat server terhubung kembali, klik tombol sinkronisasi di bawah.
               </span>
             </div>
           )}
@@ -261,7 +276,7 @@ export function ConnectionStatus() {
                   ? "Server harus online untuk menyinkronkan data"
                   : undefined
               }
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Zap className={cn("w-3.5 h-3.5", syncing && "animate-bounce")} />
               <span>{syncing ? "Menyinkronkan..." : "Sinkronkan Data"}</span>
