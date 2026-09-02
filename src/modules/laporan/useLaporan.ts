@@ -13,7 +13,7 @@ export function useLaporan() {
   const store = useLaporanStore();
   const query = useQuery({
     queryKey: LAPORAN_QUERY_KEY,
-    queryFn: laporanService.list,
+    queryFn: () => laporanService.list(),
   });
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: LAPORAN_QUERY_KEY });
@@ -118,7 +118,7 @@ export function useLaporan() {
         });
     },
   });
-  const items = query.data ?? [];
+  const items: Laporan[] = query.data ?? [];
   const filteredItems = items.filter((item) => {
     const q = store.filters.search.toLowerCase().trim();
     return (

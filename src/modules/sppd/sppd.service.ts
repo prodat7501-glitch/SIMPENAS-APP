@@ -220,32 +220,47 @@ export const sppdService = {
     );
   },
 
-  list: async (): Promise<Sppd[]> => {
+  list: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Sppd[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Sppd[] | { data?: Sppd[]; items?: Sppd[] }>("/api/sppd");
+        const res = await apiClient.get<
+          Sppd[] | { data?: Sppd[]; items?: Sppd[] }
+        >("/api/v1/sppd", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return applySeriesLifecycle(list.map(normalizeSinglePersonilSppd));
       },
-      () => getStoredItems()
+      () => getStoredItems(),
     );
   },
 
   apiGetById: async (id: string): Promise<Sppd | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Sppd | null>(`/api/sppd/${id}`);
-        return res ? normalizeSinglePersonilSppd(res) : null;
+        const res = await apiClient.get<Sppd | { data?: Sppd }>(
+          `/api/v1/sppd/${id}`,
+        );
+        const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
+        return unwrapped ? normalizeSinglePersonilSppd(unwrapped) : null;
       },
-      () => getStoredItems().find((s) => s.id === id) || null
+      () => getStoredItems().find((s) => s.id === id) || null,
     );
   },
 
   create: async (payload: SppdMutationPayload): Promise<Sppd> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Sppd>("/api/sppd", payload);
-        return normalizeSinglePersonilSppd(res);
+        const res = await apiClient.post<Sppd | { data?: Sppd }>(
+          "/api/v1/sppd",
+          payload,
+        );
+        const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
+        return normalizeSinglePersonilSppd(unwrapped);
       },
       async () => {
         const items = getStoredItems();
@@ -258,7 +273,9 @@ export const sppdService = {
               item.personil.some((person) => person.pegawaiId === pegawaiId),
           )
         ) {
-          throw new Error("Personil tersebut sudah memiliki SPPD pada SPT ini.");
+          throw new Error(
+            "Personil tersebut sudah memiliki SPPD pada SPT ini.",
+          );
         }
 
         const documentDate = new Date(payload.tanggalBerangkat);
@@ -298,15 +315,19 @@ export const sppdService = {
           );
           throw error;
         }
-      }
+      },
     );
   },
 
   update: async (id: string, payload: SppdMutationPayload): Promise<Sppd> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Sppd>(`/api/sppd/${id}`, payload);
-        return normalizeSinglePersonilSppd(res);
+        const res = await apiClient.put<Sppd | { data?: Sppd }>(
+          `/api/v1/sppd/${id}`,
+          payload,
+        );
+        const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
+        return normalizeSinglePersonilSppd(unwrapped);
       },
       async () => {
         const items = getStoredItems();
@@ -331,14 +352,14 @@ export const sppdService = {
         const lifecycleItems = applySeriesLifecycle(updated);
         saveStoredItems(lifecycleItems);
         return lifecycleItems.find((item) => item.id === id) ?? updatedItem;
-      }
+      },
     );
   },
 
   remove: async (id: string): Promise<void> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/sppd/${id}`);
+        await apiClient.delete(`/api/v1/sppd/${id}`);
       },
       async () => {
         const items = getStoredItems();
@@ -353,7 +374,7 @@ export const sppdService = {
             "Nomor dilepas karena SPPD dihapus oleh Administrator.",
           );
         }
-      }
+      },
     );
   },
 
@@ -377,5 +398,25 @@ export const sppdService = {
     saveStoredItems(updated);
     return updatedCount;
   },
-};
 
+  apiBulkCreate: async (data: Partial<Sppd>[]): Promise<Sppd[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Sppd[] | { data?: Sppd[] }>(
+          "/api/v1/sppd",
+          data,
+        );
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizeSinglePersonilSppd);
+      },
+      async () => {
+        const items = getStoredItems();
+        const normalized = data.map((d) =>
+          normalizeSinglePersonilSppd(d as Sppd),
+        );
+        saveStoredItems(applySeriesLifecycle([...items, ...normalized]));
+        return normalized;
+      },
+    );
+  },
+};

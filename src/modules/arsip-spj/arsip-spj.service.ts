@@ -81,14 +81,28 @@ const localList = async (): Promise<ArsipSpj[]> => {
 };
 
 export const arsipSpjService = {
-  list: async (): Promise<ArsipSpj[]> => {
+  list: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<ArsipSpj[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<ArsipSpj[] | { data?: ArsipSpj[]; items?: ArsipSpj[] }>("/api/arsip_spj");
+        const res = await apiClient.get<ArsipSpj[] | { data?: ArsipSpj[]; items?: ArsipSpj[] }>("/api/v1/arsip-spj", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return list.map((item: unknown) => arsipSpjSchema.parse(item));
       },
       () => localList()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<ArsipSpj | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<ArsipSpj | { data?: ArsipSpj }>(`/api/v1/arsip-spj/${id}`);
+        const unwrapped = (res as { data?: ArsipSpj }).data || (res as ArsipSpj);
+        return unwrapped ? arsipSpjSchema.parse(unwrapped) : null;
+      },
+      async () => {
+        const list = await localList();
+        return list.find((item) => item.id === id || item.notaDinasId === id) || null;
+      }
     );
   },
 
@@ -104,7 +118,7 @@ export const arsipSpjService = {
         formData.append("file", file);
         formData.append("nota_dinas_id", notaDinasId);
         formData.append("diunggah_oleh", diunggahOleh);
-        const res = await apiClient.post<unknown>("/api/arsip_spj", formData, { skipTransform: true });
+        const res = await apiClient.post<unknown>("/api/v1/arsip-spj", formData, { skipTransform: true });
         return arsipSpjSchema.parse(res);
       },
       async () => {
@@ -130,6 +144,27 @@ export const arsipSpjService = {
           database.close();
         }
       }
+    );
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/v1/arsip-spj/${id}`);
+        return true;
+      },
+      async () => true
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<ArsipSpj>[]): Promise<ArsipSpj[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<ArsipSpj[] | { data?: ArsipSpj[] }>("/api/v1/arsip-spj", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map((item) => arsipSpjSchema.parse(item));
+      },
+      async () => data.map((item) => arsipSpjSchema.parse(item))
     );
   },
 

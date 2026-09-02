@@ -14,7 +14,7 @@ export function useArsipSpj() {
   const addActivity = useActivityStore((state) => state.add);
   const listQuery = useQuery({
     queryKey: ARSIP_SPJ_QUERY_KEY,
-    queryFn: arsipSpjService.list,
+    queryFn: () => arsipSpjService.list(),
   });
 
   const uploadMutation = useMutation({

@@ -23,7 +23,7 @@ export function useApproval() {
   });
   const history = useQuery({
     queryKey: [...KEY, "history"],
-    queryFn: approvalService.listHistory,
+    queryFn: () => approvalService.listHistory(),
   });
   const decision = useMutation({
     mutationFn: (input: ApprovalDecision) => {

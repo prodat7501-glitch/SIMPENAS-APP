@@ -210,11 +210,11 @@ export const userAccountService = {
     return updated;
   },
 
-  // REST API Integration (/api/akun_pengguna)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<UserAccount[]> => {
+  // REST API Integration (/api/v1/akun-pengguna)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<UserAccount[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }>("/api/akun_pengguna", params);
+        const res = await apiClient.get<UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }>("/api/v1/akun-pengguna", params);
         return Array.isArray(res) ? res : res.data || res.items || [];
       },
       () => userAccountService.getAll()
@@ -224,7 +224,7 @@ export const userAccountService = {
   apiGetById: async (id: string): Promise<UserAccount | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<UserAccount | { data?: UserAccount }>(`/api/akun_pengguna/${id}`);
+        const res = await apiClient.get<UserAccount | { data?: UserAccount }>(`/api/v1/akun-pengguna/${id}`);
         const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
         return unwrapped || null;
       },
@@ -236,7 +236,7 @@ export const userAccountService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `user-${Date.now()}`, ...data };
-        const res = await apiClient.post<UserAccount | { data?: UserAccount }>("/api/akun_pengguna", payload);
+        const res = await apiClient.post<UserAccount | { data?: UserAccount }>("/api/v1/akun-pengguna", payload);
         const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
         return unwrapped;
       },
@@ -252,7 +252,7 @@ export const userAccountService = {
   apiUpdate: async (id: string, data: Partial<UserAccount>): Promise<UserAccount> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<UserAccount | { data?: UserAccount }>(`/api/akun_pengguna/${id}`, data);
+        const res = await apiClient.put<UserAccount | { data?: UserAccount }>(`/api/v1/akun-pengguna/${id}`, data);
         const unwrapped = (res as { data?: UserAccount }).data || (res as UserAccount);
         return unwrapped;
       },
@@ -268,13 +268,27 @@ export const userAccountService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/akun_pengguna/${id}`);
+        await apiClient.delete(`/api/v1/akun-pengguna/${id}`);
         return true;
       },
       async () => {
         const items = userAccountService.getAll();
         saveAccounts(items.filter((item) => item.id !== id));
         return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<UserAccount>[]): Promise<UserAccount[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<UserAccount[] | { data?: UserAccount[] }>("/api/v1/akun-pengguna", data);
+        return Array.isArray(res) ? res : res.data || [];
+      },
+      async () => {
+        const items = userAccountService.getAll();
+        saveAccounts([...items, ...(data as UserAccount[])]);
+        return data as UserAccount[];
       }
     );
   },

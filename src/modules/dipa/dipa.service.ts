@@ -126,11 +126,11 @@ export const dipaService = {
     }
   },
 
-  // REST API Integration (/api/anggaran_dipa)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<DIPA[]> => {
+  // REST API Integration (/api/v1/anggaran-dipa)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<DIPA[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<DIPA[] | { data?: DIPA[]; items?: DIPA[] }>("/api/anggaran_dipa", params);
+        const res = await apiClient.get<DIPA[] | { data?: DIPA[]; items?: DIPA[] }>("/api/v1/anggaran-dipa", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return list.map((item: unknown, idx: number) => normalizeDipa(item as Partial<DIPA>, idx));
       },
@@ -141,7 +141,7 @@ export const dipaService = {
   apiGetById: async (id: string): Promise<DIPA | null> => {
     return withApiFallback(
       async () => {
-        const item = await apiClient.get<DIPA | { data?: DIPA }>(`/api/anggaran_dipa/${id}`);
+        const item = await apiClient.get<DIPA | { data?: DIPA }>(`/api/v1/anggaran-dipa/${id}`);
         const unwrapped = (item as { data?: DIPA }).data || (item as DIPA);
         return unwrapped ? normalizeDipa(unwrapped, 0) : null;
       },
@@ -153,7 +153,7 @@ export const dipaService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `dipa-${Date.now()}`, ...data };
-        const res = await apiClient.post<DIPA | { data?: DIPA }>("/api/anggaran_dipa", payload);
+        const res = await apiClient.post<DIPA | { data?: DIPA }>("/api/v1/anggaran-dipa", payload);
         const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
         return normalizeDipa(unwrapped, 0);
       },
@@ -169,7 +169,7 @@ export const dipaService = {
   apiUpdate: async (id: string, data: Partial<DIPA>): Promise<DIPA> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<DIPA | { data?: DIPA }>(`/api/anggaran_dipa/${id}`, data);
+        const res = await apiClient.put<DIPA | { data?: DIPA }>(`/api/v1/anggaran-dipa/${id}`, data);
         const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
         return normalizeDipa(unwrapped, 0);
       },
@@ -185,13 +185,29 @@ export const dipaService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/anggaran_dipa/${id}`);
+        await apiClient.delete(`/api/v1/anggaran-dipa/${id}`);
         return true;
       },
       async () => {
         const items = dipaService.getAll();
         dipaService.saveAll(items.filter((item) => item.id !== id));
         return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<DIPA>[]): Promise<DIPA[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<DIPA[] | { data?: DIPA[] }>("/api/v1/anggaran-dipa", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map((item: unknown, idx: number) => normalizeDipa(item as Partial<DIPA>, idx));
+      },
+      async () => {
+        const items = dipaService.getAll();
+        const normalized = data.map((d, idx) => normalizeDipa(d, items.length + idx));
+        dipaService.saveAll([...items, ...normalized]);
+        return normalized;
       }
     );
   },

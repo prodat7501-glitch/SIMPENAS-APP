@@ -167,11 +167,11 @@ export const penandatanganService = {
     }
   },
 
-  // REST API Integration (/api/pejabat_penandatangan)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Penandatangan[]> => {
+  // REST API Integration (/api/v1/pejabat-penandatangan)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Penandatangan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }>("/api/pejabat_penandatangan", params);
+        const res = await apiClient.get<Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }>("/api/v1/pejabat-penandatangan", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return ensureRequiredSigners(list).map(normalizePenandatangan);
       },
@@ -182,7 +182,7 @@ export const penandatanganService = {
   apiGetById: async (id: string): Promise<Penandatangan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Penandatangan | { data?: Penandatangan }>(`/api/pejabat_penandatangan/${id}`);
+        const res = await apiClient.get<Penandatangan | { data?: Penandatangan }>(`/api/v1/pejabat-penandatangan/${id}`);
         const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return unwrapped ? normalizePenandatangan(unwrapped) : null;
       },
@@ -194,7 +194,7 @@ export const penandatanganService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `pe-${Date.now()}`, ...data };
-        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/pejabat_penandatangan", payload);
+        const res = await apiClient.post<Penandatangan | { data?: Penandatangan }>("/api/v1/pejabat-penandatangan", payload);
         const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
       },
@@ -210,7 +210,7 @@ export const penandatanganService = {
   apiUpdate: async (id: string, data: Partial<Penandatangan>): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Penandatangan | { data?: Penandatangan }>(`/api/pejabat_penandatangan/${id}`, data);
+        const res = await apiClient.put<Penandatangan | { data?: Penandatangan }>(`/api/v1/pejabat-penandatangan/${id}`, data);
         const unwrapped = (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
       },
@@ -226,13 +226,29 @@ export const penandatanganService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/pejabat_penandatangan/${id}`);
+        await apiClient.delete(`/api/v1/pejabat-penandatangan/${id}`);
         return true;
       },
       async () => {
         const items = penandatanganService.getAll();
         penandatanganService.saveAll(items.filter((item) => item.id !== id));
         return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<Penandatangan>[]): Promise<Penandatangan[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Penandatangan[] | { data?: Penandatangan[] }>("/api/v1/pejabat-penandatangan", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizePenandatangan);
+      },
+      async () => {
+        const items = penandatanganService.getAll();
+        const normalized = data.map((d) => normalizePenandatangan(d as Penandatangan));
+        penandatanganService.saveAll([...items, ...normalized]);
+        return normalized;
       }
     );
   },

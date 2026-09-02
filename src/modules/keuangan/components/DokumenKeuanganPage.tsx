@@ -135,12 +135,12 @@ export function DokumenKeuanganPage({ jenis }: { jenis: JenisDokumen }) {
     }
 
     try {
-      const documents = await data.regenerate({
+      const document = await data.regenerate({
         id: spjId,
         jenis,
       });
       addToast("SPBY berhasil dibuat ulang", "success");
-      if (documents[0]) data.setPreview(documents[0]);
+      if (document) data.setPreview(document);
     } catch (e) {
       addToast(
         e instanceof Error ? e.message : "SPBY gagal dibuat ulang",

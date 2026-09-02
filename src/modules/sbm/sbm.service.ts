@@ -57,11 +57,11 @@ export const sbmService = {
     }
   },
 
-  // REST API Integration (/api/sbm)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<SBM[]> => {
+  // REST API Integration (/api/v1/sbm)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<SBM[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<SBM[] | { data?: SBM[]; items?: SBM[] }>("/api/sbm", params);
+        const res = await apiClient.get<SBM[] | { data?: SBM[]; items?: SBM[] }>("/api/v1/sbm", params);
         return Array.isArray(res) ? res : res.data || res.items || [];
       },
       () => sbmService.getAll()
@@ -71,7 +71,7 @@ export const sbmService = {
   apiGetById: async (id: string): Promise<SBM | null> => {
     return withApiFallback(
       async () => {
-        const item = await apiClient.get<SBM | { data?: SBM }>(`/api/sbm/${id}`);
+        const item = await apiClient.get<SBM | { data?: SBM }>(`/api/v1/sbm/${id}`);
         const unwrapped = (item as { data?: SBM }).data || (item as SBM);
         return unwrapped || null;
       },
@@ -83,7 +83,7 @@ export const sbmService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `sbm-${Date.now()}`, ...data };
-        const res = await apiClient.post<SBM | { data?: SBM }>("/api/sbm", payload);
+        const res = await apiClient.post<SBM | { data?: SBM }>("/api/v1/sbm", payload);
         const unwrapped = (res as { data?: SBM }).data || (res as SBM);
         return unwrapped;
       },
@@ -99,7 +99,7 @@ export const sbmService = {
   apiUpdate: async (id: string, data: Partial<SBM>): Promise<SBM> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<SBM | { data?: SBM }>(`/api/sbm/${id}`, data);
+        const res = await apiClient.put<SBM | { data?: SBM }>(`/api/v1/sbm/${id}`, data);
         const unwrapped = (res as { data?: SBM }).data || (res as SBM);
         return unwrapped;
       },
@@ -115,13 +115,27 @@ export const sbmService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/sbm/${id}`);
+        await apiClient.delete(`/api/v1/sbm/${id}`);
         return true;
       },
       async () => {
         const items = sbmService.getAll();
         sbmService.saveAll(items.filter((item) => item.id !== id));
         return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<SBM>[]): Promise<SBM[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<SBM[] | { data?: SBM[] }>("/api/v1/sbm", data);
+        return Array.isArray(res) ? res : res.data || [];
+      },
+      async () => {
+        const items = sbmService.getAll();
+        sbmService.saveAll([...items, ...(data as SBM[])]);
+        return data as SBM[];
       }
     );
   },

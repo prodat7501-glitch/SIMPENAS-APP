@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { apiClient, withApiFallback } from "@/services/api";
 
 export interface NotificationItem {
   id: string;
@@ -28,17 +29,18 @@ export interface NotificationUpsertInput extends NotificationMetadata {
 interface NotificationState {
   notifications: NotificationItem[];
   unreadCount: number;
+  load: () => Promise<void>;
   addNotification: (
     title: string,
     message: string,
     type?: NotificationItem["type"],
     metadata?: NotificationMetadata,
-  ) => void;
-  upsertNotification: (input: NotificationUpsertInput) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: (recipientPegawaiId?: string) => void;
-  removeNotification: (id: string) => void;
-  clearAll: (recipientPegawaiId?: string) => void;
+  ) => Promise<void>;
+  upsertNotification: (input: NotificationUpsertInput) => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: (recipientPegawaiId?: string) => Promise<void>;
+  removeNotification: (id: string) => Promise<void>;
+  clearAll: (recipientPegawaiId?: string) => Promise<void>;
 }
 
 const seedNotifications: NotificationItem[] = [
@@ -96,128 +98,176 @@ const reviveNotifications = (notifications: NotificationItem[]) =>
 
 export const useNotificationStore = create<NotificationState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       notifications: seedNotifications,
       unreadCount: countUnread(seedNotifications),
-      addNotification: (title, message, type = "info", metadata = {}) =>
-        set((state) => {
-          const newNotif: NotificationItem = {
-            id: createNotificationId(),
-            title,
-            message,
-            type,
-            read: false,
-            createdAt: new Date(),
-            ...metadata,
-          };
-          const updated = [newNotif, ...state.notifications];
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
-      upsertNotification: ({
+      load: async () => {
+        const loaded = await withApiFallback(
+          async () => {
+            const res = await apiClient.get<NotificationItem[] | { data?: NotificationItem[]; items?: NotificationItem[] }>("/api/v1/notifikasi");
+            const list = Array.isArray(res) ? res : res.data || res.items || [];
+            return list.length > 0 ? reviveNotifications(list) : get().notifications;
+          },
+          () => get().notifications
+        );
+        set({
+          notifications: loaded,
+          unreadCount: countUnread(loaded),
+        });
+      },
+      addNotification: async (title, message, type = "info", metadata = {}) => {
+        const newNotif: NotificationItem = {
+          id: createNotificationId(),
+          title,
+          message,
+          type,
+          read: false,
+          createdAt: new Date(),
+          ...metadata,
+        };
+        const updated = [newNotif, ...get().notifications];
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+        await withApiFallback(
+          async () => {
+            await apiClient.post("/api/v1/notifikasi", newNotif);
+            return newNotif;
+          },
+          () => newNotif
+        );
+      },
+      upsertNotification: async ({
         title,
         message,
         type = "info",
         recipientPegawaiId,
         eventKey,
         actionUrl,
-      }) =>
-        set((state) => {
-          const existingIndex = eventKey
-            ? state.notifications.findIndex(
-                (item) =>
-                  item.eventKey === eventKey &&
-                  item.recipientPegawaiId === recipientPegawaiId,
-              )
-            : -1;
+      }) => {
+        const state = get();
+        const existingIndex = eventKey
+          ? state.notifications.findIndex(
+              (item) =>
+                item.eventKey === eventKey &&
+                item.recipientPegawaiId === recipientPegawaiId,
+            )
+          : -1;
 
-          if (existingIndex >= 0) {
-            const updated = state.notifications.map((item, index) =>
-              index === existingIndex
-                ? {
-                    ...item,
-                    title,
-                    message,
-                    type,
-                    recipientPegawaiId,
-                    eventKey,
-                    actionUrl,
-                  }
-                : item,
+        if (existingIndex >= 0) {
+          const updated = state.notifications.map((item, index) =>
+            index === existingIndex
+              ? {
+                  ...item,
+                  title,
+                  message,
+                  type,
+                  recipientPegawaiId,
+                  eventKey,
+                  actionUrl,
+                }
+              : item,
+          );
+          set({
+            notifications: updated,
+            unreadCount: countUnread(updated),
+          });
+          const target = updated[existingIndex];
+          if (target) {
+            await withApiFallback(
+              async () => {
+                await apiClient.put(`/api/v1/notifikasi/${target.id}`, target);
+                return target;
+              },
+              () => target
             );
-            return {
-              notifications: updated,
-              unreadCount: countUnread(updated),
-            };
           }
+          return;
+        }
 
-          const newNotif: NotificationItem = {
-            id: createNotificationId(),
-            title,
-            message,
-            type,
-            read: false,
-            createdAt: new Date(),
-            recipientPegawaiId,
-            eventKey,
-            actionUrl,
-          };
-          const updated = [newNotif, ...state.notifications].slice(0, 200);
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
-      markAsRead: (id) =>
-        set((state) => {
-          const updated = state.notifications.map((n) =>
-            n.id === id ? { ...n, read: true } : n,
-          );
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
-      markAllAsRead: (recipientPegawaiId) =>
-        set((state) => {
-          const updated = state.notifications.map((notification) =>
-            isNotificationInRecipientScope(notification, recipientPegawaiId)
-              ? { ...notification, read: true }
-              : notification,
-          );
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
-      removeNotification: (id) =>
-        set((state) => {
-          const updated = state.notifications.filter((item) => item.id !== id);
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
-      clearAll: (recipientPegawaiId) =>
-        set((state) => {
-          const updated = recipientPegawaiId
-            ? state.notifications.filter(
-                (notification) =>
-                  !isNotificationInRecipientScope(
-                    notification,
-                    recipientPegawaiId,
-                  ),
-              )
-            : state.notifications.filter(
-                (notification) => notification.recipientPegawaiId,
-              );
-          return {
-            notifications: updated,
-            unreadCount: countUnread(updated),
-          };
-        }),
+        const newNotif: NotificationItem = {
+          id: createNotificationId(),
+          title,
+          message,
+          type,
+          read: false,
+          createdAt: new Date(),
+          recipientPegawaiId,
+          eventKey,
+          actionUrl,
+        };
+        const updated = [newNotif, ...state.notifications].slice(0, 200);
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+        await withApiFallback(
+          async () => {
+            await apiClient.post("/api/v1/notifikasi", newNotif);
+            return newNotif;
+          },
+          () => newNotif
+        );
+      },
+      markAsRead: async (id) => {
+        const updated = get().notifications.map((n) =>
+          n.id === id ? { ...n, read: true } : n,
+        );
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+        await withApiFallback(
+          async () => {
+            await apiClient.put(`/api/v1/notifikasi/${id}`, { read: true });
+            return true;
+          },
+          () => true
+        );
+      },
+      markAllAsRead: async (recipientPegawaiId) => {
+        const updated = get().notifications.map((notification) =>
+          isNotificationInRecipientScope(notification, recipientPegawaiId)
+            ? { ...notification, read: true }
+            : notification,
+        );
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+      },
+      removeNotification: async (id) => {
+        const updated = get().notifications.filter((item) => item.id !== id);
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+        await withApiFallback(
+          async () => {
+            await apiClient.delete(`/api/v1/notifikasi/${id}`);
+            return true;
+          },
+          () => true
+        );
+      },
+      clearAll: async (recipientPegawaiId) => {
+        const updated = recipientPegawaiId
+          ? get().notifications.filter(
+              (notification) =>
+                !isNotificationInRecipientScope(
+                  notification,
+                  recipientPegawaiId,
+                ),
+            )
+          : get().notifications.filter(
+              (notification) => notification.recipientPegawaiId,
+            );
+        set({
+          notifications: updated,
+          unreadCount: countUnread(updated),
+        });
+      },
     }),
     {
       name: "simpenas-notifications",

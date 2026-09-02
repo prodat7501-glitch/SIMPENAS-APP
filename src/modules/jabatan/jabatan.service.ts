@@ -38,11 +38,11 @@ export const jabatanService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }
   },
-  // REST API Integration (/api/jabatan)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Jabatan[]> => {
+  // REST API Integration (/api/v1/jabatan)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Jabatan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }>("/api/jabatan", params);
+        const res = await apiClient.get<Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }>("/api/v1/jabatan", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return sortJabatan(list);
       },
@@ -52,7 +52,7 @@ export const jabatanService = {
   apiGetById: async (id: string): Promise<Jabatan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Jabatan | { data?: Jabatan }>(`/api/jabatan/${id}`);
+        const res = await apiClient.get<Jabatan | { data?: Jabatan }>(`/api/v1/jabatan/${id}`);
         return (res as { data?: Jabatan }).data || (res as Jabatan) || null;
       },
       () => jabatanService.getAll().find((j) => j.id === id) || null
@@ -62,7 +62,7 @@ export const jabatanService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `j-${Date.now()}`, ...data };
-        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/jabatan", payload);
+        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/v1/jabatan", payload);
         return (res as { data?: Jabatan }).data || (res as Jabatan);
       },
       async () => {
@@ -76,7 +76,7 @@ export const jabatanService = {
   apiUpdate: async (id: string, data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Jabatan | { data?: Jabatan }>(`/api/jabatan/${id}`, data);
+        const res = await apiClient.put<Jabatan | { data?: Jabatan }>(`/api/v1/jabatan/${id}`, data);
         return (res as { data?: Jabatan }).data || (res as Jabatan);
       },
       async () => {
@@ -90,7 +90,7 @@ export const jabatanService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/jabatan/${id}`);
+        await apiClient.delete(`/api/v1/jabatan/${id}`);
         return true;
       },
       async () => {
@@ -100,5 +100,17 @@ export const jabatanService = {
       }
     );
   },
+  apiBulkCreate: async (data: Partial<Jabatan>[]): Promise<Jabatan[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Jabatan[] | { data?: Jabatan[] }>("/api/v1/jabatan", data);
+        return Array.isArray(res) ? res : res.data || [];
+      },
+      async () => {
+        const items = jabatanService.getAll();
+        jabatanService.saveAll([...items, ...(data as Jabatan[])]);
+        return data as Jabatan[];
+      }
+    );
+  },
 };
-

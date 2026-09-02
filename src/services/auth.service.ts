@@ -32,8 +32,11 @@ export class AuthService {
     return withApiFallback(
       async () => {
         try {
-          const res = await apiClient.post<Record<string, unknown>>("/api/login", { username, password });
-          const userObj = (res.user || res) as Record<string, unknown>;
+          const res = await apiClient.post<Record<string, unknown>>("/api/v1/auth/login", {
+            username,
+            password,
+          });
+          const userObj = (res.user || res.data || res) as Record<string, unknown>;
           return {
             id: String(userObj.id || `user-${Date.now()}`),
             username: String(userObj.username || username),
@@ -43,11 +46,18 @@ export class AuthService {
             pegawaiId: userObj.pegawaiId ? String(userObj.pegawaiId) : undefined,
           };
         } catch {
-          // Jika /api/login 404, coba verifikasi dengan /api/akun_pengguna
-          const accounts = await apiClient.get<UserAccount[] | { data?: UserAccount[] }>("/api/akun_pengguna", { username });
+          // Fallback ke endpoint /api/v1/akun-pengguna
+          const accounts = await apiClient.get<UserAccount[] | { data?: UserAccount[] }>(
+            "/api/v1/akun-pengguna",
+            { username },
+          );
           const list = Array.isArray(accounts) ? accounts : accounts.data || [];
           const passwordHash = await hashMockPassword(password);
-          const matched = list.find((acc) => acc.username === username && acc.passwordHash === passwordHash);
+          const matched = list.find(
+            (acc) =>
+              acc.username.toLowerCase() === username.toLowerCase() &&
+              acc.passwordHash === passwordHash,
+          );
           if (matched && userAccountService.canLogin(matched)) {
             return accountToSession(matched);
           }
@@ -62,18 +72,59 @@ export class AuthService {
         if (!userAccountService.canLogin(account)) return null;
 
         return accountToSession(account);
-      }
+      },
+    );
+  }
+
+  static async getMe(): Promise<UserSession | null> {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Record<string, unknown>>("/api/v1/auth/me");
+        const userObj = (res.data || res.user || res) as Record<string, unknown>;
+        return {
+          id: String(userObj.id),
+          username: String(userObj.username),
+          name: String(userObj.name),
+          role: (userObj.role as UserRole) || "Pegawai",
+          email: String(userObj.email || ""),
+          pegawaiId: userObj.pegawaiId ? String(userObj.pegawaiId) : undefined,
+        };
+      },
+      () => null,
+    );
+  }
+
+  static async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
+    return withApiFallback(
+      async () => {
+        await apiClient.put("/api/v1/auth/change-password", {
+          userId,
+          oldPassword,
+          newPassword,
+        });
+        return true;
+      },
+      async () => {
+        const account = userAccountService.findById(userId);
+        if (!account) return false;
+        const oldHash = await hashMockPassword(oldPassword);
+        if (account.passwordHash !== oldHash) return false;
+        await userAccountService.update(userId, {
+          username: account.username,
+          email: account.email,
+          isActive: account.isActive,
+          newPassword,
+        });
+        return true;
+      },
     );
   }
 
   static async logout(): Promise<boolean> {
-    return withApiFallback(
-      async () => {
-        await apiClient.post("/api/logout");
-        return true;
-      },
-      async () => true
-    );
+    return true;
   }
 }
-

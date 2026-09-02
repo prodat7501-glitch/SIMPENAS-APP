@@ -1,0 +1,3179 @@
+{
+  "info": {
+    "_postman_id": "simpenas-api-collection-v1",
+    "name": "SIMPENAS REST API Collection",
+    "description": "Koleksi REST API lengkap untuk SIMPENAS (Sistem Informasi Manajemen Perjalanan Dinas) - Node.js + Express + Aiven MySQL. Mencakup seluruh 24 tabel, Autentikasi, dan Dashboard.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://simpenas-api.vercel.app/api/v1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00. System & Health",
+      "item": [
+        {
+          "name": "Welcome & Server Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "API Catalog & Metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1"]
+            }
+          }
+        },
+        {
+          "name": "Health Check & DB Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health"]
+            }
+          }
+        },
+        {
+          "name": "Dashboard Summary Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "dashboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Autentikasi",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Pegawai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"eriyanto\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "user-admin"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-pg1\",\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. App Roles",
+      "item": [
+        {
+          "name": "Get All 02. App Roles (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 02. App Roles By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles/role-admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles", "role-admin"]
+            }
+          }
+        },
+        {
+          "name": "Create 02. App Roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"role-auditor\",\n  \"name\": \"Auditor Internal\",\n  \"description\": \"Akses audit dan pemeriksaan seluruh laporan perjalanan dinas\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles"]
+            }
+          }
+        },
+        {
+          "name": "Update 02. App Roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Auditor Internal Utama\",\n  \"description\": \"Akses audit lengkap laporan SPJ dan SPT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles/role-auditor",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles", "role-auditor"]
+            }
+          }
+        },
+        {
+          "name": "Delete 02. App Roles",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles/role-auditor",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles", "role-auditor"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 02. App Roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"role-auditor\",\n    \"name\": \"Auditor Internal\",\n    \"description\": \"Akses audit dan pemeriksaan seluruh laporan perjalanan dinas\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/app-roles/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "app-roles", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Pangkat Golongan",
+      "item": [
+        {
+          "name": "Get All 03. Pangkat Golongan (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 03. Pangkat Golongan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan/p1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan", "p1"]
+            }
+          }
+        },
+        {
+          "name": "Create 03. Pangkat Golongan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"p9\",\n  \"golongan\": \"II/b\",\n  \"nama_pangkat\": \"Pengatur Muda Tingkat I\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan"]
+            }
+          }
+        },
+        {
+          "name": "Update 03. Pangkat Golongan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_pangkat\": \"Pengatur Muda Tk. I\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan/p9",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan", "p9"]
+            }
+          }
+        },
+        {
+          "name": "Delete 03. Pangkat Golongan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan/p9",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan", "p9"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 03. Pangkat Golongan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"p9\",\n    \"golongan\": \"II/b\",\n    \"nama_pangkat\": \"Pengatur Muda Tingkat I\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pangkat-golongan/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pangkat-golongan", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Jabatan",
+      "item": [
+        {
+          "name": "Get All 04. Jabatan (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 04. Jabatan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan/j1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan", "j1"]
+            }
+          }
+        },
+        {
+          "name": "Create 04. Jabatan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"j9\",\n  \"kode\": \"JAB009\",\n  \"nama\": \"Pranata Komputer Ahli Pertama\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan"]
+            }
+          }
+        },
+        {
+          "name": "Update 04. Jabatan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Pranata Komputer Ahli Muda\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan/j9",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan", "j9"]
+            }
+          }
+        },
+        {
+          "name": "Delete 04. Jabatan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan/j9",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan", "j9"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 04. Jabatan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"j9\",\n    \"kode\": \"JAB009\",\n    \"nama\": \"Pranata Komputer Ahli Pertama\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jabatan/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "jabatan", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Unit Kerja",
+      "item": [
+        {
+          "name": "Get All 05. Unit Kerja (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 05. Unit Kerja By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja/u1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja", "u1"]
+            }
+          }
+        },
+        {
+          "name": "Create 05. Unit Kerja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"u6\",\n  \"kode\": \"UN006\",\n  \"nama\": \"Sub Bagian Perencanaan & TI\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja"]
+            }
+          }
+        },
+        {
+          "name": "Update 05. Unit Kerja",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Sub Bagian Perencanaan, TI & Humas\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja/u6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja", "u6"]
+            }
+          }
+        },
+        {
+          "name": "Delete 05. Unit Kerja",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja/u6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja", "u6"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 05. Unit Kerja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"u6\",\n    \"kode\": \"UN006\",\n    \"nama\": \"Sub Bagian Perencanaan & TI\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unit-kerja/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unit-kerja", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Pegawai",
+      "item": [
+        {
+          "name": "Get All 06. Pegawai (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 06. Pegawai By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai/pg1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai", "pg1"]
+            }
+          }
+        },
+        {
+          "name": "Create 06. Pegawai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"pg6\",\n  \"nip\": \"19950101 202012 1 005\",\n  \"nama\": \"Rizky Pratama, S.Kom\",\n  \"kategori_pegawai\": \"ASN/Sekretariat\",\n  \"jabatan_id\": \"j4\",\n  \"unit_kerja_id\": \"u4\",\n  \"pangkat_id\": \"p6\",\n  \"role_aplikasi\": \"Pegawai\",\n  \"status\": \"Aktif\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai"]
+            }
+          }
+        },
+        {
+          "name": "Update 06. Pegawai",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Rizky Pratama, M.Kom\",\n  \"status\": \"Aktif\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai/pg6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai", "pg6"]
+            }
+          }
+        },
+        {
+          "name": "Delete 06. Pegawai",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai/pg6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai", "pg6"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 06. Pegawai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"pg6\",\n    \"nip\": \"19950101 202012 1 005\",\n    \"nama\": \"Rizky Pratama, S.Kom\",\n    \"kategori_pegawai\": \"ASN/Sekretariat\",\n    \"jabatan_id\": \"j4\",\n    \"unit_kerja_id\": \"u4\",\n    \"pangkat_id\": \"p6\",\n    \"role_aplikasi\": \"Pegawai\",\n    \"status\": \"Aktif\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pegawai/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pegawai", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Akun Pengguna",
+      "item": [
+        {
+          "name": "Get All 07. Akun Pengguna (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 07. Akun Pengguna By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna/user-admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna", "user-admin"]
+            }
+          }
+        },
+        {
+          "name": "Create 07. Akun Pengguna",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"user-pg6\",\n  \"username\": \"rizky.pratama\",\n  \"password_hash\": \"ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f\",\n  \"name\": \"Rizky Pratama, S.Kom\",\n  \"email\": \"rizky.pratama@kpu.go.id\",\n  \"role\": \"Pegawai\",\n  \"pegawai_id\": \"pg6\",\n  \"is_active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna"]
+            }
+          }
+        },
+        {
+          "name": "Update 07. Akun Pengguna",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rizky.official@kpu.go.id\",\n  \"is_active\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna/user-pg6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna", "user-pg6"]
+            }
+          }
+        },
+        {
+          "name": "Delete 07. Akun Pengguna",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna/user-pg6",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna", "user-pg6"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 07. Akun Pengguna",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"user-pg6\",\n    \"username\": \"rizky.pratama\",\n    \"password_hash\": \"ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f\",\n    \"name\": \"Rizky Pratama, S.Kom\",\n    \"email\": \"rizky.pratama@kpu.go.id\",\n    \"role\": \"Pegawai\",\n    \"pegawai_id\": \"pg6\",\n    \"is_active\": 1\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/akun-pengguna/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "akun-pengguna", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Anggaran DIPA",
+      "item": [
+        {
+          "name": "Get All 08. Anggaran DIPA (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 08. Anggaran DIPA By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa/d1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa", "d1"]
+            }
+          }
+        },
+        {
+          "name": "Create 08. Anggaran DIPA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"d4\",\n  \"kode_kro\": \"015.01.2.654324\",\n  \"klasifikasi_rincian_output\": \"Sosialisasi dan Pendidikan Pemilih\",\n  \"kode_akun\": \"524113\",\n  \"akun_perjalanan_dinas\": \"Perjalanan Dinas Sosialisasi Pemilih Pemula\",\n  \"kode_dipa\": \"015.01.2.654324.524113\",\n  \"program\": \"Sosialisasi Pemilih dan Partisipasi Masyarakat\",\n  \"pagu\": 350000000,\n  \"realisasi\": 0,\n  \"tahun_anggaran\": \"2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa"]
+            }
+          }
+        },
+        {
+          "name": "Update 08. Anggaran DIPA",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagu\": 400000000,\n  \"realisasi\": 25000000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa/d4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa", "d4"]
+            }
+          }
+        },
+        {
+          "name": "Delete 08. Anggaran DIPA",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa/d4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa", "d4"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 08. Anggaran DIPA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"d4\",\n    \"kode_kro\": \"015.01.2.654324\",\n    \"klasifikasi_rincian_output\": \"Sosialisasi dan Pendidikan Pemilih\",\n    \"kode_akun\": \"524113\",\n    \"akun_perjalanan_dinas\": \"Perjalanan Dinas Sosialisasi Pemilih Pemula\",\n    \"kode_dipa\": \"015.01.2.654324.524113\",\n    \"program\": \"Sosialisasi Pemilih dan Partisipasi Masyarakat\",\n    \"pagu\": 350000000,\n    \"realisasi\": 0,\n    \"tahun_anggaran\": \"2026\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/anggaran-dipa/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "anggaran-dipa", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. SBM (Standar Biaya)",
+      "item": [
+        {
+          "name": "Get All 09. SBM (Standar Biaya) (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 09. SBM (Standar Biaya) By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm/s1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm", "s1"]
+            }
+          }
+        },
+        {
+          "name": "Create 09. SBM (Standar Biaya)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"s10\",\n  \"wilayah\": \"Sulawesi Tengah\",\n  \"jenis_biaya\": \"Uang Harian Luar Daerah (Sulawesi Tengah)\",\n  \"satuan\": \"OH\",\n  \"tarif\": 390000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm"]
+            }
+          }
+        },
+        {
+          "name": "Update 09. SBM (Standar Biaya)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tarif\": 420000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm/s10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm", "s10"]
+            }
+          }
+        },
+        {
+          "name": "Delete 09. SBM (Standar Biaya)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm/s10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm", "s10"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 09. SBM (Standar Biaya)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"s10\",\n    \"wilayah\": \"Sulawesi Tengah\",\n    \"jenis_biaya\": \"Uang Harian Luar Daerah (Sulawesi Tengah)\",\n    \"satuan\": \"OH\",\n    \"tarif\": 390000\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sbm/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sbm", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Pejabat Penandatangan",
+      "item": [
+        {
+          "name": "Get All 10. Pejabat Penandatangan (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 10. Pejabat Penandatangan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan/pe1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan", "pe1"]
+            }
+          }
+        },
+        {
+          "name": "Create 10. Pejabat Penandatangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"pe4\",\n  \"nip\": \"19820514 200604 1 002\",\n  \"nama\": \"Budi Santoso, S.Sos\",\n  \"jabatan_penandatangan\": \"Pelaksana Tugas KPA\",\n  \"peran\": \"Kuasa Pengguna Anggaran\",\n  \"berlaku_mulai\": \"2026-03-01\",\n  \"berlaku_sampai\": \"2026-06-30\",\n  \"jenis_dokumen\": [\n    \"Nota Dinas\",\n    \"SPT\"\n  ],\n  \"status\": \"Aktif\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan"]
+            }
+          }
+        },
+        {
+          "name": "Update 10. Pejabat Penandatangan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Nonaktif\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan/pe4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan", "pe4"]
+            }
+          }
+        },
+        {
+          "name": "Delete 10. Pejabat Penandatangan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan/pe4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan", "pe4"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 10. Pejabat Penandatangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"pe4\",\n    \"nip\": \"19820514 200604 1 002\",\n    \"nama\": \"Budi Santoso, S.Sos\",\n    \"jabatan_penandatangan\": \"Pelaksana Tugas KPA\",\n    \"peran\": \"Kuasa Pengguna Anggaran\",\n    \"berlaku_mulai\": \"2026-03-01\",\n    \"berlaku_sampai\": \"2026-06-30\",\n    \"jenis_dokumen\": [\n      \"Nota Dinas\",\n      \"SPT\"\n    ],\n    \"status\": \"Aktif\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pejabat-penandatangan/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pejabat-penandatangan", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Pengaturan Penomoran",
+      "item": [
+        {
+          "name": "Get All 11. Pengaturan Penomoran (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 11. Pengaturan Penomoran By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran/num-nd",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran", "num-nd"]
+            }
+          }
+        },
+        {
+          "name": "Create 11. Pengaturan Penomoran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"num-sk\",\n  \"document_type\": \"Surat Keputusan\",\n  \"format\": \"SK/{RUNNING}/KPU-KAB-GTLO/{YEAR}\",\n  \"prefix\": \"SK/\",\n  \"suffix\": \"/KPU-KAB-GTLO\",\n  \"year\": 2026,\n  \"running_number\": 1,\n  \"padding\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran"]
+            }
+          }
+        },
+        {
+          "name": "Update 11. Pengaturan Penomoran",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"running_number\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran/num-sk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran", "num-sk"]
+            }
+          }
+        },
+        {
+          "name": "Delete 11. Pengaturan Penomoran",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran/num-sk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran", "num-sk"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 11. Pengaturan Penomoran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"num-sk\",\n    \"document_type\": \"Surat Keputusan\",\n    \"format\": \"SK/{RUNNING}/KPU-KAB-GTLO/{YEAR}\",\n    \"prefix\": \"SK/\",\n    \"suffix\": \"/KPU-KAB-GTLO\",\n    \"year\": 2026,\n    \"running_number\": 1,\n    \"padding\": 2\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-penomoran/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-penomoran", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Riwayat Penomoran",
+      "item": [
+        {
+          "name": "Get All 12. Riwayat Penomoran (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 12. Riwayat Penomoran By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran/rh-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran", "rh-1"]
+            }
+          }
+        },
+        {
+          "name": "Create 12. Riwayat Penomoran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"rh-5\",\n  \"document_type\": \"Nota Dinas\",\n  \"number\": \"ND/05/KPU-KAB-GTLO/2026\",\n  \"sequence\": 5,\n  \"year\": 2026,\n  \"status\": \"Booking\",\n  \"note\": \"Booking nomor untuk konsultasi perencanaan\",\n  \"booked_for\": \"Faisal Yusuf, S.E\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran"]
+            }
+          }
+        },
+        {
+          "name": "Update 12. Riwayat Penomoran",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Terpakai\",\n  \"note\": \"Nomor telah resmi diterbitkan\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran/rh-5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran", "rh-5"]
+            }
+          }
+        },
+        {
+          "name": "Delete 12. Riwayat Penomoran",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran/rh-5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran", "rh-5"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 12. Riwayat Penomoran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"rh-5\",\n    \"document_type\": \"Nota Dinas\",\n    \"number\": \"ND/05/KPU-KAB-GTLO/2026\",\n    \"sequence\": 5,\n    \"year\": 2026,\n    \"status\": \"Booking\",\n    \"note\": \"Booking nomor untuk konsultasi perencanaan\",\n    \"booked_for\": \"Faisal Yusuf, S.E\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/riwayat-penomoran/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "riwayat-penomoran", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Pengaturan Template",
+      "item": [
+        {
+          "name": "Get All 13. Pengaturan Template (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 13. Pengaturan Template By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template/tpl-default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template", "tpl-default"]
+            }
+          }
+        },
+        {
+          "name": "Create 13. Pengaturan Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"tpl-kpu-gorontalo\",\n  \"nama_instansi\": \"KOMISI PEMILIHAN UMUM KABUPATEN GORONTALO\",\n  \"alamat\": \"Jl. Katili Dulanimo Kelurahan Kayumerah Kecamatan Limboto\",\n  \"footer\": \"Dokumen resmi SIMPENAS KPU Kabupaten Gorontalo\",\n  \"ukuran_kertas\": \"F4\",\n  \"margin\": 20,\n  \"penandatangan_id\": \"pe1\",\n  \"logo\": \"/images/logo-kpu.png\",\n  \"kop_surat\": \"KOMISI PEMILIHAN UMUM KABUPATEN GORONTALO\",\n  \"font\": \"Arial\",\n  \"alignment\": \"center\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template"]
+            }
+          }
+        },
+        {
+          "name": "Update 13. Pengaturan Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"margin\": 25,\n  \"footer\": \"SIMPENAS KPU Kabupaten Gorontalo - Tahun 2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template/tpl-kpu-gorontalo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template", "tpl-kpu-gorontalo"]
+            }
+          }
+        },
+        {
+          "name": "Delete 13. Pengaturan Template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template/tpl-kpu-gorontalo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template", "tpl-kpu-gorontalo"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 13. Pengaturan Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"tpl-kpu-gorontalo\",\n    \"nama_instansi\": \"KOMISI PEMILIHAN UMUM KABUPATEN GORONTALO\",\n    \"alamat\": \"Jl. Katili Dulanimo Kelurahan Kayumerah Kecamatan Limboto\",\n    \"footer\": \"Dokumen resmi SIMPENAS KPU Kabupaten Gorontalo\",\n    \"ukuran_kertas\": \"F4\",\n    \"margin\": 20,\n    \"penandatangan_id\": \"pe1\",\n    \"logo\": \"/images/logo-kpu.png\",\n    \"kop_surat\": \"KOMISI PEMILIHAN UMUM KABUPATEN GORONTALO\",\n    \"font\": \"Arial\",\n    \"alignment\": \"center\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pengaturan-template/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "pengaturan-template", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Nota Dinas",
+      "item": [
+        {
+          "name": "Get All 14. Nota Dinas (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 14. Nota Dinas By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas/nd-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas", "nd-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 14. Nota Dinas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"nd-003\",\n  \"nomor\": \"ND/03/KPU-KAB-GTLO/2026\",\n  \"tanggal\": \"2026-03-01\",\n  \"tanggal_berangkat\": \"2026-03-03\",\n  \"tanggal_kembali\": \"2026-03-05\",\n  \"lokasi_tujuan\": \"Kecamatan Limboto Barat\",\n  \"kepada\": \"Ketua KPU Kabupaten Gorontalo\",\n  \"dari\": \"Kasubbag Keuangan, Umum & Logistik\",\n  \"tembusan\": \"Sekretaris KPU\",\n  \"sifat\": \"Biasa\",\n  \"perihal\": \"Koordinasi Penyusunan Laporan Tahapan Pemilu\",\n  \"isi\": \"Melaksanakan koordinasi dan verifikasi data lapangan di Kecamatan Limboto Barat.\",\n  \"dipa_id\": \"d1\",\n  \"penandatangan_id\": \"pe1\",\n  \"penandatangan_snapshot\": {\n    \"nama\": \"Herman Monoarfa, M.Si\",\n    \"nip\": \"19750824 200212 1 002\",\n    \"jabatan\": \"Kuasa Pengguna Anggaran\"\n  },\n  \"jenis\": \"Dalam Kota\",\n  \"status\": \"Draft\",\n  \"catatan_revisi\": null,\n  \"created_by_pegawai_id\": \"pg1\",\n  \"total_biaya\": 900000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas"]
+            }
+          }
+        },
+        {
+          "name": "Update 14. Nota Dinas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Menunggu Approval\",\n  \"total_biaya\": 950000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas/nd-003",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas", "nd-003"]
+            }
+          }
+        },
+        {
+          "name": "Delete 14. Nota Dinas",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas/nd-003",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas", "nd-003"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 14. Nota Dinas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"nd-003\",\n    \"nomor\": \"ND/03/KPU-KAB-GTLO/2026\",\n    \"tanggal\": \"2026-03-01\",\n    \"tanggal_berangkat\": \"2026-03-03\",\n    \"tanggal_kembali\": \"2026-03-05\",\n    \"lokasi_tujuan\": \"Kecamatan Limboto Barat\",\n    \"kepada\": \"Ketua KPU Kabupaten Gorontalo\",\n    \"dari\": \"Kasubbag Keuangan, Umum & Logistik\",\n    \"tembusan\": \"Sekretaris KPU\",\n    \"sifat\": \"Biasa\",\n    \"perihal\": \"Koordinasi Penyusunan Laporan Tahapan Pemilu\",\n    \"isi\": \"Melaksanakan koordinasi dan verifikasi data lapangan di Kecamatan Limboto Barat.\",\n    \"dipa_id\": \"d1\",\n    \"penandatangan_id\": \"pe1\",\n    \"penandatangan_snapshot\": {\n      \"nama\": \"Herman Monoarfa, M.Si\",\n      \"nip\": \"19750824 200212 1 002\",\n      \"jabatan\": \"Kuasa Pengguna Anggaran\"\n    },\n    \"jenis\": \"Dalam Kota\",\n    \"status\": \"Draft\",\n    \"catatan_revisi\": null,\n    \"created_by_pegawai_id\": \"pg1\",\n    \"total_biaya\": 900000\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Nota Dinas Lampiran",
+      "item": [
+        {
+          "name": "Get All 15. Nota Dinas Lampiran (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 15. Nota Dinas Lampiran By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran/ndl-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran", "ndl-1"]
+            }
+          }
+        },
+        {
+          "name": "Create 15. Nota Dinas Lampiran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"ndl-3\",\n  \"nota_dinas_id\": \"nd-001\",\n  \"pegawai_id\": \"pg2\",\n  \"uraian\": \"Pendamping Monitoring Gudang\",\n  \"uang_harian\": 150000,\n  \"volume_uang_harian\": 3,\n  \"uang_transport\": 200000,\n  \"volume_uang_transport\": 3,\n  \"penginapan\": 0,\n  \"volume_penginapan\": 0,\n  \"tiket_pesawat\": 0,\n  \"volume_tiket_pesawat\": 0,\n  \"transport_bandara_asal\": 0,\n  \"volume_transport_bandara_asal\": 0,\n  \"transport_bandara_tujuan\": 0,\n  \"volume_transport_bandara_tujuan\": 0,\n  \"volume\": 3,\n  \"total\": 1050000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran"]
+            }
+          }
+        },
+        {
+          "name": "Update 15. Nota Dinas Lampiran",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"total\": 1100000,\n  \"uraian\": \"Pendamping Utama Monitoring Gudang\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran/ndl-3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran", "ndl-3"]
+            }
+          }
+        },
+        {
+          "name": "Delete 15. Nota Dinas Lampiran",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran/ndl-3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran", "ndl-3"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 15. Nota Dinas Lampiran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"ndl-3\",\n    \"nota_dinas_id\": \"nd-001\",\n    \"pegawai_id\": \"pg2\",\n    \"uraian\": \"Pendamping Monitoring Gudang\",\n    \"uang_harian\": 150000,\n    \"volume_uang_harian\": 3,\n    \"uang_transport\": 200000,\n    \"volume_uang_transport\": 3,\n    \"penginapan\": 0,\n    \"volume_penginapan\": 0,\n    \"tiket_pesawat\": 0,\n    \"volume_tiket_pesawat\": 0,\n    \"transport_bandara_asal\": 0,\n    \"volume_transport_bandara_asal\": 0,\n    \"transport_bandara_tujuan\": 0,\n    \"volume_transport_bandara_tujuan\": 0,\n    \"volume\": 3,\n    \"total\": 1050000\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nota-dinas-lampiran/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nota-dinas-lampiran", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Surat Perintah Tugas (SPT)",
+      "item": [
+        {
+          "name": "Get All 16. Surat Perintah Tugas (SPT) (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 16. Surat Perintah Tugas (SPT) By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt/spt-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt", "spt-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 16. Surat Perintah Tugas (SPT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"spt-002\",\n  \"nomor\": \"SPT/02/KPU-KAB-GTLO/2026\",\n  \"nota_dinas_id\": \"nd-002\",\n  \"tanggal_mulai\": \"2026-02-22\",\n  \"tanggal_selesai\": \"2026-02-25\",\n  \"penandatangan_id\": \"pe1\",\n  \"penandatangan_snapshot\": {\n    \"nama\": \"Herman Monoarfa, M.Si\",\n    \"nip\": \"19750824 200212 1 002\"\n  },\n  \"status\": \"Draft\",\n  \"created_by_pegawai_id\": \"pg2\",\n  \"menimbang\": [\n    {\n      \"text\": \"Bahwa untuk koordinasi teknis ke KPU RI, diperlukan penugasan resmi.\"\n    }\n  ],\n  \"dasar\": [\n    {\n      \"text\": \"DIPA KPU Tahun 2026\"\n    },\n    {\n      \"text\": \"Nota Dinas Nomor ND/02/KPU-KAB-GTLO/2026\"\n    }\n  ],\n  \"untuk\": [\n    {\n      \"text\": \"Melakukan konsultasi teknis tahapan pemilu di Kantor KPU RI Jakarta.\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt"]
+            }
+          }
+        },
+        {
+          "name": "Update 16. Surat Perintah Tugas (SPT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Disetujui\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt/spt-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt", "spt-002"]
+            }
+          }
+        },
+        {
+          "name": "Delete 16. Surat Perintah Tugas (SPT)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt/spt-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt", "spt-002"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 16. Surat Perintah Tugas (SPT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"spt-002\",\n    \"nomor\": \"SPT/02/KPU-KAB-GTLO/2026\",\n    \"nota_dinas_id\": \"nd-002\",\n    \"tanggal_mulai\": \"2026-02-22\",\n    \"tanggal_selesai\": \"2026-02-25\",\n    \"penandatangan_id\": \"pe1\",\n    \"penandatangan_snapshot\": {\n      \"nama\": \"Herman Monoarfa, M.Si\",\n      \"nip\": \"19750824 200212 1 002\"\n    },\n    \"status\": \"Draft\",\n    \"created_by_pegawai_id\": \"pg2\",\n    \"menimbang\": [\n      {\n        \"text\": \"Bahwa untuk koordinasi teknis ke KPU RI, diperlukan penugasan resmi.\"\n      }\n    ],\n    \"dasar\": [\n      {\n        \"text\": \"DIPA KPU Tahun 2026\"\n      },\n      {\n        \"text\": \"Nota Dinas Nomor ND/02/KPU-KAB-GTLO/2026\"\n      }\n    ],\n    \"untuk\": [\n      {\n        \"text\": \"Melakukan konsultasi teknis tahapan pemilu di Kantor KPU RI Jakarta.\"\n      }\n    ]\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. SPT Personil",
+      "item": [
+        {
+          "name": "Get All 17. SPT Personil (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 17. SPT Personil By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil/sptp-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil", "sptp-1"]
+            }
+          }
+        },
+        {
+          "name": "Create 17. SPT Personil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"sptp-2\",\n  \"spt_id\": \"spt-001\",\n  \"pegawai_id\": \"pg2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil"]
+            }
+          }
+        },
+        {
+          "name": "Update 17. SPT Personil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pegawai_id\": \"pg3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil/sptp-2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil", "sptp-2"]
+            }
+          }
+        },
+        {
+          "name": "Delete 17. SPT Personil",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil/sptp-2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil", "sptp-2"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 17. SPT Personil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"sptp-2\",\n    \"spt_id\": \"spt-001\",\n    \"pegawai_id\": \"pg2\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spt-personil/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spt-personil", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Surat Perjalanan Dinas (SPPD)",
+      "item": [
+        {
+          "name": "Get All 18. Surat Perjalanan Dinas (SPPD) (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 18. Surat Perjalanan Dinas (SPPD) By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd/sppd-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd", "sppd-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 18. Surat Perjalanan Dinas (SPPD)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"sppd-002\",\n  \"nomor\": \"SPPD/02/KPU-KAB-GTLO/2026\",\n  \"spt_id\": \"spt-001\",\n  \"pegawai_id\": \"pg2\",\n  \"pengelola_pegawai_id\": \"pg4\",\n  \"pengelola_nama\": \"Faisal Yusuf, S.E\",\n  \"maksud\": \"Pendampingan Monitoring Gudang Logistik Pemilu\",\n  \"transportasi\": \"Kendaraan Dinas Operasional\",\n  \"tempat_berangkat\": \"Limboto, Kab. Gorontalo\",\n  \"tempat_tujuan\": \"Kec. Tibawa & Pulubala\",\n  \"tanggal_berangkat\": \"2026-02-12\",\n  \"tanggal_kembali\": \"2026-02-14\",\n  \"lama_perjalanan\": 3,\n  \"instansi\": \"KPU Kabupaten Gorontalo\",\n  \"dipa_id\": \"d1\",\n  \"penandatangan_id\": \"pe1\",\n  \"status\": \"Draft\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd"]
+            }
+          }
+        },
+        {
+          "name": "Update 18. Surat Perjalanan Dinas (SPPD)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Diterbitkan\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd/sppd-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd", "sppd-002"]
+            }
+          }
+        },
+        {
+          "name": "Delete 18. Surat Perjalanan Dinas (SPPD)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd/sppd-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd", "sppd-002"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 18. Surat Perjalanan Dinas (SPPD)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"sppd-002\",\n    \"nomor\": \"SPPD/02/KPU-KAB-GTLO/2026\",\n    \"spt_id\": \"spt-001\",\n    \"pegawai_id\": \"pg2\",\n    \"pengelola_pegawai_id\": \"pg4\",\n    \"pengelola_nama\": \"Faisal Yusuf, S.E\",\n    \"maksud\": \"Pendampingan Monitoring Gudang Logistik Pemilu\",\n    \"transportasi\": \"Kendaraan Dinas Operasional\",\n    \"tempat_berangkat\": \"Limboto, Kab. Gorontalo\",\n    \"tempat_tujuan\": \"Kec. Tibawa & Pulubala\",\n    \"tanggal_berangkat\": \"2026-02-12\",\n    \"tanggal_kembali\": \"2026-02-14\",\n    \"lama_perjalanan\": 3,\n    \"instansi\": \"KPU Kabupaten Gorontalo\",\n    \"dipa_id\": \"d1\",\n    \"penandatangan_id\": \"pe1\",\n    \"status\": \"Draft\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sppd/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sppd", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Laporan Perjalanan",
+      "item": [
+        {
+          "name": "Get All 19. Laporan Perjalanan (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 19. Laporan Perjalanan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan/lap-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan", "lap-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 19. Laporan Perjalanan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"lap-002\",\n  \"spt_id\": \"spt-001\",\n  \"sppd_id\": \"sppd-001\",\n  \"pelaksana_id\": \"pg2\",\n  \"judul_laporan\": \"Laporan Tambahan Monitoring Wilayah Pulubala\",\n  \"surat_tugas\": \"Surat Perintah Tugas\",\n  \"nomor_surat_tugas\": \"SPT/01/KPU-KAB-GTLO/2026\",\n  \"tanggal_surat_tugas\": \"2026-02-12\",\n  \"dasar_pelaksanaan\": \"DIPA KPU Tahun 2026\",\n  \"maksud\": \"Pengecekan cadangan logistik\",\n  \"tujuan\": \"Memastikan cadangan sarana tersedia\",\n  \"tempat_pelaksanaan\": \"Kantor PPK Pulubala\",\n  \"hari_tanggal_pelaksanaan\": \"Jumat, 13 Februari 2026\",\n  \"materi\": \"Kelayakan ruang penyimpanan cadangan\",\n  \"hasil_pelaksanaan\": \"Ruang cadangan siap digunakan setelah perapian tata letak.\",\n  \"dokumentasi\": [\n    {\n      \"id\": \"img-2\",\n      \"nama\": \"pulubala-gudang.jpg\",\n      \"dataUrl\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n      \"caption\": \"Foto pengecekan gudang Pulubala\"\n    }\n  ],\n  \"status\": \"Draft\",\n  \"tempat_laporan\": \"Limboto\",\n  \"tanggal_laporan\": \"2026-02-16\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan"]
+            }
+          }
+        },
+        {
+          "name": "Update 19. Laporan Perjalanan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Terverifikasi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan/lap-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan", "lap-002"]
+            }
+          }
+        },
+        {
+          "name": "Delete 19. Laporan Perjalanan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan/lap-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan", "lap-002"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 19. Laporan Perjalanan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"lap-002\",\n    \"spt_id\": \"spt-001\",\n    \"sppd_id\": \"sppd-001\",\n    \"pelaksana_id\": \"pg2\",\n    \"judul_laporan\": \"Laporan Tambahan Monitoring Wilayah Pulubala\",\n    \"surat_tugas\": \"Surat Perintah Tugas\",\n    \"nomor_surat_tugas\": \"SPT/01/KPU-KAB-GTLO/2026\",\n    \"tanggal_surat_tugas\": \"2026-02-12\",\n    \"dasar_pelaksanaan\": \"DIPA KPU Tahun 2026\",\n    \"maksud\": \"Pengecekan cadangan logistik\",\n    \"tujuan\": \"Memastikan cadangan sarana tersedia\",\n    \"tempat_pelaksanaan\": \"Kantor PPK Pulubala\",\n    \"hari_tanggal_pelaksanaan\": \"Jumat, 13 Februari 2026\",\n    \"materi\": \"Kelayakan ruang penyimpanan cadangan\",\n    \"hasil_pelaksanaan\": \"Ruang cadangan siap digunakan setelah perapian tata letak.\",\n    \"dokumentasi\": [\n      {\n        \"id\": \"img-2\",\n        \"nama\": \"pulubala-gudang.jpg\",\n        \"dataUrl\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n        \"caption\": \"Foto pengecekan gudang Pulubala\"\n      }\n    ],\n    \"status\": \"Draft\",\n    \"tempat_laporan\": \"Limboto\",\n    \"tanggal_laporan\": \"2026-02-16\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/laporan-perjalanan/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "laporan-perjalanan", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Pertanggungjawaban SPJ",
+      "item": [
+        {
+          "name": "Get All 20. Pertanggungjawaban SPJ (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 20. Pertanggungjawaban SPJ By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj/spj-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj", "spj-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 20. Pertanggungjawaban SPJ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"spj-002\",\n  \"laporan_id\": \"lap-001\",\n  \"sppd_id\": \"sppd-001\",\n  \"status\": \"SPJ Diterima\",\n  \"checklist\": {\n    \"laporan\": true,\n    \"sppd\": true,\n    \"dokumentasi\": true,\n    \"tandaTangan\": true\n  },\n  \"realisasi_biaya\": [\n    {\n      \"pegawaiId\": \"pg1\",\n      \"uangTransportHarian\": 600000,\n      \"penginapan\": 0,\n      \"diverifikasi\": true\n    }\n  ],\n  \"catatan\": \"Berkas SPJ diterima lengkap dan dalam proses validasi bendahara.\",\n  \"tanggal_diterima\": \"2026-02-17\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj"]
+            }
+          }
+        },
+        {
+          "name": "Update 20. Pertanggungjawaban SPJ",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Validasi Selesai\",\n  \"catatan\": \"Validasi selesai dan siap dicairkan.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj/spj-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj", "spj-002"]
+            }
+          }
+        },
+        {
+          "name": "Delete 20. Pertanggungjawaban SPJ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj/spj-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj", "spj-002"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 20. Pertanggungjawaban SPJ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"spj-002\",\n    \"laporan_id\": \"lap-001\",\n    \"sppd_id\": \"sppd-001\",\n    \"status\": \"SPJ Diterima\",\n    \"checklist\": {\n      \"laporan\": true,\n      \"sppd\": true,\n      \"dokumentasi\": true,\n      \"tandaTangan\": true\n    },\n    \"realisasi_biaya\": [\n      {\n        \"pegawaiId\": \"pg1\",\n        \"uangTransportHarian\": 600000,\n        \"penginapan\": 0,\n        \"diverifikasi\": true\n      }\n    ],\n    \"catatan\": \"Berkas SPJ diterima lengkap dan dalam proses validasi bendahara.\",\n    \"tanggal_diterima\": \"2026-02-17\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/spj/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "spj", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Dokumen Keuangan",
+      "item": [
+        {
+          "name": "Get All 21. Dokumen Keuangan (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 21. Dokumen Keuangan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan/dok-kwt-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan", "dok-kwt-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 21. Dokumen Keuangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"dok-nom-001\",\n  \"spj_id\": \"spj-001\",\n  \"laporan_id\": \"lap-001\",\n  \"sppd_id\": \"sppd-001\",\n  \"spt_id\": \"spt-001\",\n  \"nota_dinas_id\": \"nd-001\",\n  \"parent_document_id\": null,\n  \"jenis\": \"Daftar Nominatif\",\n  \"nomor\": \"NOM/01/KPU-KAB-GTLO/2026\",\n  \"tanggal\": \"2026-02-16\",\n  \"tahun\": \"2026\",\n  \"dipa_id\": \"d1\",\n  \"anggaran\": \"DIPA KPU Kab. Gorontalo 2026\",\n  \"mak\": \"524111\",\n  \"rincian\": [\n    {\n      \"pegawaiId\": \"pg1\",\n      \"nama\": \"Eriyanto\",\n      \"uangHarian\": 450000,\n      \"uangTransport\": 600000,\n      \"jumlah\": 1050000\n    }\n  ],\n  \"total\": 1050000,\n  \"status\": \"Dibuat\",\n  \"pembayaran\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan"]
+            }
+          }
+        },
+        {
+          "name": "Update 21. Dokumen Keuangan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Selesai\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan/dok-nom-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan", "dok-nom-001"]
+            }
+          }
+        },
+        {
+          "name": "Delete 21. Dokumen Keuangan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan/dok-nom-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan", "dok-nom-001"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 21. Dokumen Keuangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"dok-nom-001\",\n    \"spj_id\": \"spj-001\",\n    \"laporan_id\": \"lap-001\",\n    \"sppd_id\": \"sppd-001\",\n    \"spt_id\": \"spt-001\",\n    \"nota_dinas_id\": \"nd-001\",\n    \"parent_document_id\": null,\n    \"jenis\": \"Daftar Nominatif\",\n    \"nomor\": \"NOM/01/KPU-KAB-GTLO/2026\",\n    \"tanggal\": \"2026-02-16\",\n    \"tahun\": \"2026\",\n    \"dipa_id\": \"d1\",\n    \"anggaran\": \"DIPA KPU Kab. Gorontalo 2026\",\n    \"mak\": \"524111\",\n    \"rincian\": [\n      {\n        \"pegawaiId\": \"pg1\",\n        \"nama\": \"Eriyanto\",\n        \"uangHarian\": 450000,\n        \"uangTransport\": 600000,\n        \"jumlah\": 1050000\n      }\n    ],\n    \"total\": 1050000,\n    \"status\": \"Dibuat\",\n    \"pembayaran\": null\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dokumen-keuangan/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dokumen-keuangan", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. Approval History",
+      "item": [
+        {
+          "name": "Get All 22. Approval History (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 22. Approval History By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history/apprv-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history", "apprv-1"]
+            }
+          }
+        },
+        {
+          "name": "Create 22. Approval History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"apprv-3\",\n  \"document_id\": \"nd-002\",\n  \"document_type\": \"Nota Dinas\",\n  \"nomor_dokumen\": \"ND/02/KPU-KAB-GTLO/2026\",\n  \"tanggal\": \"2026-02-19\",\n  \"approver\": \"Herman Monoarfa, M.Si\",\n  \"status\": \"Disetujui\",\n  \"catatan\": \"Disetujui untuk konsultasi ke KPU RI.\",\n  \"recipient_pegawai_id\": \"pg2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history"]
+            }
+          }
+        },
+        {
+          "name": "Update 22. Approval History",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catatan\": \"Catatan diperbarui: Pelaksanaan maksimal 4 hari.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history/apprv-3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history", "apprv-3"]
+            }
+          }
+        },
+        {
+          "name": "Delete 22. Approval History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history/apprv-3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history", "apprv-3"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 22. Approval History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"apprv-3\",\n    \"document_id\": \"nd-002\",\n    \"document_type\": \"Nota Dinas\",\n    \"nomor_dokumen\": \"ND/02/KPU-KAB-GTLO/2026\",\n    \"tanggal\": \"2026-02-19\",\n    \"approver\": \"Herman Monoarfa, M.Si\",\n    \"status\": \"Disetujui\",\n    \"catatan\": \"Disetujui untuk konsultasi ke KPU RI.\",\n    \"recipient_pegawai_id\": \"pg2\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/approval-history/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "approval-history", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "23. Arsip SPJ Digital",
+      "item": [
+        {
+          "name": "Get All 23. Arsip SPJ Digital (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 23. Arsip SPJ Digital By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj/arsip-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj", "arsip-001"]
+            }
+          }
+        },
+        {
+          "name": "Create 23. Arsip SPJ Digital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"arsip-002\",\n  \"nota_dinas_id\": \"nd-001\",\n  \"nama_file\": \"Kuitansi_Lengkap_Monitoring.pdf\",\n  \"ukuran_file\": 2048500,\n  \"tipe_file\": \"application/pdf\",\n  \"diunggah_pada\": \"2026-02-17T11:00:00.000Z\",\n  \"diunggah_oleh\": \"Sri Wahyuni, A.Md\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj"]
+            }
+          }
+        },
+        {
+          "name": "Update 23. Arsip SPJ Digital",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_file\": \"Kuitansi_Lengkap_Monitoring_Signed.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj/arsip-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj", "arsip-002"]
+            }
+          }
+        },
+        {
+          "name": "Delete 23. Arsip SPJ Digital",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj/arsip-002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj", "arsip-002"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 23. Arsip SPJ Digital",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"arsip-002\",\n    \"nota_dinas_id\": \"nd-001\",\n    \"nama_file\": \"Kuitansi_Lengkap_Monitoring.pdf\",\n    \"ukuran_file\": 2048500,\n    \"tipe_file\": \"application/pdf\",\n    \"diunggah_pada\": \"2026-02-17T11:00:00.000Z\",\n    \"diunggah_oleh\": \"Sri Wahyuni, A.Md\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/arsip-spj/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "arsip-spj", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "24. Log Aktivitas",
+      "item": [
+        {
+          "name": "Get All 24. Log Aktivitas (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 24. Log Aktivitas By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas/log-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas", "log-01"]
+            }
+          }
+        },
+        {
+          "name": "Create 24. Log Aktivitas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"log-08\",\n  \"action\": \"Create\",\n  \"module\": \"SPPD\",\n  \"description\": \"Menerbitkan SPPD Baru untuk monitoring gudang\",\n  \"user\": \"Eriyanto\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas"]
+            }
+          }
+        },
+        {
+          "name": "Update 24. Log Aktivitas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Menerbitkan SPPD Baru untuk monitoring gudang (Updated)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas/log-08",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas", "log-08"]
+            }
+          }
+        },
+        {
+          "name": "Delete 24. Log Aktivitas",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas/log-08",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas", "log-08"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 24. Log Aktivitas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"log-08\",\n    \"action\": \"Create\",\n    \"module\": \"SPPD\",\n    \"description\": \"Menerbitkan SPPD Baru untuk monitoring gudang\",\n    \"user\": \"Eriyanto\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/log-aktivitas/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "log-aktivitas", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "25. Notifikasi",
+      "item": [
+        {
+          "name": "Get All 25. Notifikasi (Pagination & Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi?page=1&limit=10&search=&sortBy=&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sortBy",
+                  "value": ""
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "DESC"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 25. Notifikasi By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi/notif-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi", "notif-1"]
+            }
+          }
+        },
+        {
+          "name": "Create 25. Notifikasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"notif-4\",\n  \"title\": \"Validasi SPJ Selesai\",\n  \"message\": \"SPJ kegiatan monitoring telah diverifikasi lengkap oleh Keuangan.\",\n  \"type\": \"success\",\n  \"is_read\": 0,\n  \"recipient_pegawai_id\": \"pg1\",\n  \"event_key\": \"spj_verified_spj-001\",\n  \"action_url\": \"/spj\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi"]
+            }
+          }
+        },
+        {
+          "name": "Update 25. Notifikasi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_read\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi/notif-4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi", "notif-4"]
+            }
+          }
+        },
+        {
+          "name": "Delete 25. Notifikasi",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi/notif-4",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi", "notif-4"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create 25. Notifikasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"id\": \"notif-4\",\n    \"title\": \"Validasi SPJ Selesai\",\n    \"message\": \"SPJ kegiatan monitoring telah diverifikasi lengkap oleh Keuangan.\",\n    \"type\": \"success\",\n    \"is_read\": 0,\n    \"recipient_pegawai_id\": \"pg1\",\n    \"event_key\": \"spj_verified_spj-001\",\n    \"action_url\": \"/spj\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifikasi/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifikasi", "bulk"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

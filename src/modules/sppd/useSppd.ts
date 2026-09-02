@@ -22,7 +22,7 @@ export function useSppd() {
 
   const listQuery = useQuery({
     queryKey: SPPD_QUERY_KEY,
-    queryFn: sppdService.list,
+    queryFn: () => sppdService.list(),
   });
 
   const createMutation = useMutation({
@@ -70,7 +70,7 @@ export function useSppd() {
     },
   });
 
-  const items = listQuery.data ?? [];
+  const items: Sppd[] = listQuery.data ?? [];
   const filteredItems = items.filter((item) => {
     const search = filters.search.trim().toLowerCase();
     const matchesSearch =

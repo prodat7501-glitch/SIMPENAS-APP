@@ -489,12 +489,18 @@ export const keuanganService = {
           document.jenis === jenis && document.tahun === String(year),
       )
       .map((document) => document.nomor),
-  list: async (reports: Laporan[], context?: SpjSourceContext): Promise<Spj[]> => {
+  list: async (
+    reports: Laporan[],
+    context?: SpjSourceContext,
+    params?: { page?: number; limit?: number; search?: string },
+  ): Promise<Spj[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Spj[] | { data?: Spj[]; items?: Spj[] }>("/api/dokumen_keuangan");
+        const res = await apiClient.get<
+          Spj[] | { data?: Spj[]; items?: Spj[] }
+        >("/api/v1/spj", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list;
+        return list.length > 0 ? list : [];
       },
       async () => {
         const current = get();
@@ -574,7 +580,7 @@ export const keuanganService = {
         )
           put([...migrated, ...additions]);
         return [...migrated, ...additions];
-      }
+      },
     );
   },
   validate: async (
@@ -586,14 +592,17 @@ export const keuanganService = {
   ) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Spj>("/api/validasi_spj", {
-          spjId,
-          checklist,
-          realisasiBiaya,
-          catatan,
-          action,
-        });
-        return res;
+        const res = await apiClient.put<Spj | { data?: Spj }>(
+          `/api/v1/spj/${spjId}`,
+          {
+            checklist,
+            realisasiBiaya,
+            catatan,
+            status: action === "selesai" ? "Validasi Selesai" : "Validasi SPJ",
+          },
+        );
+        const unwrapped = (res as { data?: Spj }).data || (res as Spj);
+        return unwrapped;
       },
       async () => {
         const items = get();
@@ -618,85 +627,171 @@ export const keuanganService = {
             normalizedRealisasi.some((row) => !row.diverifikasi))
         ) {
           throw new Error(
-            "Realisasi biaya berdasarkan bukti SPJ wajib diperiksa untuk seluruh personel.",
+            "Seluruh rincian realisasi biaya wajib diverifikasi sebelum validasi selesai.",
           );
         }
-        if (action === "revisi" && catatan.trim().length < 3)
-          throw new Error("Catatan kekurangan wajib diisi.");
-        const status =
-          action === "mulai"
-            ? "Validasi SPJ"
-            : action === "revisi"
-              ? "SPJ Diterima"
-              : "Validasi Selesai";
+        if (action === "revisi" && catatan.trim().length < 5)
+          throw new Error("Catatan revisi wajib diisi minimal 5 karakter.");
         const updated: Spj = {
           ...target,
           checklist,
           realisasiBiaya: normalizedRealisasi,
-          catatan,
-          status,
+          catatan: action === "revisi" ? catatan.trim() : "",
+          status: action === "selesai" ? "Validasi Selesai" : "Validasi SPJ",
         };
         put(items.map((x) => (x.id === spjId ? updated : x)));
         return updated;
-      }
+      },
     );
   },
   generate: async (
     spjId: string,
     jenis: JenisDokumen,
     context: ChainContext,
-  ) => {
+  ): Promise<DokumenKeuangan> => {
     return withApiFallback(
-      async () => {
-        const res = await apiClient.post<DokumenKeuangan>("/api/dokumen_keuangan", { spjId, jenis });
-        return res;
-      },
       async () => {
         const items = get();
         const target = items.find((x) => x.id === spjId);
         if (!target) throw new Error("SPJ tidak ditemukan.");
-        if (!PAYMENT_PROCESS_READY_STATUSES.has(target.status))
-          throw new Error("Validasi SPJ belum selesai.");
-        if (target.dokumen.some((x) => x.jenis === jenis))
-          throw new Error(`${jenis} sudah dibuat.`);
+        const existingDocuments = target.dokumen.filter(
+          (x) => x.jenis === jenis,
+        );
+        const retainedDocuments = target.dokumen.filter(
+          (x) => x.jenis !== jenis,
+        );
         const documents = buildFinancialDocuments(
           items,
           target,
           spjId,
           jenis,
           context,
+          existingDocuments,
+        );
+        const firstDoc = documents[0];
+        if (firstDoc) {
+          await apiClient.post("/api/v1/dokumen-keuangan", firstDoc);
+        }
+        const updated = {
+          ...target,
+          status: "Proses Pembayaran" as const,
+          dokumen: [...retainedDocuments, ...documents],
+        };
+        put(items.map((x) => (x.id === spjId ? updated : x)));
+        return firstDoc;
+      },
+      async () => {
+        const items = get();
+        const target = items.find((x) => x.id === spjId);
+        if (!target) throw new Error("SPJ tidak ditemukan.");
+        const existingDocuments = target.dokumen.filter(
+          (x) => x.jenis === jenis,
+        );
+        const retainedDocuments = target.dokumen.filter(
+          (x) => x.jenis !== jenis,
+        );
+        const documents = buildFinancialDocuments(
+          items,
+          target,
+          spjId,
+          jenis,
+          context,
+          existingDocuments,
         );
         const updated = {
           ...target,
           status: "Proses Pembayaran" as const,
-          dokumen: [...target.dokumen, ...documents],
+          dokumen: [...retainedDocuments, ...documents],
         };
         put(items.map((x) => (x.id === spjId ? updated : x)));
         return documents[0];
-      }
+      },
     );
   },
   regenerate: async (
     spjId: string,
     jenis: JenisDokumen,
     context: ChainContext,
-  ) => {
-    if (jenis !== "SPBY")
-      throw new Error("Buat ulang saat ini hanya tersedia untuk SPBY.");
+  ): Promise<DokumenKeuangan> => {
+    return withApiFallback(
+      async () => {
+        const items = get();
+        const target = items.find((x) => x.id === spjId);
+        if (!target) throw new Error("SPJ tidak ditemukan.");
+        const existingDocuments = target.dokumen.filter(
+          (x) => x.jenis === jenis,
+        );
+        const retainedDocuments = target.dokumen.filter(
+          (x) => x.jenis !== jenis,
+        );
+        const documents = buildFinancialDocuments(
+          items,
+          { ...target, dokumen: retainedDocuments },
+          spjId,
+          jenis,
+          context,
+          existingDocuments,
+        );
+        const firstDoc = documents[0];
+        if (firstDoc?.id) {
+          await apiClient.put(
+            `/api/v1/dokumen-keuangan/${firstDoc.id}`,
+            firstDoc,
+          );
+        }
+        const updated = {
+          ...target,
+          status: "Proses Pembayaran" as const,
+          dokumen: [...retainedDocuments, ...documents],
+        };
+        put(items.map((x) => (x.id === spjId ? updated : x)));
+        return firstDoc;
+      },
+      async () => {
+        const items = get();
+        const target = items.find((x) => x.id === spjId);
+        if (!target) throw new Error("SPJ tidak ditemukan.");
+        const existingDocuments = target.dokumen.filter(
+          (x) => x.jenis === jenis,
+        );
+        const retainedDocuments = target.dokumen.filter(
+          (x) => x.jenis !== jenis,
+        );
+        const documents = buildFinancialDocuments(
+          items,
+          { ...target, dokumen: retainedDocuments },
+          spjId,
+          jenis,
+          context,
+          existingDocuments,
+        );
+        const updated = {
+          ...target,
+          status: "Proses Pembayaran" as const,
+          dokumen: [...retainedDocuments, ...documents],
+        };
+        put(items.map((x) => (x.id === spjId ? updated : x)));
+        return documents[0];
+      },
+    );
+  },
+  createFinancialDocument: (
+    spjId: string,
+    jenis: JenisDokumen,
+    context: ChainContext,
+  ): DokumenKeuangan[] => {
     const items = get();
     const target = items.find((x) => x.id === spjId);
     if (!target) throw new Error("SPJ tidak ditemukan.");
-    if (!PAYMENT_PROCESS_READY_STATUSES.has(target.status))
-      throw new Error("Validasi SPJ belum selesai.");
-
-    const existingDocuments = target.dokumen.filter((x) => x.jenis === jenis);
-    if (!existingDocuments.length)
-      throw new Error(`${jenis} belum pernah dibuat.`);
-
-    const retainedDocuments = target.dokumen.filter((x) => x.jenis !== jenis);
+    const existingDocuments = target.dokumen.filter(
+      (document) => document.jenis === jenis,
+    );
+    const retainedDocuments = target.dokumen.filter(
+      (document) => document.jenis !== jenis,
+    );
     const documents = buildFinancialDocuments(
       items,
-      { ...target, dokumen: retainedDocuments },
+      target,
       spjId,
       jenis,
       context,
@@ -713,8 +808,12 @@ export const keuanganService = {
   removeDocument: async (documentId: string): Promise<DokumenKeuangan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.delete<DokumenKeuangan>(`/api/dokumen_keuangan/${documentId}`);
-        return res;
+        const res = await apiClient.delete<
+          DokumenKeuangan | { data?: DokumenKeuangan }
+        >(`/api/v1/dokumen-keuangan/${documentId}`);
+        const unwrapped =
+          (res as { data?: DokumenKeuangan }).data || (res as DokumenKeuangan);
+        return unwrapped;
       },
       async () => {
         const items = get();
@@ -778,7 +877,7 @@ export const keuanganService = {
         );
 
         return document;
-      }
+      },
     );
   },
   completePayment: async (
@@ -787,8 +886,19 @@ export const keuanganService = {
   ) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<DokumenKeuangan>("/api/pembayaran", { documentId, ...input });
-        return res;
+        const payment = paymentCompletionInputSchema.parse(input);
+        const res = await apiClient.put<
+          DokumenKeuangan | { data?: DokumenKeuangan }
+        >(`/api/v1/dokumen-keuangan/${documentId}`, {
+          status: "Selesai",
+          pembayaran: {
+            ...payment,
+            dikonfirmasiPada: new Date().toISOString(),
+          },
+        });
+        const unwrapped =
+          (res as { data?: DokumenKeuangan }).data || (res as DokumenKeuangan);
+        return unwrapped;
       },
       async () => {
         const items = get();
@@ -821,12 +931,43 @@ export const keuanganService = {
         const isPaymentComplete = areAllPaymentsComplete(updatedDocuments);
         const updated: Spj = {
           ...target,
-          status: isPaymentComplete ? "Pembayaran Selesai" : "Proses Pembayaran",
+          status: isPaymentComplete
+            ? "Pembayaran Selesai"
+            : "Proses Pembayaran",
           dokumen: updatedDocuments,
         };
         put(items.map((item) => (item.id === target.id ? updated : item)));
         return updatedDocument;
-      }
+      },
+    );
+  },
+  apiBulkCreateSpj: async (data: Partial<Spj>[]): Promise<Spj[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Spj[] | { data?: Spj[] }>(
+          "/api/v1/spj",
+          data,
+        );
+        return Array.isArray(res) ? res : res.data || [];
+      },
+      async () => {
+        const items = get();
+        put([...items, ...(data as Spj[])]);
+        return data as Spj[];
+      },
+    );
+  },
+  apiBulkCreateDokumenKeuangan: async (
+    data: Partial<DokumenKeuangan>[],
+  ): Promise<DokumenKeuangan[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<
+          DokumenKeuangan[] | { data?: DokumenKeuangan[] }
+        >("/api/v1/dokumen-keuangan", data);
+        return Array.isArray(res) ? res : res.data || [];
+      },
+      async () => data as DokumenKeuangan[],
     );
   },
 };

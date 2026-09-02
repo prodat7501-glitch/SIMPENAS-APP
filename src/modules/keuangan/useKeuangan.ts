@@ -139,7 +139,7 @@ export function useKeuangan(
         ...context,
       });
     },
-    onSuccess: (items, input) => {
+    onSuccess: (item, input) => {
       invalidate();
       useNotificationStore
         .getState()
@@ -151,7 +151,9 @@ export function useKeuangan(
       useActivityStore.getState().add({
         action: "Update",
         module: input.jenis,
-        description: `Buat ulang ${items.length} dokumen ${input.jenis}`,
+        description: item?.nomor
+          ? `Buat ulang dokumen ${item.nomor}`
+          : `Buat ulang dokumen ${input.jenis}`,
         user: "Sub Bagian Keuangan",
       });
     },

@@ -189,10 +189,10 @@ const ensureLegacyMigration = async () => {
   markMigrationComplete();
 };
 
-const getItems = async (): Promise<Laporan[]> => {
+const getItems = async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Laporan[]> => {
   return withApiFallback(
     async () => {
-      const res = await apiClient.get<Laporan[] | { data?: Laporan[]; items?: Laporan[] }>("/api/laporan_perjalanan");
+      const res = await apiClient.get<Laporan[] | { data?: Laporan[]; items?: Laporan[] }>("/api/v1/laporan-perjalanan", params);
       const list = Array.isArray(res) ? res : res.data || res.items || [];
       return list.map(normalizeLaporan);
     },
@@ -214,8 +214,9 @@ export const laporanService = {
   apiGetById: async (id: string): Promise<Laporan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Laporan | null>(`/api/laporan_perjalanan/${id}`);
-        return res ? normalizeLaporan(res) : null;
+        const res = await apiClient.get<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`);
+        const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
+        return unwrapped ? normalizeLaporan(unwrapped) : null;
       },
       async () => {
         const items = await getItems();
@@ -226,8 +227,9 @@ export const laporanService = {
   create: async (payload: LaporanPayload) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Laporan>("/api/laporan_perjalanan", payload);
-        return normalizeLaporan(res);
+        const res = await apiClient.post<Laporan | { data?: Laporan }>("/api/v1/laporan-perjalanan", payload);
+        const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
+        return normalizeLaporan(unwrapped);
       },
       async () => {
         const items = await getItems();
@@ -243,8 +245,9 @@ export const laporanService = {
   update: async (id: string, payload: LaporanPayload) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Laporan>(`/api/laporan_perjalanan/${id}`, payload);
-        return normalizeLaporan(res);
+        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, payload);
+        const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
+        return normalizeLaporan(unwrapped);
       },
       async () => {
         const items = await getItems();
@@ -263,7 +266,7 @@ export const laporanService = {
   remove: async (id: string) => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/laporan_perjalanan/${id}`);
+        await apiClient.delete(`/api/v1/laporan-perjalanan/${id}`);
       },
       async () => {
         await ensureLegacyMigration();
@@ -278,8 +281,9 @@ export const laporanService = {
   ) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Laporan>(`/api/laporan_perjalanan/${id}`, { status, catatanVerifikasi: catatan });
-        return normalizeLaporan(res);
+        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, { status, catatanVerifikasi: catatan });
+        const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
+        return normalizeLaporan(unwrapped);
       },
       async () => {
         const items = await getItems();
@@ -295,6 +299,20 @@ export const laporanService = {
         });
         await putDatabaseItem(updated);
         return updated;
+      }
+    );
+  },
+  apiBulkCreate: async (data: Partial<Laporan>[]): Promise<Laporan[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Laporan[] | { data?: Laporan[] }>("/api/v1/laporan-perjalanan", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizeLaporan);
+      },
+      async () => {
+        const normalized = data.map((d) => normalizeLaporan(d as Laporan));
+        await writeDatabaseItems(normalized);
+        return normalized;
       }
     );
   },

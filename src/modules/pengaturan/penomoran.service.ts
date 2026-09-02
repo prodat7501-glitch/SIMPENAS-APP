@@ -503,5 +503,85 @@ export const penomoranService = {
     });
     return updated;
   },
+
+  // REST API Integration (/api/v1/pengaturan-penomoran & /api/v1/riwayat-penomoran)
+  apiGetConfigs: async (): Promise<NumberingConfig[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NumberingConfig[] | { data?: NumberingConfig[]; items?: NumberingConfig[] }>("/api/v1/pengaturan-penomoran");
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.length > 0 ? list : penomoranService.list();
+      },
+      () => penomoranService.list()
+    );
+  },
+
+  apiSaveConfig: async (config: NumberingConfig): Promise<NumberingConfig> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.put<NumberingConfig | { data?: NumberingConfig }>(`/api/v1/pengaturan-penomoran/${config.documentType.toLowerCase().replace(/\s+/g, "-")}`, config);
+        const unwrapped = (res as { data?: NumberingConfig }).data || (res as NumberingConfig);
+        return unwrapped;
+      },
+      () => penomoranService.update(config)
+    );
+  },
+
+  apiGetHistories: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<NumberHistory[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NumberHistory[] | { data?: NumberHistory[]; items?: NumberHistory[] }>("/api/v1/riwayat-penomoran", params);
+        return Array.isArray(res) ? res : res.data || res.items || [];
+      },
+      () => getHistory()
+    );
+  },
+
+  apiCreateHistory: async (data: Partial<NumberHistory>): Promise<NumberHistory> => {
+    return withApiFallback(
+      async () => {
+        const payload = { id: data.id || `rh-${Date.now()}`, ...data };
+        const res = await apiClient.post<NumberHistory | { data?: NumberHistory }>("/api/v1/riwayat-penomoran", payload);
+        const unwrapped = (res as { data?: NumberHistory }).data || (res as NumberHistory);
+        return unwrapped;
+      },
+      () => {
+        const history = getHistory();
+        const newItem = { ...data, id: data.id || `rh-${Date.now()}` } as NumberHistory;
+        saveHistory(updateOrCreateHistoryEntry(history, newItem));
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdateHistory: async (id: string, data: Partial<NumberHistory>): Promise<NumberHistory> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.put<NumberHistory | { data?: NumberHistory }>(`/api/v1/riwayat-penomoran/${id}`, data);
+        const unwrapped = (res as { data?: NumberHistory }).data || (res as NumberHistory);
+        return unwrapped;
+      },
+      () => {
+        const history = getHistory();
+        const updated = history.map((item: NumberHistory) => (item.id === id ? { ...item, ...data } : item));
+        saveHistory(updated);
+        return updated.find((i: NumberHistory) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDeleteHistory: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/v1/riwayat-penomoran/${id}`);
+        return true;
+      },
+      () => {
+        const history = getHistory();
+        saveHistory(history.filter((item: NumberHistory) => item.id !== id));
+        return true;
+      }
+    );
+  },
 };
 

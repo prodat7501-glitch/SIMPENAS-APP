@@ -63,10 +63,10 @@ export const approvalService = {
     ];
     return pending.filter((item) => canUserApproveDocument(user, item, notas));
   },
-  listHistory: async (): Promise<ApprovalHistory[]> => {
+  listHistory: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<ApprovalHistory[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<ApprovalHistory[] | { data?: ApprovalHistory[]; items?: ApprovalHistory[] }>("/api/riwayat_approval");
+        const res = await apiClient.get<ApprovalHistory[] | { data?: ApprovalHistory[]; items?: ApprovalHistory[] }>("/api/v1/approval-history", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return list.map(normalizeHistory);
       },
@@ -136,12 +136,27 @@ export const approvalService = {
 
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<ApprovalHistory>("/api/riwayat_approval", history);
-        return normalizeHistory(res);
+        const res = await apiClient.post<ApprovalHistory | { data?: ApprovalHistory }>("/api/v1/approval-history", history);
+        const unwrapped = (res as { data?: ApprovalHistory }).data || (res as ApprovalHistory);
+        return normalizeHistory(unwrapped);
       },
       async () => {
         saveHistory([history, ...getHistory()]);
         return history;
+      }
+    );
+  },
+  apiBulkCreate: async (data: Partial<ApprovalHistory>[]): Promise<ApprovalHistory[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<ApprovalHistory[] | { data?: ApprovalHistory[] }>("/api/v1/approval-history", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizeHistory);
+      },
+      async () => {
+        const normalized = data.map((d) => normalizeHistory(d as ApprovalHistory));
+        saveHistory([...normalized, ...getHistory()]);
+        return normalized;
       }
     );
   },

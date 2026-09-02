@@ -22,6 +22,7 @@ import type {
   DashboardMetric,
   DashboardQuickAction,
 } from "./dashboard.types";
+import { apiClient, withApiFallback } from "@/services/api";
 
 const MONTH_NAMES = [
   "Jan",
@@ -540,5 +541,14 @@ export const dashboardService = {
       employeeSummaries,
       removedDemoRecords,
     };
+  },
+  apiGetStats: async (): Promise<Record<string, unknown> | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<Record<string, unknown> | { data?: Record<string, unknown> }>("/api/v1/stats/dashboard");
+        return (res as { data?: Record<string, unknown> }).data || res;
+      },
+      () => null,
+    );
   },
 };

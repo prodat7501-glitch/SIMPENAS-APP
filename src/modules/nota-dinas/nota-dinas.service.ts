@@ -367,72 +367,6 @@ export const notaDinasService = {
     return normalized;
   },
 
-  // REST API Integration (/api/nota_dinas)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<NotaDinas[]> => {
-    return withApiFallback(
-      async () => {
-        const res = await apiClient.get<NotaDinas[] | { data?: NotaDinas[]; items?: NotaDinas[] }>("/api/nota_dinas", params);
-        const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map(normalizeNotaDinas);
-      },
-      () => notaDinasService.getAll()
-    );
-  },
-
-  apiGetById: async (id: string): Promise<NotaDinas | null> => {
-    return withApiFallback(
-      async () => {
-        const res = await apiClient.get<NotaDinas | null>(`/api/nota_dinas/${id}`);
-        return res ? normalizeNotaDinas(res) : null;
-      },
-      () => notaDinasService.getAll().find((n) => n.id === id) || null
-    );
-  },
-
-  apiCreate: async (data: Partial<NotaDinas>): Promise<NotaDinas> => {
-    return withApiFallback(
-      async () => {
-        const res = await apiClient.post<NotaDinas>("/api/nota_dinas", data);
-        return normalizeNotaDinas(res);
-      },
-      async () => {
-        const items = notaDinasService.getAll();
-        const newItem = normalizeNotaDinas({ ...data, id: data.id || `nd-${Date.now()}` } as LegacyNotaDinas);
-        notaDinasService.saveAll([...items, newItem]);
-        return newItem;
-      }
-    );
-  },
-
-  apiUpdate: async (id: string, data: Partial<NotaDinas>): Promise<NotaDinas> => {
-    return withApiFallback(
-      async () => {
-        const res = await apiClient.patch<NotaDinas>(`/api/nota_dinas/${id}`, data);
-        return normalizeNotaDinas(res);
-      },
-      async () => {
-        const items = notaDinasService.getAll();
-        const updated = items.map((item) => (item.id === id ? normalizeNotaDinas({ ...item, ...data } as LegacyNotaDinas) : item));
-        notaDinasService.saveAll(updated);
-        return updated.find((i) => i.id === id)!;
-      }
-    );
-  },
-
-  apiDelete: async (id: string): Promise<boolean> => {
-    return withApiFallback(
-      async () => {
-        await apiClient.delete(`/api/nota_dinas/${id}`);
-        return true;
-      },
-      async () => {
-        const items = notaDinasService.getAll();
-        notaDinasService.saveAll(items.filter((item) => item.id !== id));
-        return true;
-      }
-    );
-  },
-
   generateNomor: (dateStr: string): string => {
     const items = notaDinasService.getAll();
     const storedNumbers = items.map((item) => item.nomor);
@@ -518,6 +452,92 @@ export const notaDinasService = {
           conflict,
         ]),
       ).values(),
+    );
+  },
+
+  // REST API Integration (/api/v1/nota-dinas)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<NotaDinas[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NotaDinas[] | { data?: NotaDinas[]; items?: NotaDinas[] }>("/api/v1/nota-dinas", params);
+        const list = Array.isArray(res) ? res : res.data || res.items || [];
+        return list.map(normalizeNotaDinas);
+      },
+      () => notaDinasService.getAll()
+    );
+  },
+
+  apiGetById: async (id: string): Promise<NotaDinas | null> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.get<NotaDinas | { data?: NotaDinas }>(`/api/v1/nota-dinas/${id}`);
+        const unwrapped = (res as { data?: NotaDinas }).data || (res as NotaDinas);
+        return unwrapped ? normalizeNotaDinas(unwrapped) : null;
+      },
+      () => notaDinasService.getAll().find((n) => n.id === id) || null
+    );
+  },
+
+  apiCreate: async (data: Partial<NotaDinas>): Promise<NotaDinas> => {
+    return withApiFallback(
+      async () => {
+        const payload = { id: data.id || `nd-${Date.now()}`, ...data };
+        const res = await apiClient.post<NotaDinas | { data?: NotaDinas }>("/api/v1/nota-dinas", payload);
+        const unwrapped = (res as { data?: NotaDinas }).data || (res as NotaDinas);
+        return normalizeNotaDinas(unwrapped);
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        const newItem = normalizeNotaDinas({ ...data, id: data.id || `nd-${Date.now()}` } as NotaDinas);
+        notaDinasService.saveAll([...items, newItem]);
+        return newItem;
+      }
+    );
+  },
+
+  apiUpdate: async (id: string, data: Partial<NotaDinas>): Promise<NotaDinas> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.put<NotaDinas | { data?: NotaDinas }>(`/api/v1/nota-dinas/${id}`, data);
+        const unwrapped = (res as { data?: NotaDinas }).data || (res as NotaDinas);
+        return normalizeNotaDinas(unwrapped);
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        const updated = items.map((item) => (item.id === id ? normalizeNotaDinas({ ...item, ...data }) : item));
+        notaDinasService.saveAll(updated);
+        return updated.find((i) => i.id === id)!;
+      }
+    );
+  },
+
+  apiDelete: async (id: string): Promise<boolean> => {
+    return withApiFallback(
+      async () => {
+        await apiClient.delete(`/api/v1/nota-dinas/${id}`);
+        return true;
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        notaDinasService.saveAll(items.filter((item) => item.id !== id));
+        return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<NotaDinas>[]): Promise<NotaDinas[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<NotaDinas[] | { data?: NotaDinas[] }>("/api/v1/nota-dinas", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizeNotaDinas);
+      },
+      async () => {
+        const items = notaDinasService.getAll();
+        const normalized = data.map((d) => normalizeNotaDinas(d as NotaDinas));
+        notaDinasService.saveAll([...items, ...normalized]);
+        return normalized;
+      }
     );
   },
 };

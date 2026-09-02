@@ -159,11 +159,11 @@ export const sptService = {
     return normalized;
   },
 
-  // REST API Integration (/api/spt)
-  apiGetAll: async (params?: { limit?: number; offset?: number }): Promise<Spt[]> => {
+  // REST API Integration (/api/v1/spt)
+  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Spt[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Spt[] | { data?: Spt[]; items?: Spt[] }>("/api/spt", params);
+        const res = await apiClient.get<Spt[] | { data?: Spt[]; items?: Spt[] }>("/api/v1/spt", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return list.map(normalizeSeparatedSptPersonil);
       },
@@ -174,8 +174,9 @@ export const sptService = {
   apiGetById: async (id: string): Promise<Spt | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Spt | null>(`/api/spt/${id}`);
-        return res ? normalizeSeparatedSptPersonil(res) : null;
+        const res = await apiClient.get<Spt | { data?: Spt }>(`/api/v1/spt/${id}`);
+        const unwrapped = (res as { data?: Spt }).data || (res as Spt);
+        return unwrapped ? normalizeSeparatedSptPersonil(unwrapped) : null;
       },
       () => sptService.getAll().find((s) => s.id === id) || null
     );
@@ -184,8 +185,10 @@ export const sptService = {
   apiCreate: async (data: Partial<Spt>): Promise<Spt> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Spt>("/api/spt", data);
-        return normalizeSeparatedSptPersonil(res);
+        const payload = { id: data.id || `st-${Date.now()}`, ...data };
+        const res = await apiClient.post<Spt | { data?: Spt }>("/api/v1/spt", payload);
+        const unwrapped = (res as { data?: Spt }).data || (res as Spt);
+        return normalizeSeparatedSptPersonil(unwrapped);
       },
       async () => {
         const items = sptService.getAll();
@@ -199,8 +202,9 @@ export const sptService = {
   apiUpdate: async (id: string, data: Partial<Spt>): Promise<Spt> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.patch<Spt>(`/api/spt/${id}`, data);
-        return normalizeSeparatedSptPersonil(res);
+        const res = await apiClient.put<Spt | { data?: Spt }>(`/api/v1/spt/${id}`, data);
+        const unwrapped = (res as { data?: Spt }).data || (res as Spt);
+        return normalizeSeparatedSptPersonil(unwrapped);
       },
       async () => {
         const items = sptService.getAll();
@@ -214,13 +218,29 @@ export const sptService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/spt/${id}`);
+        await apiClient.delete(`/api/v1/spt/${id}`);
         return true;
       },
       async () => {
         const items = sptService.getAll();
         sptService.saveAll(items.filter((item) => item.id !== id));
         return true;
+      }
+    );
+  },
+
+  apiBulkCreate: async (data: Partial<Spt>[]): Promise<Spt[]> => {
+    return withApiFallback(
+      async () => {
+        const res = await apiClient.bulkPost<Spt[] | { data?: Spt[] }>("/api/v1/spt", data);
+        const list = Array.isArray(res) ? res : res.data || [];
+        return list.map(normalizeSeparatedSptPersonil);
+      },
+      async () => {
+        const items = sptService.getAll();
+        const normalized = data.map((d) => normalizeSeparatedSptPersonil(d as Spt));
+        sptService.saveAll([...items, ...normalized]);
+        return normalized;
       }
     );
   },
