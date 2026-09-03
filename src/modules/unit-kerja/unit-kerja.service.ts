@@ -27,51 +27,76 @@ export const unitKerjaService = {
     }
   },
   // REST API Integration (/api/v1/unit-kerja)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<UnitKerja[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<UnitKerja[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<UnitKerja[] | { data?: UnitKerja[]; items?: UnitKerja[] }>("/api/v1/unit-kerja", params);
+        const queryParams = { limit: 100, ...params };
+        const res = await apiClient.get<
+          UnitKerja[] | { data?: UnitKerja[]; items?: UnitKerja[] }
+        >("/api/v1/unit-kerja", queryParams);
         return Array.isArray(res) ? res : res.data || res.items || [];
       },
-      () => unitKerjaService.getAll()
+      () => unitKerjaService.getAll(),
     );
   },
   apiGetById: async (id: string): Promise<UnitKerja | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<UnitKerja | { data?: UnitKerja }>(`/api/v1/unit-kerja/${id}`);
+        const res = await apiClient.get<UnitKerja | { data?: UnitKerja }>(
+          `/api/v1/unit-kerja/${id}`,
+        );
         return (res as { data?: UnitKerja }).data || (res as UnitKerja) || null;
       },
-      () => unitKerjaService.getAll().find((u) => u.id === id) || null
+      () => unitKerjaService.getAll().find((u) => u.id === id) || null,
     );
   },
   apiCreate: async (data: Partial<UnitKerja>): Promise<UnitKerja> => {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `u-${Date.now()}`, ...data };
-        const res = await apiClient.post<UnitKerja | { data?: UnitKerja }>("/api/v1/unit-kerja", payload);
+        const res = await apiClient.post<UnitKerja | { data?: UnitKerja }>(
+          "/api/v1/unit-kerja",
+          payload,
+        );
         return (res as { data?: UnitKerja }).data || (res as UnitKerja);
       },
       async () => {
         const items = unitKerjaService.getAll();
-        const newItem = { ...data, id: data.id || `u${Date.now()}` } as UnitKerja;
+        const newItem = {
+          ...data,
+          id: data.id || `u${Date.now()}`,
+        } as UnitKerja;
         unitKerjaService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
-  apiUpdate: async (id: string, data: Partial<UnitKerja>): Promise<UnitKerja> => {
+  apiUpdate: async (
+    id: string,
+    data: Partial<UnitKerja>,
+  ): Promise<UnitKerja> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<UnitKerja | { data?: UnitKerja }>(`/api/v1/unit-kerja/${id}`, data);
+        const res = await apiClient.put<UnitKerja | { data?: UnitKerja }>(
+          `/api/v1/unit-kerja/${id}`,
+          data,
+        );
         return (res as { data?: UnitKerja }).data || (res as UnitKerja);
       },
       async () => {
         const items = unitKerjaService.getAll();
-        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        const updated = items.map((item) =>
+          item.id === id ? { ...item, ...data } : item,
+        );
         unitKerjaService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
   apiDelete: async (id: string): Promise<boolean> => {
@@ -84,20 +109,22 @@ export const unitKerjaService = {
         const items = unitKerjaService.getAll();
         unitKerjaService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
   apiBulkCreate: async (data: Partial<UnitKerja>[]): Promise<UnitKerja[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<UnitKerja[] | { data?: UnitKerja[] }>("/api/v1/unit-kerja", data);
+        const res = await apiClient.bulkPost<
+          UnitKerja[] | { data?: UnitKerja[] }
+        >("/api/v1/unit-kerja", data);
         return Array.isArray(res) ? res : res.data || [];
       },
       async () => {
         const items = unitKerjaService.getAll();
         unitKerjaService.saveAll([...items, ...(data as UnitKerja[])]);
         return data as UnitKerja[];
-      }
+      },
     );
   },
 };

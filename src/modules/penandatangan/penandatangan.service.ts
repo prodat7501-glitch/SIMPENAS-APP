@@ -82,9 +82,10 @@ export const penandatanganService = {
   }): Promise<Penandatangan[]> => {
     return withApiFallback(
       async () => {
+        const queryParams = { limit: 100, ...params };
         const res = await apiClient.get<
           Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }
-        >("/api/v1/pejabat-penandatangan", params);
+        >("/api/v1/pejabat-penandatangan", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return list.map(normalizePenandatangan);
       },

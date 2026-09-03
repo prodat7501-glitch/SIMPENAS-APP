@@ -58,24 +58,35 @@ export const sbmService = {
   },
 
   // REST API Integration (/api/v1/sbm)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<SBM[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<SBM[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<SBM[] | { data?: SBM[]; items?: SBM[] }>("/api/v1/sbm", params);
+        const queryParams = { limit: 500, ...params };
+        const res = await apiClient.get<
+          SBM[] | { data?: SBM[]; items?: SBM[] }
+        >("/api/v1/sbm", queryParams);
         return Array.isArray(res) ? res : res.data || res.items || [];
       },
-      () => sbmService.getAll()
+      () => sbmService.getAll(),
     );
   },
 
   apiGetById: async (id: string): Promise<SBM | null> => {
     return withApiFallback(
       async () => {
-        const item = await apiClient.get<SBM | { data?: SBM }>(`/api/v1/sbm/${id}`);
+        const item = await apiClient.get<SBM | { data?: SBM }>(
+          `/api/v1/sbm/${id}`,
+        );
         const unwrapped = (item as { data?: SBM }).data || (item as SBM);
         return unwrapped || null;
       },
-      () => sbmService.getAll().find((s) => s.id === id) || null
+      () => sbmService.getAll().find((s) => s.id === id) || null,
     );
   },
 
@@ -83,7 +94,10 @@ export const sbmService = {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `sbm-${Date.now()}`, ...data };
-        const res = await apiClient.post<SBM | { data?: SBM }>("/api/v1/sbm", payload);
+        const res = await apiClient.post<SBM | { data?: SBM }>(
+          "/api/v1/sbm",
+          payload,
+        );
         const unwrapped = (res as { data?: SBM }).data || (res as SBM);
         return unwrapped;
       },
@@ -92,23 +106,28 @@ export const sbmService = {
         const newItem = { ...data, id: data.id || `sbm-${Date.now()}` } as SBM;
         sbmService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
 
   apiUpdate: async (id: string, data: Partial<SBM>): Promise<SBM> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<SBM | { data?: SBM }>(`/api/v1/sbm/${id}`, data);
+        const res = await apiClient.put<SBM | { data?: SBM }>(
+          `/api/v1/sbm/${id}`,
+          data,
+        );
         const unwrapped = (res as { data?: SBM }).data || (res as SBM);
         return unwrapped;
       },
       async () => {
         const items = sbmService.getAll();
-        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        const updated = items.map((item) =>
+          item.id === id ? { ...item, ...data } : item,
+        );
         sbmService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
 
@@ -122,22 +141,24 @@ export const sbmService = {
         const items = sbmService.getAll();
         sbmService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
 
   apiBulkCreate: async (data: Partial<SBM>[]): Promise<SBM[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<SBM[] | { data?: SBM[] }>("/api/v1/sbm", data);
+        const res = await apiClient.bulkPost<SBM[] | { data?: SBM[] }>(
+          "/api/v1/sbm",
+          data,
+        );
         return Array.isArray(res) ? res : res.data || [];
       },
       async () => {
         const items = sbmService.getAll();
         sbmService.saveAll([...items, ...(data as SBM[])]);
         return data as SBM[];
-      }
+      },
     );
   },
 };
-

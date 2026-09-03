@@ -28,29 +28,43 @@ export const pangkatService = {
     }
   },
   // REST API Integration (/api/v1/pangkat-golongan)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Pangkat[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Pangkat[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Pangkat[] | { data?: Pangkat[]; items?: Pangkat[] }>("/api/v1/pangkat-golongan", params);
+        const queryParams = { limit: 100, ...params };
+        const res = await apiClient.get<
+          Pangkat[] | { data?: Pangkat[]; items?: Pangkat[] }
+        >("/api/v1/pangkat-golongan", queryParams);
         return Array.isArray(res) ? res : res.data || res.items || [];
       },
-      () => pangkatService.getAll()
+      () => pangkatService.getAll(),
     );
   },
   apiGetById: async (id: string): Promise<Pangkat | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Pangkat | { data?: Pangkat }>(`/api/v1/pangkat-golongan/${id}`);
+        const res = await apiClient.get<Pangkat | { data?: Pangkat }>(
+          `/api/v1/pangkat-golongan/${id}`,
+        );
         return (res as { data?: Pangkat }).data || (res as Pangkat) || null;
       },
-      () => pangkatService.getAll().find((p) => p.id === id) || null
+      () => pangkatService.getAll().find((p) => p.id === id) || null,
     );
   },
   apiCreate: async (data: Partial<Pangkat>): Promise<Pangkat> => {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `p-${Date.now()}`, ...data };
-        const res = await apiClient.post<Pangkat | { data?: Pangkat }>("/api/v1/pangkat-golongan", payload);
+        const res = await apiClient.post<Pangkat | { data?: Pangkat }>(
+          "/api/v1/pangkat-golongan",
+          payload,
+        );
         return (res as { data?: Pangkat }).data || (res as Pangkat);
       },
       async () => {
@@ -58,21 +72,26 @@ export const pangkatService = {
         const newItem = { ...data, id: data.id || `p${Date.now()}` } as Pangkat;
         pangkatService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
   apiUpdate: async (id: string, data: Partial<Pangkat>): Promise<Pangkat> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Pangkat | { data?: Pangkat }>(`/api/v1/pangkat-golongan/${id}`, data);
+        const res = await apiClient.put<Pangkat | { data?: Pangkat }>(
+          `/api/v1/pangkat-golongan/${id}`,
+          data,
+        );
         return (res as { data?: Pangkat }).data || (res as Pangkat);
       },
       async () => {
         const items = pangkatService.getAll();
-        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        const updated = items.map((item) =>
+          item.id === id ? { ...item, ...data } : item,
+        );
         pangkatService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
   apiDelete: async (id: string): Promise<boolean> => {
@@ -85,20 +104,23 @@ export const pangkatService = {
         const items = pangkatService.getAll();
         pangkatService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
   apiBulkCreate: async (data: Partial<Pangkat>[]): Promise<Pangkat[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Pangkat[] | { data?: Pangkat[] }>("/api/v1/pangkat-golongan", data);
+        const res = await apiClient.bulkPost<Pangkat[] | { data?: Pangkat[] }>(
+          "/api/v1/pangkat-golongan",
+          data,
+        );
         return Array.isArray(res) ? res : res.data || [];
       },
       async () => {
         const items = pangkatService.getAll();
         pangkatService.saveAll([...items, ...(data as Pangkat[])]);
         return data as Pangkat[];
-      }
+      },
     );
   },
 };

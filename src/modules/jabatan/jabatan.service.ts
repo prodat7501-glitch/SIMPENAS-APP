@@ -17,9 +17,15 @@ const sortJabatan = (list: Jabatan[]): Jabatan[] => {
     const codeA = a.kode || "";
     const codeB = b.kode || "";
     if (codeA !== codeB) {
-      return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
+      return codeA.localeCompare(codeB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
     }
-    return (a.id || "").localeCompare(b.id || "", undefined, { numeric: true, sensitivity: "base" });
+    return (a.id || "").localeCompare(b.id || "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   });
 };
 
@@ -39,30 +45,44 @@ export const jabatanService = {
     }
   },
   // REST API Integration (/api/v1/jabatan)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Jabatan[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Jabatan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }>("/api/v1/jabatan", params);
+        const queryParams = { limit: 100, ...params };
+        const res = await apiClient.get<
+          Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }
+        >("/api/v1/jabatan", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return sortJabatan(list);
       },
-      () => jabatanService.getAll()
+      () => jabatanService.getAll(),
     );
   },
   apiGetById: async (id: string): Promise<Jabatan | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Jabatan | { data?: Jabatan }>(`/api/v1/jabatan/${id}`);
+        const res = await apiClient.get<Jabatan | { data?: Jabatan }>(
+          `/api/v1/jabatan/${id}`,
+        );
         return (res as { data?: Jabatan }).data || (res as Jabatan) || null;
       },
-      () => jabatanService.getAll().find((j) => j.id === id) || null
+      () => jabatanService.getAll().find((j) => j.id === id) || null,
     );
   },
   apiCreate: async (data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `j-${Date.now()}`, ...data };
-        const res = await apiClient.post<Jabatan | { data?: Jabatan }>("/api/v1/jabatan", payload);
+        const res = await apiClient.post<Jabatan | { data?: Jabatan }>(
+          "/api/v1/jabatan",
+          payload,
+        );
         return (res as { data?: Jabatan }).data || (res as Jabatan);
       },
       async () => {
@@ -70,21 +90,26 @@ export const jabatanService = {
         const newItem = { ...data, id: data.id || `j${Date.now()}` } as Jabatan;
         jabatanService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
   apiUpdate: async (id: string, data: Partial<Jabatan>): Promise<Jabatan> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Jabatan | { data?: Jabatan }>(`/api/v1/jabatan/${id}`, data);
+        const res = await apiClient.put<Jabatan | { data?: Jabatan }>(
+          `/api/v1/jabatan/${id}`,
+          data,
+        );
         return (res as { data?: Jabatan }).data || (res as Jabatan);
       },
       async () => {
         const items = jabatanService.getAll();
-        const updated = items.map((item) => (item.id === id ? { ...item, ...data } : item));
+        const updated = items.map((item) =>
+          item.id === id ? { ...item, ...data } : item,
+        );
         jabatanService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
   apiDelete: async (id: string): Promise<boolean> => {
@@ -97,20 +122,23 @@ export const jabatanService = {
         const items = jabatanService.getAll();
         jabatanService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
   apiBulkCreate: async (data: Partial<Jabatan>[]): Promise<Jabatan[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Jabatan[] | { data?: Jabatan[] }>("/api/v1/jabatan", data);
+        const res = await apiClient.bulkPost<Jabatan[] | { data?: Jabatan[] }>(
+          "/api/v1/jabatan",
+          data,
+        );
         return Array.isArray(res) ? res : res.data || [];
       },
       async () => {
         const items = jabatanService.getAll();
         jabatanService.saveAll([...items, ...(data as Jabatan[])]);
         return data as Jabatan[];
-      }
+      },
     );
   },
 };

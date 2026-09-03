@@ -80,59 +80,82 @@ export const pegawaiService = {
     }
   },
   // REST API Integration (/api/v1/pegawai)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Pegawai[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Pegawai[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }>("/api/v1/pegawai", params);
+        const queryParams = { limit: 500, ...params };
+        const res = await apiClient.get<
+          Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }
+        >("/api/v1/pegawai", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         return sortPegawais(
           list.map(normalizePegawai),
           jabatanService.getAll(),
-          pangkatService.getAll()
+          pangkatService.getAll(),
         );
       },
-      () => pegawaiService.getAll()
+      () => pegawaiService.getAll(),
     );
   },
   apiGetById: async (id: string): Promise<Pegawai | null> => {
     return withApiFallback(
       async () => {
-        const item = await apiClient.get<Pegawai | { data?: Pegawai }>(`/api/v1/pegawai/${id}`);
-        const unwrapped = (item as { data?: Pegawai }).data || (item as Pegawai);
+        const item = await apiClient.get<Pegawai | { data?: Pegawai }>(
+          `/api/v1/pegawai/${id}`,
+        );
+        const unwrapped =
+          (item as { data?: Pegawai }).data || (item as Pegawai);
         return unwrapped ? normalizePegawai(unwrapped) : null;
       },
-      () => pegawaiService.getAll().find((p) => p.id === id) || null
+      () => pegawaiService.getAll().find((p) => p.id === id) || null,
     );
   },
   apiCreate: async (data: Partial<Pegawai>): Promise<Pegawai> => {
     return withApiFallback(
       async () => {
         const payload = { id: data.id || `pg-${Date.now()}`, ...data };
-        const res = await apiClient.post<Pegawai | { data?: Pegawai }>("/api/v1/pegawai", payload);
+        const res = await apiClient.post<Pegawai | { data?: Pegawai }>(
+          "/api/v1/pegawai",
+          payload,
+        );
         const unwrapped = (res as { data?: Pegawai }).data || (res as Pegawai);
         return normalizePegawai(unwrapped);
       },
       async () => {
         const items = pegawaiService.getAll();
-        const newItem = normalizePegawai({ ...data, id: data.id || `pg-${Date.now()}` } as Pegawai);
+        const newItem = normalizePegawai({
+          ...data,
+          id: data.id || `pg-${Date.now()}`,
+        } as Pegawai);
         pegawaiService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
   apiUpdate: async (id: string, data: Partial<Pegawai>): Promise<Pegawai> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Pegawai | { data?: Pegawai }>(`/api/v1/pegawai/${id}`, data);
+        const res = await apiClient.put<Pegawai | { data?: Pegawai }>(
+          `/api/v1/pegawai/${id}`,
+          data,
+        );
         const unwrapped = (res as { data?: Pegawai }).data || (res as Pegawai);
         return normalizePegawai(unwrapped);
       },
       async () => {
         const items = pegawaiService.getAll();
-        const updated = items.map((item) => (item.id === id ? normalizePegawai({ ...item, ...data }) : item));
+        const updated = items.map((item) =>
+          item.id === id ? normalizePegawai({ ...item, ...data }) : item,
+        );
         pegawaiService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
   apiDelete: async (id: string): Promise<boolean> => {
@@ -145,13 +168,16 @@ export const pegawaiService = {
         const items = pegawaiService.getAll();
         pegawaiService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
   apiBulkCreate: async (data: Partial<Pegawai>[]): Promise<Pegawai[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Pegawai[] | { data?: Pegawai[] }>("/api/v1/pegawai", data);
+        const res = await apiClient.bulkPost<Pegawai[] | { data?: Pegawai[] }>(
+          "/api/v1/pegawai",
+          data,
+        );
         const list = Array.isArray(res) ? res : res.data || [];
         return list.map(normalizePegawai);
       },
@@ -160,8 +186,7 @@ export const pegawaiService = {
         const normalized = data.map((d) => normalizePegawai(d as Pegawai));
         pegawaiService.saveAll([...items, ...normalized]);
         return normalized;
-      }
+      },
     );
   },
 };
-

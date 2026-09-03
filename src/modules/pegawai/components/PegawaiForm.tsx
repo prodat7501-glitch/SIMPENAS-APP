@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -71,6 +71,15 @@ export function PegawaiForm({
     control,
     name: "kategoriPegawai",
   });
+  const sortedPangkats = useMemo(() => {
+    return [...pangkats].sort((a, b) => {
+      return (
+        a.golongan.localeCompare(b.golongan, undefined, { numeric: true }) ||
+        a.namaPangkat.localeCompare(b.namaPangkat)
+      );
+    });
+  }, [pangkats]);
+
   const isAsnSekretariat = kategoriPegawai === "ASN/Sekretariat";
 
   useEffect(() => {
@@ -207,10 +216,10 @@ export function PegawaiForm({
           >
             <option value="">
               {isAsnSekretariat
-                ? "-- Pilih Pangkat/Golongan --"
+                ? `-- Pilih Pangkat/Golongan (${sortedPangkats.length} Pilihan) --`
                 : "Tidak memiliki pangkat/golongan"}
             </option>
-            {pangkats.map((p) => (
+            {sortedPangkats.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.namaPangkat} ({p.golongan})
               </option>
