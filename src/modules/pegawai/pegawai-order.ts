@@ -66,14 +66,18 @@ export const getKategoriGolongan = (golongan: string): KategoriGolongan => {
 
   if (PPPK_GOLONGAN.has(normalized)) return "PPPK";
   const numericLevel = Number(normalized);
-  if (Number.isInteger(numericLevel) && numericLevel >= 1 && numericLevel <= 11) {
+  if (
+    Number.isInteger(numericLevel) &&
+    numericLevel >= 1 &&
+    numericLevel <= 11
+  ) {
     return "PPPK";
   }
 
   return "Lainnya";
 };
 
-const getKategoriGolonganOrder = (golongan: string) => {
+export const getKategoriGolonganOrder = (golongan: string) => {
   const kategori = getKategoriGolongan(golongan);
   if (kategori === "PNS") return 0;
   if (kategori === "PPPK") return 1;
@@ -96,10 +100,7 @@ export const getPegawaiStructureOrder = (
     jabatan.includes("komisioner")
   )
     return 1;
-  if (
-    jabatan.includes("sekretaris") ||
-    jabatan.includes("kepala sekretariat")
-  )
+  if (jabatan.includes("sekretaris") || jabatan.includes("kepala sekretariat"))
     return 2;
   if (
     jabatan.includes("kasubag") ||
@@ -111,35 +112,41 @@ export const getPegawaiStructureOrder = (
   return 4;
 };
 
+export const getPegawaiJabatanOrder = (
+  pegawai: Pegawai,
+  jabatans: Jabatan[],
+): number => {
+  if (!pegawai.jabatanId) {
+    return getPegawaiStructureOrder(pegawai, jabatans) * 1000 + 999;
+  }
+
+  const index = jabatans.findIndex((item) => item.id === pegawai.jabatanId);
+  if (index !== -1) {
+    const jab = jabatans[index];
+    const match = jab.kode?.match(/\d+/);
+    if (match) {
+      return parseInt(match[0], 10);
+    }
+    return index;
+  }
+
+  return getPegawaiStructureOrder(pegawai, jabatans) * 1000;
+};
+
 export const sortPegawais = (
   pegawais: Pegawai[],
   jabatans: Jabatan[],
-  pangkats: Pangkat[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _pangkats?: Pangkat[],
 ) => {
-  const pangkatById = new Map(pangkats.map((item) => [item.id, item]));
-
   return [...pegawais].sort((left, right) => {
-    const leftStructure = getPegawaiStructureOrder(left, jabatans);
-    const rightStructure = getPegawaiStructureOrder(right, jabatans);
-    const structureDifference = leftStructure - rightStructure;
-    if (structureDifference !== 0) return structureDifference;
+    // 1. Urutkan berdasarkan urutan jabatan di Master Jabatan
+    const leftJabatanOrder = getPegawaiJabatanOrder(left, jabatans);
+    const rightJabatanOrder = getPegawaiJabatanOrder(right, jabatans);
+    const jabatanDifference = leftJabatanOrder - rightJabatanOrder;
+    if (jabatanDifference !== 0) return jabatanDifference;
 
-    const leftGolonganValue =
-      pangkatById.get(left.pangkatId)?.golongan ?? "";
-    const rightGolonganValue =
-      pangkatById.get(right.pangkatId)?.golongan ?? "";
-
-    if (leftStructure === 4) {
-      const kategoriDifference =
-        getKategoriGolonganOrder(leftGolonganValue) -
-        getKategoriGolonganOrder(rightGolonganValue);
-      if (kategoriDifference !== 0) return kategoriDifference;
-    }
-
-    const leftGolongan = getGolonganOrder(leftGolonganValue);
-    const rightGolongan = getGolonganOrder(rightGolonganValue);
-    if (leftGolongan !== rightGolongan) return rightGolongan - leftGolongan;
-
+    // 2. Jika jabatan sama, urutkan nama pegawai sesuai abjad (A-Z)
     return left.nama.localeCompare(right.nama, "id-ID", {
       sensitivity: "base",
     });
