@@ -140,36 +140,49 @@ export class AuthService {
         ? "user-admin"
         : userId;
 
-    return withApiFallback(
-      async () => {
-        await apiClient.put("/api/v1/auth/change-password", {
+    try {
+      await apiClient.put(
+        "/api/v1/auth/change-password",
+        {
           userId: targetUserId,
           oldPassword,
           newPassword,
+        },
+        { skipTransform: true },
+      );
+
+      const newHash = await hashMockPassword(newPassword);
+      try {
+        await apiClient.put(`/api/v1/akun-pengguna/${targetUserId}`, {
+          password_hash: newHash,
         });
+      } catch {
+        // ignore
+      }
 
-        const newHash = await hashMockPassword(newPassword);
-        try {
-          await apiClient.put(`/api/v1/akun-pengguna/${targetUserId}`, {
-            password_hash: newHash,
-          });
-        } catch {
-          // ignore
-        }
+      const account = userAccountService.findById(targetUserId);
+      if (account) {
+        userAccountService.update(targetUserId, {
+          username: account.username,
+          email: account.email,
+          isActive: account.isActive,
+          newPassword,
+        });
+      } else {
+        userAccountService.update(targetUserId, {
+          newPassword,
+        });
+      }
 
-        const account = userAccountService.findById(targetUserId);
-        if (account) {
-          userAccountService.update(targetUserId, {
-            username: account.username,
-            email: account.email,
-            isActive: account.isActive,
-            newPassword,
-          });
-        }
+      return true;
+    } catch (err: unknown) {
+      const isNetworkError =
+        err instanceof Error &&
+        (err.message.includes("Network") ||
+          err.message.includes("Failed to fetch") ||
+          (err as { status?: number }).status === 0);
 
-        return true;
-      },
-      async () => {
+      if (isNetworkError) {
         const account = userAccountService.findById(targetUserId);
         if (!account) return false;
         const oldHash = await hashMockPassword(oldPassword);
@@ -181,8 +194,10 @@ export class AuthService {
           newPassword,
         });
         return true;
-      },
-    );
+      }
+
+      throw err;
+    }
   }
 
   static async logout(): Promise<boolean> {
