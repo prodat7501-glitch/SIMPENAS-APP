@@ -157,8 +157,8 @@ interface RawUserAccountApi {
   role?: string;
   pegawai_id?: string | null;
   pegawaiId?: string | null;
-  is_active?: number | boolean;
-  isActive?: boolean;
+  is_active?: number | boolean | string;
+  isActive?: number | boolean | string;
   password_hash?: string;
   passwordHash?: string;
   created_at?: string;
@@ -167,20 +167,30 @@ interface RawUserAccountApi {
   updatedAt?: string;
 }
 
-const normalizeUserAccountFromApi = (raw: RawUserAccountApi): UserAccount => ({
-  id: raw.id || `user-${Date.now()}`,
-  username: raw.username || "",
-  name: raw.name || "",
-  email: raw.email || "",
-  role: (raw.role as UserAccount["role"]) || "Pegawai",
-  pegawaiId: raw.pegawai_id ?? raw.pegawaiId ?? undefined,
-  isActive:
-    raw.is_active === 1 || raw.is_active === true || raw.isActive === true,
-  passwordHash:
-    raw.password_hash ?? raw.passwordHash ?? DEFAULT_MOCK_PASSWORD_HASH,
-  createdAt: raw.created_at ?? raw.createdAt ?? nowIso(),
-  updatedAt: raw.updated_at ?? raw.updatedAt ?? nowIso(),
-});
+const normalizeUserAccountFromApi = (raw: RawUserAccountApi): UserAccount => {
+  const activeRaw = raw.isActive ?? raw.is_active;
+  const isActive =
+    activeRaw === undefined || activeRaw === null
+      ? true
+      : activeRaw === 1 ||
+        activeRaw === true ||
+        activeRaw === "1" ||
+        activeRaw === "true";
+
+  return {
+    id: raw.id || `user-${Date.now()}`,
+    username: raw.username || "",
+    name: raw.name || "",
+    email: raw.email || "",
+    role: (raw.role as UserAccount["role"]) || "Pegawai",
+    pegawaiId: raw.pegawai_id ?? raw.pegawaiId ?? undefined,
+    isActive,
+    passwordHash:
+      raw.password_hash ?? raw.passwordHash ?? DEFAULT_MOCK_PASSWORD_HASH,
+    createdAt: raw.created_at ?? raw.createdAt ?? nowIso(),
+    updatedAt: raw.updated_at ?? raw.updatedAt ?? nowIso(),
+  };
+};
 
 export const userAccountService = {
   getAll: (): UserAccount[] => synchronizeAccounts(),
