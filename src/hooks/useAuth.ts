@@ -79,10 +79,7 @@ export function useAuth() {
     if (!user) return false;
     const role = user.role;
 
-    if (
-      action === "D" &&
-      ["Approval", "Log Aktivitas"].includes(moduleName)
-    ) {
+    if (action === "D" && ["Approval", "Log Aktivitas"].includes(moduleName)) {
       return role === "Administrator";
     }
 
@@ -111,9 +108,7 @@ export function useAuth() {
         return ["C", "R", "U", "A", "G", "P", "N"].includes(action);
       if (moduleName === "Laporan Perjalanan Dinas")
         return ["R", "U", "A", "G", "P"].includes(action);
-      if (
-        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
-      )
+      if (["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName))
         return ["R", "P"].includes(action); // Can read/print
       if (moduleName === "Dashboard") return action === "V";
       return ["R", "V"].includes(action); // Default read/view
@@ -135,9 +130,7 @@ export function useAuth() {
         return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "Laporan Perjalanan Dinas")
         return ["C", "R", "U", "G", "P"].includes(action);
-      if (
-        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
-      )
+      if (["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName))
         return action === "R";
       if (moduleName === "Dashboard") return action === "V";
       if (moduleName === "Master Anggaran DIPA") return action === "R";
@@ -148,16 +141,13 @@ export function useAuth() {
     // Role Sub Bagian Keuangan permissions mapping
     if (role === "Sub Bagian Keuangan") {
       if (moduleName === "Master Akun Pengguna") return false;
-      if (moduleName === "Arsip SPJ")
-        return ["C", "R", "U"].includes(action);
+      if (moduleName === "Arsip SPJ") return ["C", "R", "U"].includes(action);
       if (moduleName === "Pengaturan Penomoran") return false;
       if (moduleName === "Approval") return false;
       if (moduleName === "Template Dokumen") return action === "R";
       if (moduleName === "Rekapitulasi")
         return ["R", "V", "P", "E"].includes(action);
-      if (
-        ["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName)
-      )
+      if (["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName))
         return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
       if (moduleName === "SPBY")
         return ["C", "R", "U", "A", "G", "P"].includes(action);

@@ -20,10 +20,7 @@ interface AuthState {
   isAuthenticated: boolean;
   hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
-  login: (
-    username: string,
-    password: string,
-  ) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (name: string, email: string) => void;
   refreshUserFromMaster: () => void;
