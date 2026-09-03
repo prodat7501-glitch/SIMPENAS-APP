@@ -21,6 +21,7 @@ export function useAuth() {
   const {
     user,
     isAuthenticated,
+    hasHydrated,
     login: storeLogin,
     logout: storeLogout,
     refreshUserFromMaster,
@@ -29,8 +30,10 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    refreshUserFromMaster();
-  }, [refreshUserFromMaster]);
+    if (hasHydrated && user) {
+      refreshUserFromMaster();
+    }
+  }, [hasHydrated, user, refreshUserFromMaster]);
 
   const login = async (input: LoginInput): Promise<boolean> => {
     setIsLoading(true);
@@ -174,6 +177,7 @@ export function useAuth() {
   return {
     user,
     isAuthenticated,
+    hasHydrated,
     isLoading,
     error,
     login,

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Menu,
@@ -42,6 +42,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,7 +52,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [transaksiMenuOpen, setTransaksiMenuOpen] = useState(false);
   const [keuanganMenuOpen, setKeuanganMenuOpen] = useState(false);
 
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, hasHydrated } = useAuth();
   const { notifications, markAllAsRead } = useNotificationStore();
   const visibleNotifications = notifications.filter((notification) =>
     isNotificationVisibleFor(notification, user?.pegawaiId),
@@ -65,6 +66,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  // Redirect to login if mounted & hydrated but session is missing
+  useEffect(() => {
+    if (mounted && hasHydrated && !user) {
+      router.replace("/login");
+    }
+  }, [mounted, hasHydrated, user, router]);
 
   // Open sidebar parent menus automatically if active child exists
   useEffect(() => {

@@ -18,6 +18,8 @@ export interface UserSession {
 interface AuthState {
   user: UserSession | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
+  setHasHydrated: (val: boolean) => void;
   login: (
     username: string,
     password: string,
@@ -32,10 +34,12 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      hasHydrated: false,
+      setHasHydrated: (hasHydrated: boolean) => set({ hasHydrated }),
       login: async (username: string, password: string) => {
         const userSession = await AuthService.login(username, password);
         if (userSession) {
-          set({ user: userSession, isAuthenticated: true });
+          set({ user: userSession, isAuthenticated: true, hasHydrated: true });
           useActivityStore.getState().add({
             action: "Login",
             module: "Autentikasi",
@@ -76,14 +80,7 @@ export const useAuthStore = create<AuthState>()(
         if (!currentUser) return;
 
         const resolvedUser = AuthService.resolvePersistedSession(currentUser);
-        if (!resolvedUser) {
-          set({ user: null, isAuthenticated: false });
-          if (typeof document !== "undefined") {
-            document.cookie =
-              "simpenas_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
-          }
-          return;
-        }
+        if (!resolvedUser) return;
 
         const isUnchanged =
           resolvedUser.username === currentUser.username &&
@@ -97,6 +94,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "simpenas-auth-storage",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

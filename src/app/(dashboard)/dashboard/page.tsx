@@ -27,8 +27,17 @@ const itemVariants = {
 } as const;
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, hasHydrated } = useAuth();
   const { data, loading, error, refresh } = useDashboard(user);
+
+  if (!hasHydrated) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-3 text-sm font-semibold text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        Memuat data sesi...
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -37,6 +46,15 @@ export default function DashboardPage() {
         <p className="text-sm font-bold text-muted-foreground">
           Sesi pengguna tidak ditemukan. Silakan masuk kembali.
         </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            window.location.href = "/login";
+          }}
+        >
+          Masuk Kembali
+        </Button>
       </div>
     );
   }
