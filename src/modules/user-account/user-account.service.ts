@@ -149,6 +149,39 @@ export const hashMockPassword = async (password: string): Promise<string> => {
   ).join("");
 };
 
+interface RawUserAccountApi {
+  id?: string;
+  username?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  pegawai_id?: string | null;
+  pegawaiId?: string | null;
+  is_active?: number | boolean;
+  isActive?: boolean;
+  password_hash?: string;
+  passwordHash?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+const normalizeUserAccountFromApi = (raw: RawUserAccountApi): UserAccount => ({
+  id: raw.id || `user-${Date.now()}`,
+  username: raw.username || "",
+  name: raw.name || "",
+  email: raw.email || "",
+  role: (raw.role as UserAccount["role"]) || "Pegawai",
+  pegawaiId: raw.pegawai_id ?? raw.pegawaiId ?? undefined,
+  isActive:
+    raw.is_active === 1 || raw.is_active === true || raw.isActive === true,
+  passwordHash:
+    raw.password_hash ?? raw.passwordHash ?? DEFAULT_MOCK_PASSWORD_HASH,
+  createdAt: raw.created_at ?? raw.createdAt ?? nowIso(),
+  updatedAt: raw.updated_at ?? raw.updatedAt ?? nowIso(),
+});
+
 export const userAccountService = {
   getAll: (): UserAccount[] => synchronizeAccounts(),
 
@@ -178,29 +211,34 @@ export const userAccountService = {
   ): Promise<UserAccount> => {
     const accounts = synchronizeAccounts();
     const accountIndex = accounts.findIndex((account) => account.id === id);
-    if (accountIndex === -1) throw new Error("Akun pengguna tidak ditemukan.");
 
-    const username = input.username.toLowerCase().trim();
-    const duplicate = accounts.some(
+    if (accountIndex === -1) {
+      throw new Error("Akun pengguna tidak ditemukan.");
+    }
+
+    const current = accounts[accountIndex];
+    const username = input.username?.toLowerCase().trim() || current.username;
+
+    const duplicateUsername = accounts.some(
       (account) =>
         account.id !== id && account.username.toLowerCase() === username,
     );
-    if (duplicate) throw new Error("Username sudah digunakan akun lain.");
 
-    const current = accounts[accountIndex];
-    if (current.id === "user-admin" && !input.isActive) {
-      throw new Error("Akun Administrator utama tidak dapat dinonaktifkan.");
+    if (duplicateUsername) {
+      throw new Error("Username sudah digunakan.");
     }
 
-    const passwordHash = input.newPassword
-      ? await hashMockPassword(input.newPassword)
-      : current.passwordHash;
+    const passwordHash =
+      input.newPassword && input.newPassword.trim().length >= 6
+        ? await hashMockPassword(input.newPassword.trim())
+        : current.passwordHash;
 
     const updated: UserAccount = {
       ...current,
       username,
-      email: input.email.toLowerCase().trim(),
-      isActive: input.isActive,
+      email: input.email?.toLowerCase().trim() || current.email,
+      isActive:
+        input.isActive !== undefined ? input.isActive : current.isActive,
       passwordHash,
       updatedAt: nowIso(),
     };
@@ -220,14 +258,17 @@ export const userAccountService = {
   }): Promise<UserAccount[]> => {
     return withApiFallback(
       async () => {
+        const queryParams = { limit: 500, ...params };
         const [res, pegawais] = await Promise.all([
           apiClient.get<
             UserAccount[] | { data?: UserAccount[]; items?: UserAccount[] }
-          >("/api/v1/akun-pengguna", params),
+          >("/api/v1/akun-pengguna", queryParams),
           pegawaiService.apiGetAll(),
         ]);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        const accounts = [...list];
+        const accounts = list.map((item) =>
+          normalizeUserAccountFromApi(item as RawUserAccountApi),
+        );
 
         // 1. Pastikan akun admin utama ada
         if (
@@ -239,7 +280,15 @@ export const userAccountService = {
         ) {
           const adminAccount = createAdministratorAccount();
           try {
-            await apiClient.post("/api/v1/akun-pengguna", adminAccount);
+            await apiClient.post("/api/v1/akun-pengguna", {
+              id: adminAccount.id,
+              username: adminAccount.username,
+              password_hash: adminAccount.passwordHash,
+              name: adminAccount.name,
+              email: adminAccount.email,
+              role: adminAccount.role,
+              is_active: 1,
+            });
             accounts.unshift(adminAccount);
           } catch {
             accounts.unshift(adminAccount);
@@ -250,7 +299,7 @@ export const userAccountService = {
           accounts.map((account) => account.username.toLowerCase().trim()),
         );
 
-        // 2. Buat akun otomatis untuk setiap pegawai yang belum memiliki akun
+        // 2. Buat akun otomatis untuk setiap pegawai yang belum memiliki akun di cloud
         for (const pegawai of pegawais) {
           if (!pegawai.id) continue;
 
@@ -261,13 +310,25 @@ export const userAccountService = {
           if (accountIndex === -1) {
             const newAccount = createEmployeeAccount(pegawai, usedUsernames);
             try {
-              await apiClient.post("/api/v1/akun-pengguna", newAccount);
+              await apiClient.post("/api/v1/akun-pengguna", {
+                id: newAccount.id,
+                username: newAccount.username,
+                password_hash: newAccount.passwordHash,
+                name: newAccount.name,
+                email: newAccount.email,
+                role: newAccount.role,
+                pegawai_id: newAccount.pegawaiId,
+                is_active: 1,
+              });
               accounts.push(newAccount);
             } catch {
               accounts.push(newAccount);
             }
           }
         }
+
+        // Sinkronkan juga ke penyimpanan lokal
+        saveAccounts(accounts);
 
         return accounts.sort((left, right) => {
           if (left.id === "user-admin" || left.username === "admin") return -1;
@@ -287,7 +348,9 @@ export const userAccountService = {
         );
         const unwrapped =
           (res as { data?: UserAccount }).data || (res as UserAccount);
-        return unwrapped || null;
+        return unwrapped
+          ? normalizeUserAccountFromApi(unwrapped as RawUserAccountApi)
+          : null;
       },
       () => userAccountService.findById(id) || null,
     );
@@ -296,14 +359,29 @@ export const userAccountService = {
   apiCreate: async (data: Partial<UserAccount>): Promise<UserAccount> => {
     return withApiFallback(
       async () => {
-        const payload = { id: data.id || `user-${Date.now()}`, ...data };
+        const payload = {
+          id: data.id || `user-${Date.now()}`,
+          username: data.username?.toLowerCase().trim(),
+          password_hash: data.passwordHash || DEFAULT_MOCK_PASSWORD_HASH,
+          name: data.name,
+          email: data.email?.toLowerCase().trim(),
+          role: data.role,
+          pegawai_id: data.pegawaiId || null,
+          is_active: data.isActive !== undefined ? (data.isActive ? 1 : 0) : 1,
+        };
         const res = await apiClient.post<UserAccount | { data?: UserAccount }>(
           "/api/v1/akun-pengguna",
           payload,
         );
         const unwrapped =
           (res as { data?: UserAccount }).data || (res as UserAccount);
-        return unwrapped;
+        const normalized = normalizeUserAccountFromApi(
+          unwrapped as RawUserAccountApi,
+        );
+
+        const items = userAccountService.getAll();
+        saveAccounts([...items, normalized]);
+        return normalized;
       },
       async () => {
         const items = userAccountService.getAll();
@@ -319,25 +397,58 @@ export const userAccountService = {
 
   apiUpdate: async (
     id: string,
-    data: Partial<UserAccount>,
+    data: Partial<UserAccount & UserAccountFormInput>,
   ): Promise<UserAccount> => {
+    let passwordHash: string | undefined;
+    if (data.newPassword && data.newPassword.trim().length >= 6) {
+      passwordHash = await hashMockPassword(data.newPassword.trim());
+    } else if (data.passwordHash) {
+      passwordHash = data.passwordHash;
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (data.username) payload.username = data.username.toLowerCase().trim();
+    if (data.name) payload.name = data.name;
+    if (data.email) payload.email = data.email.toLowerCase().trim();
+    if (data.role) payload.role = data.role;
+    if (data.pegawaiId !== undefined) payload.pegawai_id = data.pegawaiId;
+    if (data.isActive !== undefined) payload.is_active = data.isActive ? 1 : 0;
+    if (passwordHash) payload.password_hash = passwordHash;
+
     return withApiFallback(
       async () => {
         const res = await apiClient.put<UserAccount | { data?: UserAccount }>(
           `/api/v1/akun-pengguna/${id}`,
-          data,
+          payload,
         );
         const unwrapped =
           (res as { data?: UserAccount }).data || (res as UserAccount);
-        return unwrapped;
+        const normalized = normalizeUserAccountFromApi(
+          unwrapped as RawUserAccountApi,
+        );
+
+        const items = userAccountService.getAll();
+        const updated = items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...normalized,
+                ...(passwordHash ? { passwordHash } : {}),
+              }
+            : item,
+        );
+        saveAccounts(updated);
+        return normalized;
       },
       async () => {
         const items = userAccountService.getAll();
         const updated = items.map((item) =>
-          item.id === id ? { ...item, ...data } : item,
+          item.id === id
+            ? { ...item, ...data, ...(passwordHash ? { passwordHash } : {}) }
+            : item,
         );
-        saveAccounts(updated);
-        return updated.find((i) => i.id === id)!;
+        saveAccounts(updated as UserAccount[]);
+        return updated.find((i) => i.id === id)! as UserAccount;
       },
     );
   },

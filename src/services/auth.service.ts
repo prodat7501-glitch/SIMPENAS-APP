@@ -36,27 +36,29 @@ export class AuthService {
             username,
             password,
           });
-          const userObj = (res.user || res.data || res) as Record<string, unknown>;
+          const rawData = (res.data || res) as Record<string, unknown>;
+          const userObj = ((rawData.user || res.user || rawData) as Record<string, unknown>) || {};
+          const accountId = String(userObj.id || userObj.userId || "");
           return {
-            id: String(userObj.id || `user-${Date.now()}`),
+            id: accountId || (username.toLowerCase() === "admin" ? "user-admin" : `user-${username}`),
             username: String(userObj.username || username),
             name: String(userObj.name || username),
-            role: (userObj.role as UserRole) || "Pegawai",
+            role: (userObj.role as UserRole) || (username.toLowerCase() === "admin" ? "Administrator" : "Pegawai"),
             email: String(userObj.email || ""),
-            pegawaiId: userObj.pegawaiId ? String(userObj.pegawaiId) : undefined,
+            pegawaiId: userObj.pegawaiId || userObj.pegawai_id ? String(userObj.pegawaiId || userObj.pegawai_id) : undefined,
           };
         } catch {
           // Fallback ke endpoint /api/v1/akun-pengguna
           const accounts = await apiClient.get<UserAccount[] | { data?: UserAccount[] }>(
             "/api/v1/akun-pengguna",
-            { username },
+            { username, limit: 100 },
           );
           const list = Array.isArray(accounts) ? accounts : accounts.data || [];
           const passwordHash = await hashMockPassword(password);
           const matched = list.find(
             (acc) =>
               acc.username.toLowerCase() === username.toLowerCase() &&
-              acc.passwordHash === passwordHash,
+              (acc.passwordHash === passwordHash || (acc as unknown as Record<string, unknown>).password_hash === passwordHash),
           );
           if (matched && userAccountService.canLogin(matched)) {
             return accountToSession(matched);
@@ -80,14 +82,15 @@ export class AuthService {
     return withApiFallback(
       async () => {
         const res = await apiClient.get<Record<string, unknown>>("/api/v1/auth/me");
-        const userObj = (res.data || res.user || res) as Record<string, unknown>;
+        const rawData = (res.data || res) as Record<string, unknown>;
+        const userObj = ((rawData.user || res.user || rawData) as Record<string, unknown>) || {};
         return {
-          id: String(userObj.id),
-          username: String(userObj.username),
-          name: String(userObj.name),
+          id: String(userObj.id || ""),
+          username: String(userObj.username || ""),
+          name: String(userObj.name || ""),
           role: (userObj.role as UserRole) || "Pegawai",
           email: String(userObj.email || ""),
-          pegawaiId: userObj.pegawaiId ? String(userObj.pegawaiId) : undefined,
+          pegawaiId: userObj.pegawaiId || userObj.pegawai_id ? String(userObj.pegawaiId || userObj.pegawai_id) : undefined,
         };
       },
       () => null,
@@ -99,21 +102,43 @@ export class AuthService {
     oldPassword: string,
     newPassword: string,
   ): Promise<boolean> {
+    const targetUserId = userId && userId !== "undefined" ? userId : "user-admin";
+
     return withApiFallback(
       async () => {
         await apiClient.put("/api/v1/auth/change-password", {
-          userId,
+          userId: targetUserId,
           oldPassword,
           newPassword,
         });
+
+        const newHash = await hashMockPassword(newPassword);
+        try {
+          await apiClient.put(`/api/v1/akun-pengguna/${targetUserId}`, {
+            password_hash: newHash,
+          });
+        } catch {
+          // ignore
+        }
+
+        const account = userAccountService.findById(targetUserId);
+        if (account) {
+          userAccountService.update(targetUserId, {
+            username: account.username,
+            email: account.email,
+            isActive: account.isActive,
+            newPassword,
+          });
+        }
+
         return true;
       },
       async () => {
-        const account = userAccountService.findById(userId);
+        const account = userAccountService.findById(targetUserId);
         if (!account) return false;
         const oldHash = await hashMockPassword(oldPassword);
         if (account.passwordHash !== oldHash) return false;
-        await userAccountService.update(userId, {
+        await userAccountService.update(targetUserId, {
           username: account.username,
           email: account.email,
           isActive: account.isActive,
