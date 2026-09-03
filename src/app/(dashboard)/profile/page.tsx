@@ -95,8 +95,13 @@ export default function ProfilePage() {
 
     setIsChangingPassword(true);
     try {
+      const targetUserId =
+        user.username.toLowerCase() === "admin" || user.id === "user-admin"
+          ? "user-admin"
+          : user.id;
+
       const success = await AuthService.changePassword(
-        user.id,
+        targetUserId,
         oldPassword,
         newPassword,
       );

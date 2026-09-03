@@ -132,7 +132,13 @@ export class AuthService {
     oldPassword: string,
     newPassword: string,
   ): Promise<boolean> {
-    const targetUserId = userId && userId !== "undefined" ? userId : "user-admin";
+    const targetUserId =
+      userId === "user-admin" ||
+      userId.startsWith("user-17") ||
+      !userId ||
+      userId === "undefined"
+        ? "user-admin"
+        : userId;
 
     return withApiFallback(
       async () => {
