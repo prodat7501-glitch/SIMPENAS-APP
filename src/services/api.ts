@@ -203,11 +203,7 @@ async function request<T>(
       ) {
         errorMsg = (errorData as { message: string }).message;
       }
-      throw new ApiError(
-        errorMsg,
-        response.status,
-        errorData,
-      );
+      throw new ApiError(errorMsg, response.status, errorData);
     }
 
     if (response.status === 204) {
