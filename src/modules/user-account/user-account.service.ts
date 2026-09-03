@@ -208,7 +208,7 @@ export const userAccountService = {
 
   update: async (
     id: string,
-    input: UserAccountFormInput,
+    input: Partial<UserAccountFormInput>,
   ): Promise<UserAccount> => {
     const accounts = synchronizeAccounts();
     const accountIndex = accounts.findIndex((account) => account.id === id);
