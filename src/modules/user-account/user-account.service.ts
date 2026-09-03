@@ -197,12 +197,13 @@ export const userAccountService = {
 
   canLogin: (account: UserAccount): boolean => {
     if (!account.isActive) return false;
-    if (!account.pegawaiId) return account.role === "Administrator";
+    if (!account.pegawaiId) return true;
 
     const pegawai = pegawaiService
       .getAll()
       .find((item) => item.id === account.pegawaiId);
-    return pegawai?.status === "Aktif";
+    if (!pegawai) return true;
+    return pegawai.status === "Aktif";
   },
 
   update: async (

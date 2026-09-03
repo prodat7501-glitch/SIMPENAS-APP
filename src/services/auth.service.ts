@@ -21,7 +21,10 @@ export class AuthService {
       userAccountService.findById(user.id) ??
       userAccountService.findByUsername(user.username);
 
-    if (!account || !userAccountService.canLogin(account)) return null;
+    // Jika akun belum tersimpan di local storage (misal di perangkat baru), pertahankan sesi aktif
+    if (!account) return user;
+
+    if (!userAccountService.canLogin(account)) return null;
     return accountToSession(account);
   }
 
@@ -39,7 +42,7 @@ export class AuthService {
           const rawData = (res.data || res) as Record<string, unknown>;
           const userObj = ((rawData.user || res.user || rawData) as Record<string, unknown>) || {};
           const accountId = String(userObj.id || userObj.userId || "");
-          return {
+          const session: UserSession = {
             id: accountId || (username.toLowerCase() === "admin" ? "user-admin" : `user-${username}`),
             username: String(userObj.username || username),
             name: String(userObj.name || username),
@@ -47,6 +50,33 @@ export class AuthService {
             email: String(userObj.email || ""),
             pegawaiId: userObj.pegawaiId || userObj.pegawai_id ? String(userObj.pegawaiId || userObj.pegawai_id) : undefined,
           };
+
+          if (typeof window !== "undefined") {
+            try {
+              const currentAccounts = userAccountService.getAll();
+              if (!currentAccounts.some((a) => a.id === session.id || a.username.toLowerCase() === session.username.toLowerCase())) {
+                userAccountService.saveAccounts([
+                  ...currentAccounts,
+                  {
+                    id: session.id,
+                    username: session.username,
+                    name: session.name,
+                    email: session.email,
+                    role: session.role,
+                    pegawaiId: session.pegawaiId,
+                    passwordHash: "",
+                    isActive: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ]);
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          return session;
         } catch {
           // Fallback ke endpoint /api/v1/akun-pengguna
           const accounts = await apiClient.get<UserAccount[] | { data?: UserAccount[] }>(
