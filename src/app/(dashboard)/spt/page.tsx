@@ -111,30 +111,36 @@ export default function SptPage() {
       pegawai?.kategoriPegawai === "Anggota KPU"
     );
   };
-  const getSptGroup = (item: Pick<Spt, "personil">) =>
-    item.personil.length > 0 &&
-    item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId))
+  const getSptGroup = (item: Pick<Spt, "personil">) => {
+    const personil = item?.personil || [];
+    return personil.length > 0 &&
+      personil.every((person) => isPegawaiKomisioner(person?.pegawaiId))
       ? "Komisioner"
       : "Sekretariat";
+  };
   const hasUncreatedSptGroup = (notaDinasId: string) => {
-    const nota = notaDinasItems.find((item) => item.id === notaDinasId);
+    const nota = (notaDinasItems || []).find(
+      (item) => item?.id === notaDinasId,
+    );
     if (!nota) return false;
 
     const requiredGroups = new Set(
-      nota.lampiran.map((item) =>
-        isPegawaiKomisioner(item.pegawaiId) ? "Komisioner" : "Sekretariat",
+      (nota.lampiran || []).map((item) =>
+        isPegawaiKomisioner(item?.pegawaiId) ? "Komisioner" : "Sekretariat",
       ),
     );
     const existingGroups = new Set(
-      items.filter((item) => item.notaDinasId === notaDinasId).map(getSptGroup),
+      (items || [])
+        .filter((item) => item?.notaDinasId === notaDinasId)
+        .map(getSptGroup),
     );
     return [...requiredGroups].some((group) => !existingGroups.has(group));
   };
   const accessibleNotaDinasItems = scopeMutationsToNotaDinas
-    ? notaDinasItems.filter((item) =>
+    ? (notaDinasItems || []).filter((item) =>
         isPegawaiInNotaDinas(currentPegawaiId, item),
       )
-    : notaDinasItems;
+    : notaDinasItems || [];
   const visibleSpts = scopeToNotaDinas
     ? items.filter((item) =>
         canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),

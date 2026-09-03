@@ -63,20 +63,20 @@ export const isPegawaiInNotaDinas = (
   nota?: NotaDinas | null,
 ) => {
   if (!pegawaiId || !nota) return false;
-  return nota.lampiran.some((item) => item.pegawaiId === pegawaiId);
+  return (nota.lampiran || []).some((item) => item?.pegawaiId === pegawaiId);
 };
 
 export const resolveNotaDinasChainManagerId = (
   notaDinasId: string,
   spts: Spt[],
 ) =>
-  spts.find(
+  (spts || []).find(
     (item) =>
-      item.notaDinasId === notaDinasId && Boolean(item.createdByPegawaiId),
+      item?.notaDinasId === notaDinasId && Boolean(item?.createdByPegawaiId),
   )?.createdByPegawaiId;
 
 export const resolveSptChainManagerId = (sptId: string, spts: Spt[]) => {
-  const sourceSpt = spts.find((item) => item.id === sptId);
+  const sourceSpt = (spts || []).find((item) => item?.id === sptId);
   if (!sourceSpt) return undefined;
 
   return (
@@ -94,7 +94,7 @@ export const canInitiateNotaDinasChain = (
   if (isAdministrator) return true;
   if (!isPegawaiInNotaDinas(pegawaiId, nota)) return false;
 
-  const managerId = nota.id
+  const managerId = nota?.id
     ? resolveNotaDinasChainManagerId(nota.id, spts)
     : undefined;
   return !managerId || managerId === pegawaiId;
@@ -116,10 +116,11 @@ export const canAccessSptByNotaDinas = (
   spt: Spt,
   notas: NotaDinas[],
 ) => {
-  const nota = notas.find((item) => item.id === spt.notaDinasId);
+  if (!spt) return false;
+  const nota = (notas || []).find((item) => item?.id === spt.notaDinasId);
   return (
     isPegawaiInNotaDinas(pegawaiId, nota) ||
-    spt.personil.some((item) => item.pegawaiId === pegawaiId)
+    (spt.personil || []).some((item) => item?.pegawaiId === pegawaiId)
   );
 };
 
@@ -129,9 +130,10 @@ export const canAccessSppdByNotaDinas = (
   spts: Spt[],
   notas: NotaDinas[],
 ) => {
-  const spt = spts.find((item) => item.id === sppd.sptId);
+  if (!sppd) return false;
+  const spt = (spts || []).find((item) => item?.id === sppd.sptId);
   if (!spt) {
-    return sppd.personil.some((item) => item.pegawaiId === pegawaiId);
+    return (sppd.personil || []).some((item) => item?.pegawaiId === pegawaiId);
   }
   return canAccessSptByNotaDinas(pegawaiId, spt, notas);
 };

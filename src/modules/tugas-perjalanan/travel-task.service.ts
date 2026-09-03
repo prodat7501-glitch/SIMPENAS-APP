@@ -265,7 +265,10 @@ const getFinanceSpjState = (spj: Spj): TaskState | null => {
     };
   }
 
-  const states: Record<Exclude<Spj["status"], "Pembayaran Selesai">, TaskState> = {
+  const states: Record<
+    Exclude<Spj["status"], "Pembayaran Selesai">,
+    TaskState
+  > = {
     "SPJ Diterima": {
       stage: "SPJ_DITERIMA",
       statusLabel: "SPJ Diterima",
@@ -440,14 +443,7 @@ export const buildTravelTasks = ({
 
           if (!nota || !spt || !state) return [];
 
-          return [
-            createTask(
-              nota,
-              `finance:${spj.id}`,
-              state,
-              spt,
-            ),
-          ];
+          return [createTask(nota, `finance:${spj.id}`, state, spt)];
         })
       : [];
 
@@ -481,17 +477,21 @@ export const buildTravelTasks = ({
     ];
   });
 
-  const personalTasks = notas
+  const personalTasks = (notas || [])
     .filter(
       (nota) =>
         APPROVED_STATUS.has(nota.status) &&
-        nota.lampiran.some((person) => person.pegawaiId === user.pegawaiId),
+        (nota.lampiran || []).some(
+          (person) => person?.pegawaiId === user.pegawaiId,
+        ),
     )
     .flatMap((nota) => {
-      const assignedSpts = spts.filter(
+      const assignedSpts = (spts || []).filter(
         (spt) =>
-          spt.notaDinasId === nota.id &&
-          spt.personil.some((person) => person.pegawaiId === user.pegawaiId),
+          spt?.notaDinasId === nota.id &&
+          (spt?.personil || []).some(
+            (person) => person?.pegawaiId === user.pegawaiId,
+          ),
       );
 
       if (!assignedSpts.length) {

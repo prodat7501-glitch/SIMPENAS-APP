@@ -124,30 +124,107 @@ export const isUnmodifiedSptDemoSeed = (item: Spt) =>
       JSON.stringify(withoutSignerSnapshot(seed)),
   );
 
+interface RawSptApi {
+  id?: string;
+  nomor?: string;
+  notaDinasId?: string;
+  nota_dinas_id?: string;
+  tanggalMulai?: string;
+  tanggal_mulai?: string;
+  tanggalSelesai?: string;
+  tanggal_selesai?: string;
+  penandatanganId?: string;
+  penandatangan_id?: string;
+  penandatanganSnapshot?: unknown;
+  penandatangan_snapshot?: unknown;
+  status?: Spt["status"];
+  catatanRevisi?: string | null;
+  catatan_revisi?: string | null;
+  createdByPegawaiId?: string;
+  created_by_pegawai_id?: string;
+  menimbang?: { text: string }[];
+  dasar?: { text: string }[];
+  untuk?: { text: string }[];
+  personil?: { pegawaiId: string }[];
+}
+
+interface RawSptPersonilApi {
+  id?: string;
+  sptId?: string;
+  spt_id?: string;
+  pegawaiId?: string;
+  pegawai_id?: string;
+}
+
+const normalizeSptFromApi = (
+  raw: RawSptApi,
+  personilList: RawSptPersonilApi[] = [],
+): Spt => {
+  const sptId = raw.id;
+  const matchingPersonil = personilList
+    .filter((p) => (p.sptId ?? p.spt_id) === sptId)
+    .map((p) => ({
+      pegawaiId: p.pegawaiId ?? p.pegawai_id ?? "",
+    }));
+
+  const rawPersonil =
+    Array.isArray(raw.personil) && raw.personil.length > 0
+      ? raw.personil
+      : matchingPersonil;
+
+  const item: Spt = {
+    id: raw.id || "",
+    nomor: raw.nomor ?? "",
+    notaDinasId: raw.notaDinasId ?? raw.nota_dinas_id ?? "",
+    tanggalMulai: raw.tanggalMulai ?? raw.tanggal_mulai ?? "",
+    tanggalSelesai: raw.tanggalSelesai ?? raw.tanggal_selesai ?? "",
+    penandatanganId: raw.penandatanganId ?? raw.penandatangan_id ?? "",
+    penandatanganSnapshot: (raw.penandatanganSnapshot ??
+      raw.penandatangan_snapshot ??
+      null) as Spt["penandatanganSnapshot"],
+    status: (raw.status as Spt["status"]) ?? "Draft",
+    catatanRevisi: raw.catatanRevisi ?? raw.catatan_revisi ?? "",
+    createdByPegawaiId:
+      raw.createdByPegawaiId ?? raw.created_by_pegawai_id ?? "",
+    menimbang: Array.isArray(raw.menimbang) ? raw.menimbang : [],
+    dasar: Array.isArray(raw.dasar) ? raw.dasar : [],
+    untuk: Array.isArray(raw.untuk) ? raw.untuk : [],
+    personil: Array.isArray(rawPersonil) ? rawPersonil : [],
+  };
+
+  return normalizeSeparatedSptPersonil(item);
+};
+
+const ensureAllNotaDinasCovered = (
+  items: Array<Spt & { notaDinasId?: string }>,
+): Spt[] => {
+  const notas = notaDinasService.getAll();
+  return items.map((item) => {
+    if (item.notaDinasId) return normalizeSeparatedSptPersonil(item as Spt);
+    const nota = notas.find((candidate) => {
+      const ids = new Set(
+        (candidate.lampiran || []).map((row) => row.pegawaiId),
+      );
+      return (item.personil || []).every((person) => ids.has(person.pegawaiId));
+    });
+    if (!nota?.id) return normalizeSeparatedSptPersonil(item as Spt);
+    return normalizeSeparatedSptPersonil({
+      ...item,
+      notaDinasId: nota.id,
+    } as Spt);
+  });
+};
+
 export const sptService = {
   getAll: (): Spt[] => {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") return defaultSpts;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, "[]");
-      return [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultSpts));
+      return defaultSpts;
     }
-    const storedItems = JSON.parse(stored) as Array<
-      Spt & { notaDinasId?: string }
-    >;
-    const notas = notaDinasService.getAll();
-    const synchronized = storedItems.map((item) => {
-      if (item.notaDinasId) return normalizeSeparatedSptPersonil(item as Spt);
-      const nota = notas.find((candidate) => {
-        const ids = new Set(candidate.lampiran.map((row) => row.pegawaiId));
-        return (item.personil || []).every((person) => ids.has(person.pegawaiId));
-      });
-      if (!nota?.id) return item as Spt;
-      return normalizeSeparatedSptPersonil({
-        ...item,
-        notaDinasId: nota.id,
-      } as Spt);
-    });
+    const parsed = JSON.parse(stored);
+    const synchronized = ensureAllNotaDinasCovered(parsed);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(synchronized));
     return synchronized;
   },
@@ -160,58 +237,182 @@ export const sptService = {
   },
 
   // REST API Integration (/api/v1/spt)
-  apiGetAll: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<Spt[]> => {
+  apiGetAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<Spt[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Spt[] | { data?: Spt[]; items?: Spt[] }>("/api/v1/spt", params);
+        const queryParams = { limit: 500, ...params };
+        const [res, personilRes] = await Promise.all([
+          apiClient.get<Spt[] | { data?: Spt[]; items?: Spt[] }>(
+            "/api/v1/spt",
+            queryParams,
+          ),
+          apiClient
+            .get<
+              | RawSptPersonilApi[]
+              | { data?: RawSptPersonilApi[]; items?: RawSptPersonilApi[] }
+            >("/api/v1/spt-personil", { limit: 500 })
+            .catch(() => []),
+        ]);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map(normalizeSeparatedSptPersonil);
+        const personilList = Array.isArray(personilRes)
+          ? personilRes
+          : (
+              personilRes as {
+                data?: RawSptPersonilApi[];
+                items?: RawSptPersonilApi[];
+              }
+            ).data ||
+            (
+              personilRes as {
+                data?: RawSptPersonilApi[];
+                items?: RawSptPersonilApi[];
+              }
+            ).items ||
+            [];
+        return list.map((item) =>
+          normalizeSptFromApi(item as RawSptApi, personilList),
+        );
       },
-      () => sptService.getAll()
+      () => sptService.getAll(),
     );
   },
 
   apiGetById: async (id: string): Promise<Spt | null> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<Spt | { data?: Spt }>(`/api/v1/spt/${id}`);
+        const [res, personilRes] = await Promise.all([
+          apiClient.get<Spt | { data?: Spt }>(`/api/v1/spt/${id}`),
+          apiClient
+            .get<
+              | RawSptPersonilApi[]
+              | { data?: RawSptPersonilApi[]; items?: RawSptPersonilApi[] }
+            >("/api/v1/spt-personil", { limit: 500 })
+            .catch(() => []),
+        ]);
         const unwrapped = (res as { data?: Spt }).data || (res as Spt);
-        return unwrapped ? normalizeSeparatedSptPersonil(unwrapped) : null;
+        const personilList = Array.isArray(personilRes)
+          ? personilRes
+          : (
+              personilRes as {
+                data?: RawSptPersonilApi[];
+                items?: RawSptPersonilApi[];
+              }
+            ).data ||
+            (
+              personilRes as {
+                data?: RawSptPersonilApi[];
+                items?: RawSptPersonilApi[];
+              }
+            ).items ||
+            [];
+        return unwrapped
+          ? normalizeSptFromApi(unwrapped as RawSptApi, personilList)
+          : null;
       },
-      () => sptService.getAll().find((s) => s.id === id) || null
+      () => sptService.getAll().find((s) => s.id === id) || null,
     );
   },
 
   apiCreate: async (data: Partial<Spt>): Promise<Spt> => {
     return withApiFallback(
       async () => {
-        const payload = { id: data.id || `st-${Date.now()}`, ...data };
-        const res = await apiClient.post<Spt | { data?: Spt }>("/api/v1/spt", payload);
+        const payload = {
+          id: data.id || `st-${Date.now()}`,
+          nomor: data.nomor,
+          nota_dinas_id: data.notaDinasId,
+          tanggal_mulai: data.tanggalMulai,
+          tanggal_selesai: data.tanggalSelesai,
+          penandatangan_id: data.penandatanganId,
+          penandatangan_snapshot: data.penandatanganSnapshot,
+          status: data.status,
+          catatan_revisi: data.catatanRevisi,
+          created_by_pegawai_id: data.createdByPegawaiId,
+          menimbang: data.menimbang,
+          dasar: data.dasar,
+          untuk: data.untuk,
+          ...data,
+        };
+        const res = await apiClient.post<Spt | { data?: Spt }>(
+          "/api/v1/spt",
+          payload,
+        );
         const unwrapped = (res as { data?: Spt }).data || (res as Spt);
-        return normalizeSeparatedSptPersonil(unwrapped);
+
+        if (Array.isArray(data.personil) && data.personil.length > 0) {
+          for (const p of data.personil) {
+            try {
+              await apiClient.post("/api/v1/spt-personil", {
+                id: `sptp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                spt_id: unwrapped.id,
+                pegawai_id: p.pegawaiId,
+              });
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        return normalizeSptFromApi(
+          { ...(unwrapped as RawSptApi), personil: data.personil },
+          [],
+        );
       },
       async () => {
         const items = sptService.getAll();
-        const newItem = normalizeSeparatedSptPersonil({ ...data, id: data.id || `st-${Date.now()}` } as Spt);
+        const newItem = normalizeSeparatedSptPersonil({
+          ...data,
+          id: data.id || `st-${Date.now()}`,
+        } as Spt);
         sptService.saveAll([...items, newItem]);
         return newItem;
-      }
+      },
     );
   },
 
   apiUpdate: async (id: string, data: Partial<Spt>): Promise<Spt> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Spt | { data?: Spt }>(`/api/v1/spt/${id}`, data);
+        const payload = {
+          nomor: data.nomor,
+          nota_dinas_id: data.notaDinasId,
+          tanggal_mulai: data.tanggalMulai,
+          tanggal_selesai: data.tanggalSelesai,
+          penandatangan_id: data.penandatanganId,
+          penandatangan_snapshot: data.penandatanganSnapshot,
+          status: data.status,
+          catatan_revisi: data.catatanRevisi,
+          created_by_pegawai_id: data.createdByPegawaiId,
+          menimbang: data.menimbang,
+          dasar: data.dasar,
+          untuk: data.untuk,
+          ...data,
+        };
+        const res = await apiClient.put<Spt | { data?: Spt }>(
+          `/api/v1/spt/${id}`,
+          payload,
+        );
         const unwrapped = (res as { data?: Spt }).data || (res as Spt);
-        return normalizeSeparatedSptPersonil(unwrapped);
+        return normalizeSptFromApi(
+          { ...(unwrapped as RawSptApi), personil: data.personil },
+          [],
+        );
       },
       async () => {
         const items = sptService.getAll();
-        const updated = items.map((item) => (item.id === id ? normalizeSeparatedSptPersonil({ ...item, ...data } as Spt) : item));
+        const updated = items.map((item) =>
+          item.id === id
+            ? normalizeSeparatedSptPersonil({ ...item, ...data } as Spt)
+            : item,
+        );
         sptService.saveAll(updated);
         return updated.find((i) => i.id === id)!;
-      }
+      },
     );
   },
 
@@ -225,23 +426,28 @@ export const sptService = {
         const items = sptService.getAll();
         sptService.saveAll(items.filter((item) => item.id !== id));
         return true;
-      }
+      },
     );
   },
 
   apiBulkCreate: async (data: Partial<Spt>[]): Promise<Spt[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Spt[] | { data?: Spt[] }>("/api/v1/spt", data);
+        const res = await apiClient.bulkPost<Spt[] | { data?: Spt[] }>(
+          "/api/v1/spt",
+          data,
+        );
         const list = Array.isArray(res) ? res : res.data || [];
         return list.map(normalizeSeparatedSptPersonil);
       },
       async () => {
         const items = sptService.getAll();
-        const normalized = data.map((d) => normalizeSeparatedSptPersonil(d as Spt));
+        const normalized = data.map((d) =>
+          normalizeSeparatedSptPersonil(d as Spt),
+        );
         sptService.saveAll([...items, ...normalized]);
         return normalized;
-      }
+      },
     );
   },
 
@@ -276,7 +482,5 @@ export const sptService = {
   releaseNomor: (
     number: string,
     note = "Nomor dilepas karena form SPT baru dibatalkan sebelum disimpan.",
-  ) =>
-    penomoranService.releaseNumber("SPT", number, note),
+  ) => penomoranService.releaseNumber("SPT", number, note),
 };
-

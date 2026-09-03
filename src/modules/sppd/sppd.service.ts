@@ -66,29 +66,93 @@ const normalizeStoredStatus = (status: unknown): Sppd["status"] => {
   return "Diproses";
 };
 
-const normalizeSinglePersonilSppd = (item: Sppd): Sppd => {
+interface RawSppdApi {
+  id?: string;
+  nomor?: string;
+  sptId?: string;
+  spt_id?: string;
+  pegawaiId?: string;
+  pegawai_id?: string;
+  pengelolaPegawaiId?: string;
+  pengelola_pegawai_id?: string;
+  pengelolaNama?: string;
+  pengelola_nama?: string;
+  personil?: { pegawaiId: string }[];
+  maksud?: string;
+  transportasi?: string;
+  tempatBerangkat?: string;
+  tempat_berangkat?: string;
+  tempatTujuan?: string;
+  tempat_tujuan?: string;
+  tanggalBerangkat?: string;
+  tanggal_berangkat?: string;
+  tanggalKembali?: string;
+  tanggal_kembali?: string;
+  lamaPerjalanan?: number;
+  lama_perjalanan?: number;
+  instansi?: string;
+  dipaId?: string;
+  dipa_id?: string;
+  penandatanganId?: string;
+  penandatangan_id?: string;
+  penandatanganSnapshot?: unknown;
+  penandatangan_snapshot?: unknown;
+  jumlahKolomHalaman2?: number;
+  jumlah_kolom_halaman2?: number;
+  tandaTanganHalaman2?: unknown;
+  tanda_tangan_halaman2?: unknown;
+  status?: Sppd["status"];
+}
+
+const normalizeSinglePersonilSppd = (raw: RawSppdApi): Sppd => {
+  const penandatanganId = raw.penandatanganId ?? raw.penandatangan_id ?? "";
   const signer = penandatanganService
     .getAll()
-    .find((candidate) => candidate.id === item.penandatanganId);
+    .find((candidate) => candidate.id === penandatanganId);
+
+  let personil: Sppd["personil"] = [];
+  if (Array.isArray(raw.personil) && raw.personil.length > 0) {
+    personil = raw.personil.slice(0, 1);
+  } else if (raw.pegawaiId || raw.pegawai_id) {
+    personil = [{ pegawaiId: raw.pegawaiId || raw.pegawai_id || "" }];
+  }
+
+  const rawTtd = raw.tandaTanganHalaman2 ?? raw.tanda_tangan_halaman2;
+  const tandaTanganHalaman2 = Array.isArray(rawTtd)
+    ? rawTtd.map((item) => normalizePage2Signer(item as Partial<Page2Signer>))
+    : [];
+
+  const tanggalBerangkat = raw.tanggalBerangkat ?? raw.tanggal_berangkat ?? "";
+  const snapshot = raw.penandatanganSnapshot ?? raw.penandatangan_snapshot;
 
   return {
-    ...item,
-    status: normalizeStoredStatus(item.status),
-    personil: (item.personil || []).slice(0, 1),
-    jumlahKolomHalaman2: item.jumlahKolomHalaman2 ?? 6,
-    tandaTanganHalaman2: (item.tandaTanganHalaman2 ?? []).map(
-      normalizePage2Signer,
+    id: raw.id || "",
+    nomor: raw.nomor ?? "",
+    sptId: raw.sptId ?? raw.spt_id ?? "",
+    pengelolaPegawaiId: raw.pengelolaPegawaiId ?? raw.pengelola_pegawai_id,
+    pengelolaNama: raw.pengelolaNama ?? raw.pengelola_nama,
+    personil,
+    maksud: raw.maksud ?? "",
+    transportasi: raw.transportasi ?? "",
+    tempatBerangkat: raw.tempatBerangkat ?? raw.tempat_berangkat ?? "",
+    tempatTujuan: raw.tempatTujuan ?? raw.tempat_tujuan ?? "",
+    tanggalBerangkat,
+    tanggalKembali: raw.tanggalKembali ?? raw.tanggal_kembali ?? "",
+    lamaPerjalanan: Number(raw.lamaPerjalanan ?? raw.lama_perjalanan ?? 1),
+    instansi: raw.instansi ?? "Komisi Pemilihan Umum Kabupaten Gorontalo",
+    dipaId: raw.dipaId ?? raw.dipa_id ?? "",
+    penandatanganId,
+    jumlahKolomHalaman2: Number(
+      raw.jumlahKolomHalaman2 ?? raw.jumlah_kolom_halaman2 ?? 6,
     ),
+    tandaTanganHalaman2,
+    status: normalizeStoredStatus(raw.status),
     penandatanganSnapshot:
-      item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
-        ? item.penandatanganSnapshot
+      (snapshot as Sppd["penandatanganSnapshot"])?.penandatanganId ===
+      penandatanganId
+        ? (snapshot as Sppd["penandatanganSnapshot"])
         : signer
-          ? createPenandatanganSnapshot(
-              signer,
-              "SPPD",
-              item.tanggalBerangkat,
-              true,
-            )
+          ? createPenandatanganSnapshot(signer, "SPPD", tanggalBerangkat, true)
           : null,
   };
 };
@@ -229,11 +293,14 @@ export const sppdService = {
   }): Promise<Sppd[]> => {
     return withApiFallback(
       async () => {
+        const queryParams = { limit: 500, ...params };
         const res = await apiClient.get<
           Sppd[] | { data?: Sppd[]; items?: Sppd[] }
-        >("/api/v1/sppd", params);
+        >("/api/v1/sppd", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return applySeriesLifecycle(list.map(normalizeSinglePersonilSppd));
+        return applySeriesLifecycle(
+          list.map((item) => normalizeSinglePersonilSppd(item as RawSppdApi)),
+        );
       },
       () => getStoredItems(),
     );
@@ -246,7 +313,9 @@ export const sppdService = {
           `/api/v1/sppd/${id}`,
         );
         const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
-        return unwrapped ? normalizeSinglePersonilSppd(unwrapped) : null;
+        return unwrapped
+          ? normalizeSinglePersonilSppd(unwrapped as RawSppdApi)
+          : null;
       },
       () => getStoredItems().find((s) => s.id === id) || null,
     );
@@ -255,12 +324,29 @@ export const sppdService = {
   create: async (payload: SppdMutationPayload): Promise<Sppd> => {
     return withApiFallback(
       async () => {
+        const body = {
+          ...payload,
+          spt_id: payload.sptId,
+          pegawai_id: payload.personil[0]?.pegawaiId,
+          pengelola_pegawai_id: payload.pengelolaPegawaiId,
+          pengelola_nama: payload.pengelolaNama,
+          tempat_berangkat: payload.tempatBerangkat,
+          tempat_tujuan: payload.tempatTujuan,
+          tanggal_berangkat: payload.tanggalBerangkat,
+          tanggal_kembali: payload.tanggalKembali,
+          lama_perjalanan: payload.lamaPerjalanan,
+          dipa_id: payload.dipaId,
+          penandatangan_id: payload.penandatanganId,
+          penandatangan_snapshot: payload.penandatanganSnapshot,
+          jumlah_kolom_halaman2: payload.jumlahKolomHalaman2,
+          tanda_tangan_halaman2: payload.tandaTanganHalaman2,
+        };
         const res = await apiClient.post<Sppd | { data?: Sppd }>(
           "/api/v1/sppd",
-          payload,
+          body,
         );
         const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
-        return normalizeSinglePersonilSppd(unwrapped);
+        return normalizeSinglePersonilSppd(unwrapped as RawSppdApi);
       },
       async () => {
         const items = getStoredItems();
@@ -322,12 +408,29 @@ export const sppdService = {
   update: async (id: string, payload: SppdMutationPayload): Promise<Sppd> => {
     return withApiFallback(
       async () => {
+        const body = {
+          ...payload,
+          spt_id: payload.sptId,
+          pegawai_id: payload.personil[0]?.pegawaiId,
+          pengelola_pegawai_id: payload.pengelolaPegawaiId,
+          pengelola_nama: payload.pengelolaNama,
+          tempat_berangkat: payload.tempatBerangkat,
+          tempat_tujuan: payload.tempatTujuan,
+          tanggal_berangkat: payload.tanggalBerangkat,
+          tanggal_kembali: payload.tanggalKembali,
+          lama_perjalanan: payload.lamaPerjalanan,
+          dipa_id: payload.dipaId,
+          penandatangan_id: payload.penandatanganId,
+          penandatangan_snapshot: payload.penandatanganSnapshot,
+          jumlah_kolom_halaman2: payload.jumlahKolomHalaman2,
+          tanda_tangan_halaman2: payload.tandaTanganHalaman2,
+        };
         const res = await apiClient.put<Sppd | { data?: Sppd }>(
           `/api/v1/sppd/${id}`,
-          payload,
+          body,
         );
         const unwrapped = (res as { data?: Sppd }).data || (res as Sppd);
-        return normalizeSinglePersonilSppd(unwrapped);
+        return normalizeSinglePersonilSppd(unwrapped as RawSppdApi);
       },
       async () => {
         const items = getStoredItems();
