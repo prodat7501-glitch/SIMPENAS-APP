@@ -12,6 +12,19 @@ const defaultJabatan: Jabatan[] = [
   { id: "j6", kode: "JAB006", nama: "Anggota KPU" },
 ];
 
+export const normalizeJabatan = (raw: unknown): Jabatan => {
+  if (!raw || typeof raw !== "object") {
+    return { id: "", kode: "", nama: "" };
+  }
+  const item = raw as Record<string, unknown>;
+  const id = String(item.id || "");
+  const nama = String(item.nama || "");
+  const rawKode = item.kode ? String(item.kode).trim() : "";
+  const numPart = String(item.urutan || id.replace(/\D/g, "") || "1");
+  const kode = rawKode || `JAB${numPart.padStart(3, "0")}`;
+  return { id, kode, nama };
+};
+
 const sortJabatan = (list: Jabatan[]): Jabatan[] => {
   return [...list].sort((a, b) => {
     const codeA = a.kode || "";
@@ -37,7 +50,15 @@ export const jabatanService = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultJabatan));
       return sortJabatan(defaultJabatan);
     }
-    return sortJabatan(JSON.parse(stored));
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return sortJabatan(parsed.map(normalizeJabatan));
+      }
+      return sortJabatan(defaultJabatan);
+    } catch {
+      return sortJabatan(defaultJabatan);
+    }
   },
   saveAll: (data: Jabatan[]) => {
     if (typeof window !== "undefined") {
@@ -59,7 +80,11 @@ export const jabatanService = {
           Jabatan[] | { data?: Jabatan[]; items?: Jabatan[] }
         >("/api/v1/jabatan", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return sortJabatan(list);
+        const normalized = list.map(normalizeJabatan);
+        if (normalized.length > 0) {
+          jabatanService.saveAll(normalized);
+        }
+        return sortJabatan(normalized);
       },
       () => jabatanService.getAll(),
     );

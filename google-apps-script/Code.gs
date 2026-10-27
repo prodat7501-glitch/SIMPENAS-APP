@@ -93,6 +93,8 @@ var SHEET_MAP = {
   "pegawai": "pegawai",
   "jabatan": "jabatan",
   "pangkat": "pangkat",
+  "pangkat-golongan": "pangkat",
+  "pangkat_golongan": "pangkat",
   "unit-kerja": "unit_kerja",
   "unit_kerja": "unit_kerja",
   "dipa": "dipa",
@@ -921,6 +923,19 @@ function rowValuesToObject(rowValues, headers) {
     }
     obj[key] = val;
   }
+  
+  // Kompatibilitas cerdas untuk tabel pangkat (gol, ruang, nama -> golongan, nama_pangkat)
+  if (obj.gol !== undefined && obj.nama !== undefined) {
+    if (!obj.nama_pangkat) obj.nama_pangkat = obj.nama;
+    if (!obj.namaPangkat) obj.namaPangkat = obj.nama;
+    if (!obj.golongan) {
+      var ruangStr = (obj.ruang && String(obj.ruang).trim() !== "-" && String(obj.ruang).trim() !== "") 
+        ? ("/" + String(obj.ruang).trim()) 
+        : "";
+      obj.golongan = String(obj.gol).trim() + ruangStr;
+    }
+  }
+  
   return obj;
 }
 
