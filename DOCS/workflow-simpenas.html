@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Workflow Aplikasi SIMPENAS - KPU Kabupaten Gorontalo</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.5;
+      font-size: 11pt;
+      background: #ffffff;
+    }
+    
+    .header {
+      border-bottom: 3px double #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header-text {
+      flex: 1;
+    }
+    
+    .header h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+    }
+    
+    .header h2 {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #0369a1;
+      margin-top: 2px;
+    }
+    
+    .header p {
+      font-size: 9pt;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .badge-primary { background: #e0f2fe; color: #0369a1; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    
+    .section-title {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-left: 4px solid #0284c7;
+      padding-left: 10px;
+      margin: 22px 0 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      page-break-after: avoid;
+    }
+    
+    p {
+      margin-bottom: 8px;
+      text-align: justify;
+    }
+    
+    /* Document Chain Box */
+    .chain-container {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+    
+    .chain-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .chain-node {
+      background: #ffffff;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-weight: 600;
+      font-size: 9.5pt;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    
+    .chain-node.highlight {
+      border-color: #0284c7;
+      background: #f0f9ff;
+      color: #0369a1;
+    }
+    
+    .chain-arrow {
+      color: #64748b;
+      font-weight: bold;
+      font-size: 12pt;
+    }
+    
+    /* Workflow Cards */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    
+    .step-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #0369a1;
+    }
+    
+    .step-actor {
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    ul {
+      margin-left: 20px;
+      margin-bottom: 6px;
+    }
+    
+    li {
+      margin-bottom: 4px;
+      font-size: 10pt;
+    }
+    
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    
+    th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    
+    /* Lifecycle box */
+    .lifecycle-diagram {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 9.5pt;
+      font-weight: bold;
+      color: #334155;
+      margin: 12px 0;
+      page-break-inside: avoid;
+    }
+    
+    .footer-note {
+      font-size: 8pt;
+      color: #94a3b8;
+      text-align: right;
+      margin-top: 25px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+    }
+    
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-text">
+      <h1>Workflow Aplikasi SIMPENAS</h1>
+      <h2>Sistem Informasi Manajemen Perjalanan Dinas</h2>
+      <p>Komisi Pemilihan Umum (KPU) Kabupaten Gorontalo &bull; Sumber: Dokumen PRD v1.54</p>
+    </div>
+    <div>
+      <span class="badge badge-primary">SOT Terkonsolidasi</span>
+    </div>
+  </div>
+
+  <!-- PENDAHULUAN & RANTAI DOKUMEN -->
+  <div class="section-title">
+    <span>1. Rantai Dokumen Utama (Document Chain)</span>
+    <span class="badge badge-success">Relasi Antar Dokumen</span>
+  </div>
+  
+  <p>
+    Seluruh proses perjalanan dinas pada SIMPENAS terikat dalam rantai dokumen berbasis <strong>Document ID</strong>. Setiap dokumen turunan wajib merujuk secara sah pada dokumen induknya, mulai dari usulan anggaran sampai pelunasan keuangan dan pengarsipan digital.
+  </p>
+
+  <div class="chain-container">
+    <div class="chain-flow">
+      <div class="chain-node highlight">1. Nota Dinas<br><small>(Usulan & Anggaran)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node highlight">2. Surat Perintah Tugas<br><small>(SPT Sekretariat / Komisioner)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node highlight">3. SPPD Individual<br><small>(1 Orang 1 SPPD)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node">4. Laporan Perjalanan<br><small>(1 Laporan per SPT)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node highlight">5. Validasi SPJ<br><small>(Checklist & Realisasi Biaya)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node">6. Dokumen Keuangan<br><small>(SPBY &rarr; Nominatif &rarr; TT &rarr; Kuitansi)</small></div>
+      <div class="chain-arrow">&rarr;</div>
+      <div class="chain-node">7. Arsip & Rekapitulasi<br><small>(Upload Scan PDF & Laporan)</small></div>
+    </div>
+  </div>
+
+  <!-- TAHAPAN PROSES BISNIS -->
+  <div class="section-title">
+    <span>2. Rincian 10 Tahapan Proses Bisnis (BP-01 s/d BP-10)</span>
+  </div>
+
+  <!-- BP-01 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-01: Pembuatan dan Approval Nota Dinas</div>
+      <div class="step-actor">Aktor: Kasubbag / Admin &bull; Approver: Sekretaris KPU</div>
+    </div>
+    <ul>
+      <li><strong>Tujuan:</strong> Membuat usulan resmi perjalanan dinas sekaligus dasar plafon anggaran dan penetapan rombongan personel.</li>
+      <li><strong>Otomatisasi Form:</strong> Kolom <code>Dari</code> otomatis terisi dan terkunci sesuai jabatan login pengguna. Kolom <code>Kepada</code> default Sekretaris KPU Kabupaten Gorontalo.</li>
+      <li><strong>Plafon Gabungan:</strong> Nota Dinas boleh memuat kelompok campuran ASN/Sekretariat dan Komisioner karena fungsinya sebagai dasar pembebanan anggaran.</li>
+      <li><strong>Ambil Nomor & Cek Benturan:</strong> Nomor diambil via layanan penomoran. Sistem otomatis memeriksa benturan jadwal jika ada personel yang telah memiliki agenda perjalanan lain pada tanggal yang sama.</li>
+      <li><strong>Approval:</strong> Ditandatangani Kasubbag pembuat dan wajib disetujui oleh <strong>Sekretaris KPU</strong> (atau PLT/PLH Sekretaris).</li>
+    </ul>
+  </div>
+
+  <!-- BP-02 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-02: Pembuatan dan Approval Surat Perintah Tugas (SPT)</div>
+      <div class="step-actor">Aktor: Pegawai / Admin &bull; Approver: Sekretaris / Ketua KPU</div>
+    </div>
+    <ul>
+      <li><strong>Dasar Penerbitan:</strong> Dibuat berdasarkan Nota Dinas yang telah berstatus <em>Disetujui</em>. Personel ditarik otomatis dari lampiran Nota Dinas.</li>
+      <li><strong>Pemisahan Wajib:</strong> Jika rombongan campuran, sistem memisahkan menjadi 2 dokumen:
+        <strong>SPT Sekretariat</strong> (ditandatangani Sekretaris KPU) dan <strong>SPT Komisioner</strong> (ditandatangani Ketua KPU).
+      </li>
+      <li><strong>Single Owner Chain:</strong> Pegawai pertama yang membuat SPT menjadi pengelola tunggal alur dokumen (SPT, SPPD, Laporan) untuk Nota Dinas tersebut. Personel lain tetap dapat melihat status/pratinjau (read-only).</li>
+      <li><strong>Approval:</strong> SPT Sekretariat disetujui Sekretaris KPU / Kasubbag pembuat ND. SPT Komisioner disetujui Ketua KPU / Kasubbag pembuat ND.</li>
+    </ul>
+  </div>
+
+  <!-- BP-03 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-03: Pembuatan SPPD Individual</div>
+      <div class="step-actor">Aktor: Pegawai Pengelola &bull; Penandatangan: PPK</div>
+    </div>
+    <ul>
+      <li><strong>Prinsip Individual:</strong> Satu lembar SPPD hanya memuat 1 personel pelaksana (tidak ada SPPD rombongan).</li>
+      <li><strong>Penomoran Mandiri:</strong> Masing-masing SPPD memperoleh nomor unik dari konfigurasi running number SPPD (diterbitkan saat simpan).</li>
+      <li><strong>Pejabat Penandatangan:</strong> SPPD Halaman 1 dan Halaman 2 wajib ditandatangani oleh <strong>Pejabat Pembuat Komitmen (PPK)</strong>, termasuk untuk SPPD Komisioner.</li>
+      <li><strong>Sinkronisasi Otomatis:</strong> Data bersama (maksud tujuan, tanggal, transportasi, pembebanan DIPA, dan visum Halaman 2) pada SPPD pertama otomatis tersinkron ke SPPD rekan lain dalam SPT yang sama.</li>
+      <li><strong>Status:</strong> Tanpa approval terpisah. Berstatus <em>Diproses</em> saat baru sebagian personel memiliki SPPD, dan <em>Selesai</em> setelah seluruh personel memiliki SPPD.</li>
+    </ul>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- BP-04 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-04: Pelaksanaan & Laporan Perjalanan Dinas</div>
+      <div class="step-actor">Aktor: Pegawai Pelaksana &bull; Verifikator: Supervisor</div>
+    </div>
+    <ul>
+      <li><strong>Pelaksanaan Tugas:</strong> Pegawai melaksanakan kegiatan dinas sesuai SPT dan SPPD resmi.</li>
+      <li><strong>1 Laporan per SPT:</strong> Setelah seluruh SPPD berstatus selesai, dibuat <strong>satu dokumen laporan kolektif</strong> untuk seluruh pelaksana dalam nomor SPT tersebut.</li>
+      <li><strong>Isi Laporan:</strong> Menguraikan Dasar, Maksud, Tujuan, Materi Pokok, Hasil Perjalanan (per poin), Kalimat Penutup, dan tanda tangan seluruh pelaksana.</li>
+      <li><strong>Dokumentasi Kegiatan:</strong> Pelaksana mengunggah foto-foto dokumentasi kegiatan dinas.</li>
+      <li><strong>Verifikasi:</strong> Supervisor memeriksa isi laporan. Status berubah dari <em>Menunggu Verifikasi</em> menjadi <em>Terverifikasi</em> (atau <em>Perlu Revisi</em>).</li>
+    </ul>
+  </div>
+
+  <!-- BP-05 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-05: Validasi Kelengkapan SPJ</div>
+      <div class="step-actor">Aktor Khusus: Sub Bagian Keuangan</div>
+    </div>
+    <ul>
+      <li><strong>Pemicu Otomatis:</strong> Data SPJ otomatis dibuat sistem saat Laporan berstatus <em>Terverifikasi</em> dengan status awal <code>SPJ Diterima</code>.</li>
+      <li><strong>Hak Akses Terbatas:</strong> Hanya staf/pejabat yang terdaftar pada Unit Sub Bagian Keuangan yang dapat melakukan validasi dan mengubah checklist.</li>
+      <li><strong>Checklist Dokumen Fisik:</strong> Memeriksa Laporan, SPPD bertanda tangan/stempel visum, Dokumentasi Foto, dan Tanda Tangan.</li>
+      <li><strong>Input Realisasi Riil:</strong> Keuangan menginput biaya riil per personel berdasarkan bukti invoice/kuitansi (Tiket Pesawat, Transport Bandara, Transport Lokal, dan Penginapan). Uang Harian tetap terkunci sesuai standar Nota Dinas.</li>
+      <li><strong>Progres:</strong> <code>SPJ Diterima</code> &rarr; <code>Validasi SPJ</code> &rarr; <code>Validasi Selesai</code> &rarr; <code>Proses Pembayaran</code> &rarr; <code>Pembayaran Selesai</code>.</li>
+    </ul>
+  </div>
+
+  <!-- BP-06 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-06: Penerbitan Dokumen Keuangan & Realisasi Pembayaran</div>
+      <div class="step-actor">Aktor: Sub Bagian Keuangan</div>
+    </div>
+    <ul>
+      <li><strong>Prasyarat:</strong> Dokumen keuangan hanya dapat di-generate setelah status <em>Validasi Selesai</em>.</li>
+      <li><strong>Urutan Wajib Penerbitan:</strong>
+        <ol style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>SPBY (Surat Perintah Bayar)</strong> &mdash; per orang.</li>
+          <li><strong>Daftar Nominatif</strong> &mdash; kolektif per SPT.</li>
+          <li><strong>Tanda Terima</strong> &mdash; per orang.</li>
+          <li><strong>Kuitansi</strong> &mdash; per orang.</li>
+        </ol>
+      </li>
+      <li><strong>Penandatangan:</strong> Mengambil pejabat resmi sesuai peran (PPK, Bendahara Pengeluaran, KPA).</li>
+      <li><strong>Konfirmasi Pelunasan:</strong> Setelah dana tunai/transfer diterima pelaksana, staf Keuangan menekan <strong>Tandai Pembayaran Selesai</strong> pada Kuitansi. Status induk SPJ resmi menjadi <em>Pembayaran Selesai</em>.</li>
+    </ul>
+  </div>
+
+  <!-- BP-07 & BP-08 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-title">BP-07 & BP-08: Manajemen Dokumen, Arsip SPJ & Rekapitulasi</div>
+      <div class="step-actor">Aktor: Keuangan, Admin & Seluruh Pegawai (Sesuai Hak Akses)</div>
+    </div>
+    <ul>
+      <li><strong>Upload Arsip SPJ Fisik:</strong> Sub Bagian Keuangan mengunggah 1 file scan PDF dari berkas fisik SPJ lengkap yang telah ditandatangani basah untuk setiap Nota Dinas sumber. Dokumen SPPD otomatis berstatus <em>Diarsipkan</em>.</li>
+      <li><strong>Rekapitulasi Anggaran & Frekuensi:</strong> Menghitung otomatis total hari dinas setiap pegawai, frekuensi perjalanan dinas, dan realisasi penyerapan anggaran DIPA.</li>
+      <li><strong>Privasi Nominal:</strong> Supervisor dan Pegawai hanya melihat data perjalanan pribadi tanpa rincian nominal belanja instansi. Akses nominal penuh diberikan kepada Administrator dan Keuangan (dengan fitur Export Excel/PDF).</li>
+    </ul>
+  </div>
+
+  <!-- MATRIKS PERAN -->
+  <div class="section-title">
+    <span>3. Matriks Peran Pengguna (Role-Based Access Control)</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 22%;">Peran (Role)</th>
+        <th style="width: 28%;">Pejabat Terkait</th>
+        <th>Tanggung Jawab Utama dalam Workflow</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Administrator</strong></td>
+        <td>Admin Pengelola Sistem</td>
+        <td>Kelola master data, pengguna/role, pengaturan format & penomoran (booking/release nomor), template dokumen, dan audit log seluruh aktivitas.</td>
+      </tr>
+      <tr>
+        <td><strong>Supervisor</strong></td>
+        <td>Kasubbag, Sekretaris KPU, Ketua KPU</td>
+        <td>Kasubbag membuat/menandatangani Nota Dinas. Sekretaris KPU menyetujui Nota Dinas & SPT Sekretariat. Ketua KPU menyetujui SPT Komisioner. Supervisor memverifikasi Laporan Perjalanan.</td>
+      </tr>
+      <tr>
+        <td><strong>Pegawai</strong></td>
+        <td>ASN / Staf Pelaksana</td>
+        <td>Pelaksana perjalanan dinas. Membuat SPT & SPPD (jika scope ND), melaksanakan dinas, mengisi Laporan Perjalanan dan mengunggah foto dokumentasi.</td>
+      </tr>
+      <tr>
+        <td><strong>Sub Bagian Keuangan</strong></td>
+        <td>Staf Keuangan / Bendahara</td>
+        <td>Melakukan checklist validasi SPJ, mengisi biaya riil bukti fisik, mencetak SPBY, Nominatif, Tanda Terima, Kuitansi, konfirmasi pelunasan kas, dan mengunggah PDF scan Arsip SPJ fisik.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- LIFECYCLE STATE MACHINE -->
+  <div class="section-title">
+    <span>4. Siklus Status Dokumen (Lifecycle State Machine)</span>
+  </div>
+
+  <div class="lifecycle-diagram">
+    [Draft] &rarr; [Nomor Diambil] &rarr; [Menunggu Approval] 
+    <br><br>
+    &boxdr;&boxh;&boxh; (Disetujui) &rarr; [Disetujui] &rarr; [Diproses] &rarr; [Selesai] &rarr; [Diarsipkan]
+    <br>
+    &boxur;&boxh;&boxh; (Ditolak) &rarr; [Perlu Revisi + Catatan] &rarr; Kembali ke [Draft]
+  </div>
+
+  <div class="footer-note">
+    Dokumen ini digenerate secara otomatis oleh Antigravity AI Engine berdasarkan Source of Truth Sistem SIMPENAS KPU Kabupaten Gorontalo.
+  </div>
+
+</body>
+</html>

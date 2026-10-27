@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Panduan Seluruh Menu, Fungsi, dan Role Bisnis SIMPENAS - KPU Kab. Gorontalo</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.5;
+      font-size: 10pt;
+      background: #ffffff;
+    }
+    
+    .header {
+      border-bottom: 2.5px double #0f172a;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header-text {
+      flex: 1;
+    }
+    
+    .header h1 {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.3px;
+      text-transform: uppercase;
+    }
+    
+    .header h2 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #0369a1;
+      margin-top: 2px;
+    }
+    
+    .header p {
+      font-size: 8.5pt;
+      color: #64748b;
+      margin-top: 3px;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .badge-primary { background: #e0f2fe; color: #0369a1; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    .badge-danger  { background: #fee2e2; color: #b91c1c; }
+    .badge-purple  { background: #f3e8ff; color: #7e22ce; }
+    
+    .section-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-left: 4px solid #0284c7;
+      padding-left: 8px;
+      margin: 18px 0 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      page-break-after: avoid;
+    }
+    
+    p {
+      margin-bottom: 6px;
+      text-align: justify;
+    }
+    
+    /* Menu Cards */
+    .menu-group {
+      margin-bottom: 12px;
+    }
+    
+    .group-header {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #334155;
+      padding: 6px 10px;
+      font-size: 10pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-radius: 4px 4px 0 0;
+      page-break-after: avoid;
+    }
+    
+    .menu-item {
+      border: 1px solid #e2e8f0;
+      border-top: none;
+      padding: 8px 12px;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+    
+    .menu-item:last-child {
+      border-radius: 0 0 4px 4px;
+    }
+    
+    .menu-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    
+    .menu-name {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #0284c7;
+    }
+    
+    .menu-path {
+      font-size: 8pt;
+      font-family: monospace;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 1px 6px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .menu-desc {
+      font-size: 9pt;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+    
+    .menu-rules {
+      font-size: 8.5pt;
+      color: #475569;
+      background: #f8fafc;
+      border-left: 3px solid #94a3b8;
+      padding: 4px 8px;
+      margin-top: 4px;
+      border-radius: 0 3px 3px 0;
+    }
+    
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    
+    th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    
+    .text-center { text-align: center; }
+    
+    /* Box Flow */
+    .flow-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px;
+      margin: 10px 0;
+      page-break-inside: avoid;
+    }
+    
+    .flow-step {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+    
+    .step-number {
+      background: #0284c7;
+      color: white;
+      font-weight: bold;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8pt;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    
+    .step-content {
+      flex: 1;
+      font-size: 9pt;
+    }
+    
+    .footer-note {
+      font-size: 8pt;
+      color: #94a3b8;
+      text-align: right;
+      margin-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 6px;
+    }
+    
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-text">
+      <h1>Panduan Menu & Role Bisnis SIMPENAS</h1>
+      <h2>Sistem Informasi Manajemen Perjalanan Dinas</h2>
+      <p>Komisi Pemilihan Umum (KPU) Kabupaten Gorontalo &bull; Referensi: PRD v1.54 & Engineering SOT</p>
+    </div>
+    <div>
+      <span class="badge badge-primary">Dokumen Resmi</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section-title">
+    <span>1. Struktur Seluruh Menu dan Fungsinya</span>
+    <span class="badge badge-success">Navigasi Terkonsolidasi</span>
+  </div>
+  
+  <p>
+    Aplikasi SIMPENAS tersusun atas 5 kelompok navigasi utama yang mencakup seluruh siklus operasional administrasi perjalanan dinas, mulai dari manajemen data master, pengusulan perjalanan, verifikasi, hingga pertanggungjawaban keuangan dan audit.
+  </p>
+
+  <!-- GRUP 1: DASHBOARD -->
+  <div class="menu-group">
+    <div class="group-header">A. Modul Dashboard Utama</div>
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">1. Dashboard Monitoring</span>
+        <span class="menu-path">/dashboard</span>
+      </div>
+      <div class="menu-desc">
+        Pusat kendali visual dan pemantauan ringkas aktivitas perjalanan dinas. Menyajikan ringkasan kartu metrik (Total SPPD, Perjalanan Berlangsung, Menunggu Approval, dan Realisasi Biaya), grafik tren bulanan, kotak masuk tugas (Task Inbox), dan aktivitas terbaru.
+      </div>
+      <div class="menu-rules">
+        <strong>Aturan Bisnis (Role Bisnis):</strong> Tampilan dashboard bersifat dinamis sesuai role. Administrator dan Keuangan melihat metrik anggaran realisasi DIPA lengkap; Supervisor melihat ringkasan tugas approval tanpa nominal belanja; Pegawai hanya melihat statistik perjalanan pribadi dan tugas pengisian laporan/perbaikan dokumen yang mencantumkan dirinya.
+      </div>
+    </div>
+  </div>
+
+  <!-- GRUP 2: MASTER DATA -->
+  <div class="menu-group">
+    <div class="group-header">B. Modul Master Data (Pengaturan Induk Organisasi)</div>
+    
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">2. Master Pegawai</span>
+        <span class="menu-path">/master/pegawai</span>
+      </div>
+      <div class="menu-desc">
+        Mengelola data identitas seluruh aparatur (ASN/Sekretariat, Komisioner Ketua/Anggota, dan PPPK), meliputi Nama, NIP, Jabatan, Unit Kerja, Pangkat/Golongan, Status Aktif, dan Nomor Rekening.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Urutan tampilan pegawai pada seluruh sistem secara baku mengikuti hierarki: Ketua KPU &rarr; Anggota KPU &rarr; Sekretaris &rarr; Kasubbag &rarr; Staf (PNS I/a-IV/d lalu PPPK I-XI). NIP dan Golongan wajib bagi ASN, opsional bagi Komisioner.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">3. Master Akun Pengguna</span>
+        <span class="menu-path">/master/akun-pengguna</span>
+      </div>
+      <div class="menu-desc">
+        Mengelola kredensial login (username, email, status akun aktif/nonaktif, dan reset password).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Menu ini <em>khusus Administrator</em>. Setiap akun login terhubung 1-to-1 dengan <code>pegawaiId</code>. Role sistem (Admin, Supervisor, Pegawai, Sub Bagian Keuangan) dibaca otomatis saat login dan tidak dipilih manual di form login.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">4. Master Jabatan & Unit Kerja</span>
+        <span class="menu-path">/master/jabatan &amp; /master/unit-kerja</span>
+      </div>
+      <div class="menu-desc">
+        Mengelola nomenklatur jabatan kedinasan serta struktur unit bagian pada KPU Kabupaten Gorontalo (Sekretariat, Subbagian Teknis, Subbagian Keuangan, dll).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Menjadi rujukan otomatis hak istimewa unit: role Sub Bagian Keuangan hanya operasional jika pegawai terdaftar pada Unit Sub Bagian Keuangan.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">5. Master Anggaran DIPA</span>
+        <span class="menu-path">/master/dipa</span>
+      </div>
+      <div class="menu-desc">
+        Mengelola struktur mata anggaran (Program, Kegiatan, KRO, Akun MAK, Pagu, dan Realisasi).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Menjadi sumber pembebanan anggaran wajib pada form SPPD dan dokumen keuangan. Pagu anggaran mengurangi ketersediaan saat SPJ terealisasi.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">6. Master Pejabat Penandatangan</span>
+        <span class="menu-path">/master/penandatangan</span>
+      </div>
+      <div class="menu-desc">
+        Mengelola penugasan peran penandatangan resmi (Ketua KPU, Sekretaris, PPK, Bendahara Pengeluaran, KPA).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Mengunci secara sah pejabat yang berhak menandatangani dokumen cetak resmi tanpa bisa dimanipulasi secara manual pada form transaksi.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">7. Standar Biaya Masukan (SBM)</span>
+        <span class="menu-path">/master/sbm</span>
+      </div>
+      <div class="menu-desc">
+        Menyimpan plafon standar biaya perjalanan dinas resmi (Uang Harian Dalam Kota, Uang Harian Luar Kota/Daerah, Transport Bandara, Transport Lokal, dan Batas Hotel).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis:</strong> Menjadi patokan dasar perhitungan estimasi biaya di Nota Dinas dan pagu maksimal Uang Harian saat Validasi SPJ.
+      </div>
+    </div>
+  </div>
+
+  <!-- GRUP 3: MODUL PERJALANAN DINAS -->
+  <div class="menu-group">
+    <div class="group-header">C. Modul Perjalanan Dinas (Transaksi Dokumen)</div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">8. Nota Dinas</span>
+        <span class="menu-path">/nota-dinas</span>
+      </div>
+      <div class="menu-desc">
+        Penyusunan usulan perjalanan dinas awal beserta rincian personel dan estimasi biaya per komponen (tarif &times; volume).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Menjadi dokumen induk teratas (Akar Rantai Dokumen). Nilai <code>Dari</code> terkunci otomatis sesuai jabatan login pembuat. Mendukung rombongan gabungan (Sekretariat + Komisioner). Dilengkapi sistem deteksi benturan tanggal kegiatan personel dengan agenda lain.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">9. Surat Perintah Tugas (SPT)</span>
+        <span class="menu-path">/spt</span>
+      </div>
+      <div class="menu-desc">
+        Penerbitan surat tugas resmi yang membagi rombongan pelaksana menjadi <strong>SPT Sekretariat</strong> (ASN) dan <strong>SPT Komisioner</strong> (Ketua/Anggota KPU).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Hanya dapat dibuat jika Nota Dinas berstatus <em>Disetujui</em>. Pegawai pertama yang menyimpan SPT menjadi <em>Single Owner</em> yang mengendalikan seluruh penerbitan SPPD dan Laporan untuk Nota Dinas tersebut.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">10. SPPD (Surat Perintah Perjalanan Dinas)</span>
+        <span class="menu-path">/sppd</span>
+      </div>
+      <div class="menu-desc">
+        Penerbitan surat jalan resmi individual (1 orang 1 SPPD) yang mencakup Halaman 1 (rincian keberangkatan & akun DIPA) dan Halaman 2 (blok visum perjalanan dinas).
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Menggunakan running number mandiri. SPPD Halaman 1 & 2 wajib ditandatangani oleh PPK (Pejabat Pembuat Komitmen). Mengubah data bersama pada SPPD pertama otomatis menyinkronkan SPPD rekan lain dalam SPT yang sama.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">11. Laporan Perjalanan Dinas</span>
+        <span class="menu-path">/laporan</span>
+      </div>
+      <div class="menu-desc">
+        Pengisian laporan hasil pelaksanaan tugas (Dasar, Maksud, Tujuan, Hasil per poin) serta pengunggahan foto dokumentasi kegiatan lapangan.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Hanya aktif jika seluruh SPPD personel dalam SPT telah berstatus <em>Selesai</em>. Tepat <strong>1 Laporan kolektif untuk 1 nomor SPT</strong>. Ketika Supervisor memverifikasi laporan ini, sistem secara otomatis men-generate draf berkas di menu <em>Validasi SPJ</em>.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">12. Approval Nota Dinas & SPT</span>
+        <span class="menu-path">/approval</span>
+      </div>
+      <div class="menu-desc">
+        Kotak masuk persetujuan pimpinan untuk meninjau, menyetujui, atau mengembalikan draf dokumen untuk direvisi dengan menyertakan catatan resmi.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Nota Dinas wajib disetujui Sekretaris KPU (atau PLT/PLH). SPT Sekretariat disetujui Sekretaris KPU / Kasubbag pembuat ND. SPT Komisioner disetujui Ketua KPU / Kasubbag pembuat ND.
+      </div>
+    </div>
+  </div>
+
+  <!-- GRUP 4: MODUL ADMINISTRASI KEUANGAN -->
+  <div class="menu-group">
+    <div class="group-header">D. Modul Administrasi Keuangan (SPJ & Pembayaran)</div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">13. Validasi SPJ dan Pembayaran</span>
+        <span class="menu-path">/spj</span>
+      </div>
+      <div class="menu-desc">
+        Pemeriksaan fisik bukti SPJ (Laporan, SPPD bertanda tangan/stempel visum, foto, invoice tiket pesawat, hotel, kuitansi riil) dan pengisian realisasi biaya sebenarnya.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> <em>Khusus Role Sub Bagian Keuangan</em>. Uang harian dikunci dari Nota Dinas; biaya tiket, penginapan, dan transport diisi sesuai nilai riil fisik. Menjadi prasyarat mutlak (status <em>Validasi Selesai</em>) sebelum menu SPBY, Nominatif, Tanda Terima, dan Kuitansi dapat diproses.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">14. SPBY (Surat Perintah Bayar)</span>
+        <span class="menu-path">/spby</span>
+      </div>
+      <div class="menu-desc">
+        Penerbitan dokumen perintah bayar individual per personel kepada Bendahara Pengeluaran.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Dokumen keuangan tahap 1. Ditandatangani PPK. Menghitung otomatis total belanja riil setelah verifikasi SPJ.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">15. Daftar Nominatif</span>
+        <span class="menu-path">/daftar-nominatif</span>
+      </div>
+      <div class="menu-desc">
+        Penerbitan lembar rekapitulasi kolektif daftar nama personel penerima pembayaran dalam satu SPT beserta nomor rekening dan rincian belanja.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Dokumen keuangan tahap 2. Bersifat kolektif per SPT untuk melengkapi berkas pencairan kas.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">16. Tanda Terima & 17. Kuitansi</span>
+        <span class="menu-path">/tanda-terima &amp; /kuitansi</span>
+      </div>
+      <div class="menu-desc">
+        Penerbitan bukti tanda terima uang dan kuitansi resmi individual bertanda tangan pelaksana dan Bendahara Pengeluaran/PPK.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Dokumen keuangan tahap 3 & 4. Pada menu Kuitansi terdapat tombol <strong>"Tandai Pembayaran Selesai"</strong>. Saat seluruh kuitansi personel selesai ditandai, status induk pada menu <em>Validasi SPJ</em> otomatis berubah menjadi <code>Pembayaran Selesai</code>.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">18. Arsip SPJ</span>
+        <span class="menu-path">/arsip-spj</span>
+      </div>
+      <div class="menu-desc">
+        Penyimpanan arsip digital permanen berupa hasil scan PDF 1 berkas fisik SPJ lengkap yang sudah bertanda tangan basah.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Diunggah oleh staf Keuangan per Nota Dinas sumber. Mengubah status dokumen SPPD terkait dari <em>Selesai</em> menjadi <code>Diarsipkan</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- GRUP 5: MODUL PENDUKUNG -->
+  <div class="menu-group">
+    <div class="group-header">E. Modul Pendukung, Pengaturan & Keamanan</div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">19. Rekapitulasi Laporan</span>
+        <span class="menu-path">/rekapitulasi</span>
+      </div>
+      <div class="menu-desc">
+        Menyediakan rekapitulasi data perjalanan dinas, total hari tugas, frekuensi per pegawai, serta penyerapan anggaran per DIPA dengan dukungan fitur Export Excel dan PDF.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Data nominal anggaran hanya bersumber dari Kuitansi yang berstatus <em>Pembayaran Selesai</em>. Pegawai hanya melihat data rekapitulasi dirinya sendiri.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">20. Manajemen Dokumen</span>
+        <span class="menu-path">/dokumen</span>
+      </div>
+      <div class="menu-desc">
+        Pusat repositori pencarian dan pengunduhan seluruh dokumen PDF yang telah diterbitkan sistem berdasarkan nomor, tanggal, status, atau personel.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Menerapkan filter hak akses ketat (RBAC): Pegawai hanya dapat menemukan dokumen yang berasal dari Nota Dinas tempat dirinya terdaftar.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">21. Pengaturan Penomoran Dokumen</span>
+        <span class="menu-path">/pengaturan</span>
+      </div>
+      <div class="menu-desc">
+        Konfigurasi format penomoran, penentuan <em>Nomor Berikutnya (Running Number)</em> per tahun, booking nomor, dan monitoring riwayat nomor dokumen.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Mengendalikan generator nomor pada menu Nota Dinas, SPT, SPPD, dan Keuangan. Menjamin tidak terjadi nomor ganda dan memungkinkan pemakaian kembali nomor yang dibatalkan/dihapus.
+      </div>
+    </div>
+
+    <div class="menu-item">
+      <div class="menu-item-header">
+        <span class="menu-name">22. Log Aktivitas (Audit Trail) &amp; 23. Notifikasi</span>
+        <span class="menu-path">/log-aktivitas &amp; /notifikasi</span>
+      </div>
+      <div class="menu-desc">
+        Mencatat rekam jejak setiap aksi pengguna (siapa, kapan, aksi apa, nomor dokumen terkait) serta pusat pemberitahuan notifikasi persisten real-time.
+      </div>
+      <div class="menu-rules">
+        <strong>Role Bisnis Antar Menu:</strong> Setiap approval, pembuatan dokumen, penolakan revisi, dan pelunasan pembayaran otomatis mengirimkan notifikasi ke pihak terkait dan dicatat permanen di Audit Trail.
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: RANTAI KETERKAITAN ANTAR MENU -->
+  <div class="section-title">
+    <span>2. Rantai Ketergantungan Alur Antar Menu (Business Dependency Chain)</span>
+    <span class="badge badge-warning">Aturan Wajib</span>
+  </div>
+
+  <div class="flow-box">
+    <div class="flow-step">
+      <div class="step-number">1</div>
+      <div class="step-content"><strong>Menu Nota Dinas &rarr; Menu SPT:</strong> Menu SPT mengunci pemilihan sumber hanya dari Nota Dinas yang berstatus <em>Disetujui</em> di menu Approval. Personel pada SPT ditarik otomatis dari lampiran Nota Dinas dan tidak dapat ditambah di luar usulan.</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">2</div>
+      <div class="step-content"><strong>Menu SPT &rarr; Menu SPPD:</strong> Menu SPPD mewajibkan memilih SPT yang telah disetujui. Satu SPT dengan $N$ personel wajib menghasilkan $N$ berkas SPPD individual sebelum alur dapat berlanjut.</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">3</div>
+      <div class="step-content"><strong>Menu SPPD &rarr; Menu Laporan:</strong> Tombol buat laporan di menu Laporan Perjalanan diblokir selama masih ada personel SPT yang belum memiliki lembar SPPD resmi (status SPPD harus <em>Selesai</em>).</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">4</div>
+      <div class="step-content"><strong>Menu Laporan &rarr; Menu Validasi SPJ:</strong> Verifikasi Laporan oleh Supervisor menjadi pemicu otomatis terciptanya berkas draf di menu Validasi SPJ (status awal <code>SPJ Diterima</code>).</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">5</div>
+      <div class="step-content"><strong>Menu Validasi SPJ &rarr; Menu Dokumen Keuangan:</strong> Menu SPBY, Daftar Nominatif, Tanda Terima, dan Kuitansi terkunci rapat dan menolak pembuatan dokumen selama status di Validasi SPJ belum <code>Validasi Selesai</code>.</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">6</div>
+      <div class="step-content"><strong>Menu Kuitansi &rarr; Menu Validasi SPJ &amp; Rekapitulasi:</strong> Eksekusi tombol "Tandai Pembayaran Selesai" pada menu Kuitansi mengubah status induk di menu Validasi SPJ menjadi <code>Pembayaran Selesai</code> dan memasukkan nilainya ke menu Rekapitulasi Realisasi.</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-number">7</div>
+      <div class="step-content"><strong>Menu Arsip SPJ &rarr; Status Dokumen SPPD:</strong> Pengunggahan berkas scan fisik di menu Arsip SPJ menyelesaikan siklus hidup dokumen dan mengubah status SPPD terkait menjadi <code>Diarsipkan</code>.</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 3: MATRIKS HAK AKSES ANTAR ROLE & MENU -->
+  <div class="section-title">
+    <span>3. Matriks Hak Akses Antar Menu Berdasarkan Role Pengguna</span>
+    <span class="badge badge-purple">RBAC Matrix</span>
+  </div>
+
+  <p style="font-size: 8.5pt; color: #64748b; margin-bottom: 6px;">
+    Keterangan Kode: <strong>C</strong> (Create), <strong>R</strong> (Read/Lihat), <strong>U</strong> (Update/Ubah), <strong>D</strong> (Delete/Hapus - <em>Khusus Administrator</em>), <strong>A</strong> (Approval/Verifikasi), <strong>P</strong> (Print/Cetak), <strong>N</strong> (Ambil Nomor), <strong>E</strong> (Export).
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Kelompok Menu</th>
+        <th>Nama Menu / Submenu</th>
+        <th class="text-center">Administrator</th>
+        <th class="text-center">Supervisor</th>
+        <th class="text-center">Pegawai</th>
+        <th class="text-center">Subbag Keuangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td rowspan="2"><strong>Dashboard &amp; Master</strong></td>
+        <td>Dashboard Monitoring</td>
+        <td class="text-center"><span class="badge badge-success">Full Akses</span></td>
+        <td class="text-center"><span class="badge badge-primary">R (Non-Biaya)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R (Pribadi)</span></td>
+        <td class="text-center"><span class="badge badge-success">R (Keuangan)</span></td>
+      </tr>
+      <tr>
+        <td>Master Data (Pegawai, DIPA, SBM, dll)</td>
+        <td class="text-center"><span class="badge badge-success">C, R, U, D</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-primary">R (Terbatas)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td rowspan="5"><strong>Modul Perjalanan Dinas</strong></td>
+        <td>Nota Dinas</td>
+        <td class="text-center"><span class="badge badge-success">CRUDAGPN</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUAGPN</span></td>
+        <td class="text-center"><span class="badge badge-warning">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td>Surat Perintah Tugas (SPT)</td>
+        <td class="text-center"><span class="badge badge-success">CRUDAGPN</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUAGPN</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUGPN (Scope)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td>SPPD Individual</td>
+        <td class="text-center"><span class="badge badge-success">CRUDGPN</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUGPN</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUGPN (Scope)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td>Laporan Perjalanan Dinas</td>
+        <td class="text-center"><span class="badge badge-success">CRUDGP</span></td>
+        <td class="text-center"><span class="badge badge-success">RUAGP (Verif)</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUGP (Scope)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td>Approval Nota Dinas &amp; SPT</td>
+        <td class="text-center"><span class="badge badge-danger">R, A, D (Koreksi)</span></td>
+        <td class="text-center"><span class="badge badge-success">R, A (Jabatan)</span></td>
+        <td class="text-center">-</td>
+        <td class="text-center">-</td>
+      </tr>
+      <tr>
+        <td rowspan="6"><strong>Modul Keuangan &amp; SPJ</strong></td>
+        <td>Validasi SPJ dan Pembayaran</td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-warning">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUDAGP</span></td>
+      </tr>
+      <tr>
+        <td>SPBY (Surat Perintah Bayar)</td>
+        <td class="text-center"><span class="badge badge-success">CRUDGP</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-warning">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUAGP</span></td>
+      </tr>
+      <tr>
+        <td>Daftar Nominatif</td>
+        <td class="text-center"><span class="badge badge-success">CRUDGP</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-warning">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUAGP</span></td>
+      </tr>
+      <tr>
+        <td>Tanda Terima &amp; Kuitansi</td>
+        <td class="text-center"><span class="badge badge-success">CRUDGP</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center"><span class="badge badge-warning">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-success">CRUAGP (Pelunasan)</span></td>
+      </tr>
+      <tr>
+        <td>Arsip SPJ (Upload PDF Scan)</td>
+        <td class="text-center"><span class="badge badge-success">C, R, U</span></td>
+        <td class="text-center">-</td>
+        <td class="text-center">-</td>
+        <td class="text-center"><span class="badge badge-success">C, R, U</span></td>
+      </tr>
+      <tr>
+        <td>Rekapitulasi Anggaran</td>
+        <td class="text-center"><span class="badge badge-success">R, P, E (Full)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R, P, E (Non-Nominal)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R (Pribadi)</span></td>
+        <td class="text-center"><span class="badge badge-success">R, P, E (Full)</span></td>
+      </tr>
+      <tr>
+        <td rowspan="3"><strong>Sistem &amp; Pengaturan</strong></td>
+        <td>Pengaturan Penomoran</td>
+        <td class="text-center"><span class="badge badge-success">CRUD</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center">-</td>
+        <td class="text-center">-</td>
+      </tr>
+      <tr>
+        <td>Log Aktivitas (Audit Log)</td>
+        <td class="text-center"><span class="badge badge-success">CRUD</span></td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+        <td class="text-center">-</td>
+        <td class="text-center"><span class="badge badge-primary">R</span></td>
+      </tr>
+      <tr>
+        <td>Notifikasi &amp; Manajemen Dokumen</td>
+        <td class="text-center"><span class="badge badge-success">Full Akses</span></td>
+        <td class="text-center"><span class="badge badge-primary">R, G, P</span></td>
+        <td class="text-center"><span class="badge badge-primary">R (Scope ND)</span></td>
+        <td class="text-center"><span class="badge badge-primary">R, G, P</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer-note">
+    Dokumen Panduan Menu, Fungsi, dan Role Bisnis &bull; Antigravity AI Engine &bull; SIMPENAS KPU Kabupaten Gorontalo
+  </div>
+
+</body>
+</html>

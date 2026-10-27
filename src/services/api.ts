@@ -165,17 +165,89 @@ async function request<T>(
   };
 
   // Auth token / User ID dari localStorage jika ada
+  let currentUserId: string | undefined;
   if (typeof window !== "undefined") {
     try {
       const authStr = localStorage.getItem("simpenas-auth-storage");
       if (authStr) {
         const parsed = JSON.parse(authStr);
         if (parsed?.state?.user?.id) {
+          currentUserId = parsed.state.user.id;
           defaultHeaders["X-User-ID"] = parsed.state.user.id;
         }
       }
     } catch {
       // ignore JSON parse error
+    }
+  }
+
+  // Khusus integrasi dengan Google Apps Script Web App (backend serverless Google Sheets)
+  const isGoogleAppsScript = baseUrl.includes("script.google.com");
+  if (isGoogleAppsScript) {
+    const reqMethod = (customOptions.method || "GET").toUpperCase();
+
+    let bodyData: unknown = undefined;
+    if (customOptions.body) {
+      try {
+        bodyData =
+          typeof customOptions.body === "string"
+            ? JSON.parse(customOptions.body)
+            : customOptions.body;
+      } catch {
+        bodyData = customOptions.body;
+      }
+    }
+
+    const gasPayload = {
+      path: cleanEndpoint,
+      method: reqMethod,
+      params: params || {},
+      data: bodyData,
+      userId: currentUserId,
+    };
+
+    try {
+      // Kirim via POST dengan text/plain agar menjadi Simple CORS Request tanpa OPTIONS preflight
+      const response = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(gasPayload),
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          `Google Apps Script HTTP Error ${response.status}: ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      const resJson = await response.json();
+      if (
+        resJson &&
+        typeof resJson === "object" &&
+        "success" in resJson &&
+        (resJson as { success: boolean }).success === false
+      ) {
+        const msg =
+          (resJson as { message?: string }).message ||
+          "Permintaan gagal pada Google Apps Script";
+        throw new ApiError(msg, 400, resJson);
+      }
+
+      const unwrapped = unwrapApiResponse<T>(resJson);
+      return skipTransform ? (unwrapped as T) : toCamelCase<T>(unwrapped);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      const errObj = error as { message?: string };
+      throw new ApiError(
+        errObj.message || "Gagal menghubungi Google Apps Script",
+        0,
+        error,
+      );
     }
   }
 

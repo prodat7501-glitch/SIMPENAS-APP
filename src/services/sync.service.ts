@@ -32,6 +32,51 @@ export const syncService = {
     const baseUrl = getApiBaseUrl();
     const start = performance.now();
 
+    // Deteksi khusus jika menggunakan Google Apps Script Backend
+    if (baseUrl.includes("script.google.com")) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ path: "/health", method: "GET" }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const latency = Math.max(1, Math.round(performance.now() - start));
+        if (response.ok) {
+          const body = (await response.json().catch(() => ({}))) as {
+            success?: boolean;
+            data?: {
+              status?: string;
+              serverTime?: string;
+              database?: { connected?: boolean; host?: string };
+            };
+          };
+
+          const dbConnected = body.data?.database?.connected !== false;
+          return {
+            online: true,
+            latency,
+            dbConnected,
+            message: "Google Apps Script & Database Google Sheets Terhubung",
+            serverTime: body.data?.serverTime || new Date().toISOString(),
+            testedUrl: baseUrl,
+          };
+        }
+      } catch (err) {
+        return {
+          online: false,
+          latency: 0,
+          dbConnected: false,
+          message: `Gagal terhubung ke Google Apps Script: ${err instanceof Error ? err.message : "Timeout/Error"}`,
+          testedUrl: baseUrl,
+        };
+      }
+    }
+
     try {
       const healthUrl = baseUrl.endsWith("/api/v1")
         ? `${baseUrl}/health`
