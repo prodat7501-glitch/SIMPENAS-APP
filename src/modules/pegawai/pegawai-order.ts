@@ -122,31 +122,53 @@ export const getPegawaiJabatanOrder = (
 
   const index = jabatans.findIndex((item) => item.id === pegawai.jabatanId);
   if (index !== -1) {
-    const jab = jabatans[index];
+    const jab = jabatans[index] as Jabatan & { urutan?: number };
+    if (typeof jab.urutan === "number" && !isNaN(jab.urutan)) {
+      return jab.urutan;
+    }
     const match = jab.kode?.match(/\d+/);
     if (match) {
       return parseInt(match[0], 10);
     }
-    return index;
+    return index + 1;
   }
 
   return getPegawaiStructureOrder(pegawai, jabatans) * 1000;
 };
 
+export const getPegawaiPangkatOrder = (
+  pegawai: Pegawai,
+  pangkats?: Pangkat[],
+): number => {
+  if (!pegawai.pangkatId) return 9999;
+  if (pangkats && pangkats.length > 0) {
+    const index = pangkats.findIndex((item) => item.id === pegawai.pangkatId);
+    if (index !== -1) {
+      return index;
+    }
+  }
+  return 9999;
+};
+
 export const sortPegawais = (
   pegawais: Pegawai[],
   jabatans: Jabatan[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _pangkats?: Pangkat[],
+  pangkats?: Pangkat[],
 ) => {
   return [...pegawais].sort((left, right) => {
-    // 1. Urutkan berdasarkan urutan jabatan di Master Jabatan
+    // 1. Urutkan berdasarkan urutan Jabatan di Master Jabatan / Struktural
     const leftJabatanOrder = getPegawaiJabatanOrder(left, jabatans);
     const rightJabatanOrder = getPegawaiJabatanOrder(right, jabatans);
     const jabatanDifference = leftJabatanOrder - rightJabatanOrder;
     if (jabatanDifference !== 0) return jabatanDifference;
 
-    // 2. Jika jabatan sama, urutkan nama pegawai sesuai abjad (A-Z)
+    // 2. Jika jabatan sama, urutkan berdasarkan Pangkat (Pangkat tertinggi lebih dahulu)
+    const leftPangkatOrder = getPegawaiPangkatOrder(left, pangkats);
+    const rightPangkatOrder = getPegawaiPangkatOrder(right, pangkats);
+    const pangkatDifference = leftPangkatOrder - rightPangkatOrder;
+    if (pangkatDifference !== 0) return pangkatDifference;
+
+    // 3. Jika jabatan dan pangkat sama, urutkan Nama pegawai sesuai Abjad (A-Z)
     return left.nama.localeCompare(right.nama, "id-ID", {
       sensitivity: "base",
     });

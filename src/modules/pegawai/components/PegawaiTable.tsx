@@ -95,13 +95,13 @@ export function PegawaiTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16">No</TableHead>
+                <TableHead>Jabatan</TableHead>
+                <TableHead>Pangkat / Golongan</TableHead>
                 <TableHead>Nama Pegawai</TableHead>
+                <TableHead>NIP</TableHead>
+                <TableHead>Unit Kerja</TableHead>
                 <TableHead>Kategori</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>NIP</TableHead>
-                <TableHead>Jabatan</TableHead>
-                <TableHead>Unit Kerja</TableHead>
-                <TableHead>Pangkat / Golongan</TableHead>
                 <TableHead className="w-24">Status</TableHead>
                 {canEdit && (
                   <TableHead className="w-32 text-right">Aksi</TableHead>
@@ -112,17 +112,19 @@ export function PegawaiTable({
               {filtered.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell>{index + 1}</TableCell>
+                  <TableCell className="font-semibold text-foreground">
+                    {getJabatanName(item.jabatanId)}
+                  </TableCell>
+                  <TableCell>{getPangkatName(item.pangkatId)}</TableCell>
                   <TableCell className="font-bold text-foreground">
                     {item.nama}
                   </TableCell>
+                  <TableCell>{item.nip || "-"}</TableCell>
+                  <TableCell>{getUnitKerjaName(item.unitKerjaId)}</TableCell>
                   <TableCell>{item.kategoriPegawai}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{item.roleAplikasi}</Badge>
                   </TableCell>
-                  <TableCell>{item.nip || "-"}</TableCell>
-                  <TableCell>{getJabatanName(item.jabatanId)}</TableCell>
-                  <TableCell>{getUnitKerjaName(item.unitKerjaId)}</TableCell>
-                  <TableCell>{getPangkatName(item.pangkatId)}</TableCell>
                   <TableCell>
                     <Badge
                       variant={item.status === "Aktif" ? "success" : "danger"}
