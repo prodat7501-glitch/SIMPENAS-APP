@@ -8,14 +8,20 @@ const STORAGE_KEY = "simpenas_pegawai";
 const DEFAULT_KATEGORI_PEGAWAI = "ASN/Sekretariat";
 const DEFAULT_ROLE_APLIKASI = "Pegawai";
 
-const normalizePegawai = (item: Pegawai): Pegawai => ({
-  ...item,
-  kategoriPegawai: item.kategoriPegawai ?? DEFAULT_KATEGORI_PEGAWAI,
-  nip: item.nip ?? "",
-  pangkatId: item.pangkatId ?? "",
-  roleAplikasi: item.roleAplikasi ?? DEFAULT_ROLE_APLIKASI,
-  status: item.status ?? "Aktif",
-});
+const normalizePegawai = (item: Pegawai | Record<string, unknown>): Pegawai => {
+  const raw = item as Record<string, unknown>;
+  return {
+    id: String(raw.id || ""),
+    nama: String(raw.nama || ""),
+    nip: String(raw.nip || ""),
+    jabatanId: String(raw.jabatanId || raw.jabatan_id || ""),
+    unitKerjaId: String(raw.unitKerjaId || raw.unit_kerja_id || ""),
+    pangkatId: String(raw.pangkatId || raw.pangkat_id || ""),
+    kategoriPegawai: (raw.kategoriPegawai || raw.kategori_pegawai || DEFAULT_KATEGORI_PEGAWAI) as Pegawai["kategoriPegawai"],
+    roleAplikasi: (raw.roleAplikasi || raw.role_aplikasi || DEFAULT_ROLE_APLIKASI) as Pegawai["roleAplikasi"],
+    status: (raw.status === "Nonaktif" || raw.status === false || raw.status === "false" ? "Nonaktif" : "Aktif") as Pegawai["status"],
+  };
+};
 
 const defaultPegawai: Pegawai[] = [
   {
@@ -94,8 +100,12 @@ export const pegawaiService = {
           Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }
         >("/api/v1/pegawai", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
+        const normalized = list.map(normalizePegawai);
+        if (normalized.length > 0) {
+          pegawaiService.saveAll(normalized);
+        }
         return sortPegawais(
-          list.map(normalizePegawai),
+          normalized,
           jabatanService.getAll(),
           pangkatService.getAll(),
         );

@@ -34,6 +34,7 @@ export const JENIS_DOKUMEN_PENANDATANGAN = [
 
 export const penandatanganSnapshotSchema = z.object({
   penandatanganId: z.string(),
+  pegawaiId: z.string().optional(),
   nama: z.string(),
   nip: z.string(),
   jabatanPenandatangan: z.string(),
@@ -47,6 +48,7 @@ export const penandatanganSnapshotSchema = z.object({
 export const penandatanganSchema = z
   .object({
     id: z.string().optional(),
+    pegawaiId: z.string().optional(),
     nip: z
       .string()
       .min(18, "NIP harus minimal 18 karakter")

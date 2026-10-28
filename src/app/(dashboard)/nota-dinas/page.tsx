@@ -64,6 +64,7 @@ const isKasubbagSigner = (value: string) => {
   const text = value.toLowerCase();
   return (
     text.includes("kasubbag") ||
+    text.includes("kasubag") ||
     text.includes("kepala sub bagian") ||
     text.includes("kepala subbagian")
   );
@@ -119,6 +120,9 @@ export default function NotaDinasPage() {
     penandatangans.find((item) => {
       const signerIdentity = `${item.jabatanPenandatangan} ${item.peran}`;
       const signerNip = normalizeNip(item.nip);
+      const samePegawaiId = Boolean(
+        currentPegawai?.id && item.pegawaiId === currentPegawai.id,
+      );
       const sameNip = Boolean(
         currentPegawaiNip && signerNip === currentPegawaiNip,
       );
@@ -129,16 +133,9 @@ export default function NotaDinasPage() {
       return (
         isKasubbagSigner(signerIdentity) &&
         isPenandatanganAvailable(item, "Nota Dinas") &&
-        (sameNip || sameName)
+        (samePegawaiId || sameNip || sameName)
       );
-    }) ??
-    (user?.role === "Administrator"
-      ? penandatangans.find(
-          (item) =>
-            isKasubbagSigner(`${item.jabatanPenandatangan} ${item.peran}`) &&
-            isPenandatanganAvailable(item, "Nota Dinas"),
-        ) ?? null
-      : null);
+    }) ?? null;
 
   const defaultPengirimJabatan =
     jabatans.find((jabatan) => jabatan.id === currentPegawai?.jabatanId)
@@ -389,6 +386,13 @@ export default function NotaDinasPage() {
           {canCreate && (
             <Button
               onClick={() => {
+                if (!currentNotaDinasPenandatangan) {
+                  addToast(
+                    "Hanya Kepala Subbagian (Kasubbag) yang terdaftar di Master Penandatangan yang berwenang membuat Nota Dinas.",
+                    "error",
+                  );
+                  return;
+                }
                 setEditingItem(null);
                 setPendingNumber(null);
                 setModalOpen(true);

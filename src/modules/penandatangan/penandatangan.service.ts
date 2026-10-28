@@ -21,6 +21,7 @@ const inferDocumentTypes = (
   const result = new Set<JenisDokumenPenandatangan>();
   if (
     text.includes("kasubbag") ||
+    text.includes("kasubag") ||
     text.includes("kepala sub bagian") ||
     text.includes("kepala subbagian")
   )
@@ -58,6 +59,9 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
   }
   const item = raw as Record<string, unknown>;
   const id = String(item.id || "");
+  const pegawaiId = String(
+    item.pegawaiId || item.pegawai_id || item.pegawaiIdRef || "",
+  ).trim();
   const nama = String(
     item.nama || item.nama_pejabat || item.namaPejabat || "",
   ).trim();
@@ -104,8 +108,9 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
         })()
       : [];
 
-  const partial = {
+  const partial: Omit<Penandatangan, "jenisDokumen"> = {
     id,
+    ...(pegawaiId ? { pegawaiId } : {}),
     nama,
     nip,
     jabatanPenandatangan,
