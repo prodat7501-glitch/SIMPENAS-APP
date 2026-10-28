@@ -266,7 +266,12 @@ export function useAuth() {
     const isKasubbagUser = checkIsKasubbag();
     const canAccessApproval = isKasubbagUser || hasCreatedOrSignedNota();
 
-    if (isKasubbagUser && (moduleName === "Nota Dinas" || moduleName === "SPT")) {
+    if (
+      isKasubbagUser &&
+      (moduleName === "Nota Dinas" ||
+        moduleName === "SPT" ||
+        moduleName === "SPPD")
+    ) {
       return ["C", "R", "U", "G", "P", "N"].includes(action);
     }
 
@@ -334,6 +339,8 @@ export function useAuth() {
       if (moduleName === "Nota Dinas")
         return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "SPT")
+        return ["C", "R", "U", "G", "P", "N"].includes(action);
+      if (moduleName === "SPPD")
         return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "SPBY")
         return ["C", "R", "U", "A", "G", "P"].includes(action);

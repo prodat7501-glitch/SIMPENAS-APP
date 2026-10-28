@@ -76,6 +76,7 @@ export default function SppdPage() {
   const canPrint = hasPermission("SPPD", "P");
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
+  const effectiveCurrentPegawaiId = currentPegawaiId || user?.pegawaiId;
   const scopeToNotaDinas = user?.role === "Pegawai";
   const isPrivilegedUser =
     user?.role === "Administrator" ||
@@ -92,7 +93,12 @@ export default function SppdPage() {
     .filter(
       (item) =>
         !scopeMutationsToNotaDinas ||
-        canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),
+        canAccessSptByNotaDinas(
+          effectiveCurrentPegawaiId,
+          item,
+          notaDinasItems,
+          user,
+        ),
     );
   const getSeriesManager = (sptId: string) =>
     items.find((item) => item.sptId === sptId && item.pengelolaPegawaiId);
@@ -104,7 +110,14 @@ export default function SppdPage() {
     getSeriesManager(sptId)?.pengelolaNama ??
     "anggota lain";
   const canManageSeries = (sptId: string) =>
-    canManageSptChain(currentPegawaiId, sptId, spts, isPrivilegedUser);
+    canManageSptChain(
+      effectiveCurrentPegawaiId,
+      sptId,
+      spts,
+      isPrivilegedUser,
+      user,
+      notaDinasItems,
+    );
   const manageableApprovedSpts = approvedSpts.filter((item) =>
     item.id ? canManageSeries(item.id) : true,
   );
@@ -126,7 +139,13 @@ export default function SppdPage() {
   const lockedSeriesCount = approvedSpts.length - manageableApprovedSpts.length;
   const visibleSppds = scopeToNotaDinas
     ? filteredItems.filter((item) =>
-        canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notaDinasItems),
+        canAccessSppdByNotaDinas(
+          effectiveCurrentPegawaiId,
+          item,
+          spts,
+          notaDinasItems,
+          user,
+        ),
       )
     : filteredItems;
 
@@ -170,7 +189,13 @@ export default function SppdPage() {
     }
     if (
       scopeMutationsToNotaDinas &&
-      !canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notaDinasItems)
+      !canAccessSppdByNotaDinas(
+        effectiveCurrentPegawaiId,
+        item,
+        spts,
+        notaDinasItems,
+        user,
+      )
     ) {
       addToast("Anda hanya dapat mengubah SPPD dari Nota Dinas Anda", "error");
       return;
@@ -193,7 +218,13 @@ export default function SppdPage() {
     if (
       target &&
       scopeToNotaDinas &&
-      !canAccessSppdByNotaDinas(currentPegawaiId, target, spts, notaDinasItems)
+      !canAccessSppdByNotaDinas(
+        effectiveCurrentPegawaiId,
+        target,
+        spts,
+        notaDinasItems,
+        user,
+      )
     ) {
       addToast("Anda hanya dapat menghapus SPPD dari Nota Dinas Anda", "error");
       return;
@@ -244,12 +275,16 @@ export default function SppdPage() {
             seriesManager?.pengelolaPegawaiId ??
             selectedItem?.pengelolaPegawaiId ??
             chainManagerId ??
-            (user?.role !== "Administrator" ? currentPegawaiId : undefined),
+            (user?.role !== "Administrator"
+              ? effectiveCurrentPegawaiId
+              : undefined),
           pengelolaNama:
             seriesManager?.pengelolaNama ??
             selectedItem?.pengelolaNama ??
             chainManager?.nama ??
-            (user?.role !== "Administrator" ? currentPegawai?.nama : undefined),
+            (user?.role !== "Administrator"
+              ? currentPegawai?.nama || user?.name
+              : undefined),
         },
         selectedItem,
       );

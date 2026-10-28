@@ -30,6 +30,7 @@ import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { SPPD_REPORT_READY_STATUSES } from "@/modules/sppd/sppd.constants";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
+import { isKasubbagSigner } from "@/modules/penandatangan/penandatangan.service";
 
 export default function LaporanPage() {
   const { user, hasPermission } = useAuth();
@@ -51,12 +52,26 @@ export default function LaporanPage() {
   const canApprove = hasPermission("Laporan Perjalanan Dinas", "A");
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
+  const effectiveCurrentPegawaiId = currentPegawaiId || user?.pegawaiId;
   const scopeToNotaDinas = user?.role === "Pegawai";
-  const scopeMutationsToNotaDinas =
-    user?.role !== "Administrator" && user?.role !== "Sub Bagian Keuangan";
+  const isPrivilegedUser =
+    user?.role === "Administrator" ||
+    user?.role === "Supervisor" ||
+    user?.role === "Sub Bagian Keuangan" ||
+    isKasubbagSigner(user?.role) ||
+    isKasubbagSigner(user?.username) ||
+    isKasubbagSigner(user?.name);
+  const scopeMutationsToNotaDinas = !isPrivilegedUser;
   const isAdministrator = user?.role === "Administrator";
   const canManageSeries = (sptId: string) =>
-    canManageSptChain(currentPegawaiId, sptId, spts, isAdministrator);
+    canManageSptChain(
+      effectiveCurrentPegawaiId,
+      sptId,
+      spts,
+      isPrivilegedUser,
+      user,
+      notas,
+    );
   const getSeriesManagerName = (sptId: string) => {
     const managerId = resolveSptChainManagerId(sptId, spts);
     return (
@@ -69,14 +84,25 @@ export default function LaporanPage() {
     .filter(
       (item) =>
         !scopeMutationsToNotaDinas ||
-        canAccessSppdByNotaDinas(currentPegawaiId, item, spts, notas),
+        canAccessSppdByNotaDinas(
+          effectiveCurrentPegawaiId,
+          item,
+          spts,
+          notas,
+          user,
+        ),
     );
   const eligibleSpts = spts.filter(
     (spt) =>
       ["Disetujui", "Selesai"].includes(spt.status) &&
       eligibleSppds.some((sppd) => sppd.sptId === spt.id) &&
       (!scopeMutationsToNotaDinas ||
-        canAccessSptByNotaDinas(currentPegawaiId, spt, notas)),
+        canAccessSptByNotaDinas(
+          effectiveCurrentPegawaiId,
+          spt,
+          notas,
+          user,
+        )),
   );
   const getLaporanSptId = (item: Laporan) =>
     item.sptId || sppds.find((sppd) => sppd.id === item.sppdId)?.sptId || "";
@@ -90,7 +116,14 @@ export default function LaporanPage() {
   const formSpts = laporan.selected ? eligibleSpts : availableSpts;
   const visibleReports = scopeToNotaDinas
     ? laporan.filteredItems.filter((item) =>
-        canAccessLaporanByNotaDinas(currentPegawaiId, item, sppds, spts, notas),
+        canAccessLaporanByNotaDinas(
+          effectiveCurrentPegawaiId,
+          item,
+          sppds,
+          spts,
+          notas,
+          user,
+        ),
       )
     : laporan.filteredItems;
   const getSptLabel = (item: Laporan) => {
@@ -143,7 +176,14 @@ export default function LaporanPage() {
     }
     if (
       scopeMutationsToNotaDinas &&
-      !canAccessLaporanByNotaDinas(currentPegawaiId, item, sppds, spts, notas)
+      !canAccessLaporanByNotaDinas(
+        effectiveCurrentPegawaiId,
+        item,
+        sppds,
+        spts,
+        notas,
+        user,
+      )
     ) {
       addToast(
         "Anda hanya dapat mengubah laporan dari Nota Dinas Anda",
@@ -184,7 +224,14 @@ export default function LaporanPage() {
     if (
       target &&
       scopeToNotaDinas &&
-      !canAccessLaporanByNotaDinas(currentPegawaiId, target, sppds, spts, notas)
+      !canAccessLaporanByNotaDinas(
+        effectiveCurrentPegawaiId,
+        target,
+        sppds,
+        spts,
+        notas,
+        user,
+      )
     ) {
       addToast(
         "Anda hanya dapat menghapus laporan dari Nota Dinas Anda",

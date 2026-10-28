@@ -59,8 +59,7 @@ const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
     .find((candidate) => candidate.id === item.penandatanganId);
   const normalized = {
     ...item,
-    createdByPegawaiId:
-      item.createdByPegawaiId || item.personil?.[0]?.pegawaiId || "",
+    createdByPegawaiId: item.createdByPegawaiId || "",
     catatanRevisi: item.catatanRevisi ?? "",
     penandatanganSnapshot:
       item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
