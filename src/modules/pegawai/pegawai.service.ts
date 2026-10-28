@@ -35,6 +35,34 @@ export const isDummyPegawai = (p: Pegawai | Record<string, unknown>): boolean =>
   return false;
 };
 
+export const deduplicatePegawais = (items: Pegawai[]): Pegawai[] => {
+  const seenIds = new Set<string>();
+  const seenNips = new Set<string>();
+  const seenNames = new Set<string>();
+  const unique: Pegawai[] = [];
+
+  for (const item of items) {
+    if (!item.id || isDummyPegawai(item)) continue;
+    if (seenIds.has(item.id)) continue;
+
+    const nipClean = (item.nip || "").replace(/\s+/g, "");
+    const nameClean = (item.nama || "").trim().toLowerCase();
+
+    if (nipClean && nipClean !== "-" && nipClean !== "0") {
+      if (seenNips.has(nipClean)) continue;
+      seenNips.add(nipClean);
+    } else if (nameClean) {
+      if (seenNames.has(nameClean)) continue;
+      seenNames.add(nameClean);
+    }
+
+    seenIds.add(item.id);
+    unique.push(item);
+  }
+
+  return unique;
+};
+
 const defaultPegawai: Pegawai[] = [];
 
 export const pegawaiService = {
@@ -47,11 +75,13 @@ export const pegawaiService = {
     try {
       const parsed = JSON.parse(stored) as Pegawai[];
       const normalized = (Array.isArray(parsed) ? parsed : [])
-        .map(normalizePegawai)
-        .filter((p) => !isDummyPegawai(p));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        .map(normalizePegawai);
+      const unique = deduplicatePegawais(normalized);
+      if (unique.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
+      }
       return sortPegawais(
-        normalized,
+        unique,
         jabatanService.getAll(),
         pangkatService.getAll(),
       );
@@ -61,8 +91,8 @@ export const pegawaiService = {
   },
   saveAll: (data: Pegawai[]) => {
     if (typeof window !== "undefined") {
-      const filtered = data.filter((p) => !isDummyPegawai(p));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      const unique = deduplicatePegawais(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
     }
   },
   // REST API Integration (/api/v1/pegawai)
@@ -80,14 +110,13 @@ export const pegawaiService = {
           Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }
         >("/api/v1/pegawai", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        const normalized = list
-          .map(normalizePegawai)
-          .filter((p) => !isDummyPegawai(p));
-        if (normalized.length > 0) {
-          pegawaiService.saveAll(normalized);
+        const normalized = list.map(normalizePegawai);
+        const unique = deduplicatePegawais(normalized);
+        if (unique.length > 0) {
+          pegawaiService.saveAll(unique);
         }
         return sortPegawais(
-          normalized,
+          unique,
           jabatanService.getAll(),
           pangkatService.getAll(),
         );
@@ -166,18 +195,25 @@ export const pegawaiService = {
   apiBulkCreate: async (data: Partial<Pegawai>[]): Promise<Pegawai[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<Pegawai[] | { data?: Pegawai[] }>(
-          "/api/v1/pegawai",
-          data,
+        const uniquePayload = deduplicatePegawais(
+          data.map((d) => normalizePegawai(d as Pegawai)),
         );
+        const res = await apiClient.bulkPost<
+          Pegawai[] | { data?: Pegawai[] }
+        >("/api/v1/pegawai", uniquePayload);
         const list = Array.isArray(res) ? res : res.data || [];
-        return list.map(normalizePegawai);
+        const unique = deduplicatePegawais(list.map(normalizePegawai));
+        if (unique.length > 0) {
+          pegawaiService.saveAll(unique);
+        }
+        return unique;
       },
       async () => {
         const items = pegawaiService.getAll();
         const normalized = data.map((d) => normalizePegawai(d as Pegawai));
-        pegawaiService.saveAll([...items, ...normalized]);
-        return normalized;
+        const merged = deduplicatePegawais([...items, ...normalized]);
+        pegawaiService.saveAll(merged);
+        return merged;
       },
     );
   },

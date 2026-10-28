@@ -296,8 +296,13 @@ export const sbmService = {
       async () => {
         const items = sbmService.getAll();
         const normalized = (data as SBM[]).map(normalizeSbm);
-        sbmService.saveAll([...items, ...normalized]);
-        return normalized;
+        const map = new Map(items.map((i) => [i.id || `${i.jenisBiaya}-${i.wilayah}`.toLowerCase(), i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || `${item.jenisBiaya}-${item.wilayah}`.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        sbmService.saveAll(merged);
+        return merged;
       },
     );
   },

@@ -161,8 +161,13 @@ export const jabatanService = {
       },
       async () => {
         const items = jabatanService.getAll();
-        jabatanService.saveAll([...items, ...(data as Jabatan[])]);
-        return data as Jabatan[];
+        const map = new Map(items.map((i) => [i.id || i.nama.toLowerCase(), i]));
+        (data as Jabatan[]).forEach((item) => {
+          if (item) map.set(item.id || item.nama.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        jabatanService.saveAll(merged);
+        return merged;
       },
     );
   },

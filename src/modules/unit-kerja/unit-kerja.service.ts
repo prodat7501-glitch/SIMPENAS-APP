@@ -122,8 +122,13 @@ export const unitKerjaService = {
       },
       async () => {
         const items = unitKerjaService.getAll();
-        unitKerjaService.saveAll([...items, ...(data as UnitKerja[])]);
-        return data as UnitKerja[];
+        const map = new Map(items.map((i) => [i.id || i.nama.toLowerCase(), i]));
+        (data as UnitKerja[]).forEach((item) => {
+          if (item) map.set(item.id || item.nama.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        unitKerjaService.saveAll(merged);
+        return merged;
       },
     );
   },

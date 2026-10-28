@@ -285,8 +285,13 @@ export const penandatanganService = {
         const normalized = data.map((d) =>
           normalizePenandatangan(d as Penandatangan),
         );
-        penandatanganService.saveAll([...items, ...normalized]);
-        return normalized;
+        const map = new Map(items.map((i) => [i.id || `${i.pegawaiId}-${i.jabatanPenandatangan}`.toLowerCase(), i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || `${item.pegawaiId}-${item.jabatanPenandatangan}`.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        penandatanganService.saveAll(merged);
+        return merged;
       },
     );
   },

@@ -259,6 +259,18 @@ export const syncService = {
         totalSynced += laporan.length;
       }
 
+      // Segarkan cache lokal dari cloud agar data master dan transaksi bersih dari duplikat
+      await Promise.allSettled([
+        pegawaiService.apiGetAll(),
+        unitKerjaService.apiGetAll(),
+        jabatanService.apiGetAll(),
+        pangkatService.apiGetAll(),
+        dipaService.apiGetAll(),
+        sbmService.apiGetAll(),
+        userAccountService.apiGetAll(),
+        penandatanganService.apiGetAll(),
+      ]);
+
       useActivityStore.getState().add({
         action: "Export",
         module: "Sinkronisasi",

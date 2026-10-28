@@ -517,7 +517,12 @@ export const sppdService = {
         const normalized = data.map((d) =>
           normalizeSinglePersonilSppd(d as Sppd),
         );
-        saveStoredItems(applySeriesLifecycle([...items, ...normalized]));
+        const map = new Map(items.map((i) => [i.id || i.nomor, i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || item.nomor, item);
+        });
+        const merged = Array.from(map.values());
+        saveStoredItems(applySeriesLifecycle(merged));
         return normalized;
       },
     );

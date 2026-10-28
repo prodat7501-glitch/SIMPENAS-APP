@@ -547,8 +547,13 @@ export const userAccountService = {
       },
       async () => {
         const items = userAccountService.getAll();
-        saveAccounts([...items, ...(data as UserAccount[])]);
-        return data as UserAccount[];
+        const map = new Map(items.map((i) => [i.username.toLowerCase(), i]));
+        (data as UserAccount[]).forEach((item) => {
+          if (item && item.username) map.set(item.username.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        saveAccounts(merged);
+        return merged;
       },
     );
   },

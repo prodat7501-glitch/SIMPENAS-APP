@@ -535,8 +535,13 @@ export const notaDinasService = {
       async () => {
         const items = notaDinasService.getAll();
         const normalized = data.map((d) => normalizeNotaDinas(d as NotaDinas));
-        notaDinasService.saveAll([...items, ...normalized]);
-        return normalized;
+        const map = new Map(items.map((i) => [i.id || i.nomor, i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || item.nomor, item);
+        });
+        const merged = Array.from(map.values());
+        notaDinasService.saveAll(merged);
+        return merged;
       }
     );
   },

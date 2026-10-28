@@ -219,8 +219,13 @@ export const pangkatService = {
       async () => {
         const items = pangkatService.getAll();
         const normalizedItems = (data as Pangkat[]).map(normalizePangkat);
-        pangkatService.saveAll([...items, ...normalizedItems]);
-        return normalizedItems;
+        const map = new Map(items.map((i) => [i.id || `${i.golongan}-${i.namaPangkat}`.toLowerCase(), i]));
+        normalizedItems.forEach((item) => {
+          if (item) map.set(item.id || `${item.golongan}-${item.namaPangkat}`.toLowerCase(), item);
+        });
+        const merged = Array.from(map.values());
+        pangkatService.saveAll(merged);
+        return merged;
       },
     );
   },

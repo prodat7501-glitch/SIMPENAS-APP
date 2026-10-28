@@ -139,7 +139,7 @@ function onOpen() {
     .createMenu("⚡ SIMPENAS")
     .addItem("Inisialisasi Database (Setup Awal)", "setupDatabase")
     .addItem("Cek Status Server & Data", "checkDatabaseStatus")
-    .addItem("Bersihkan Akun & Data Dummy", "cleanDummyData")
+    .addItem("Bersihkan Data Duplikat & Dummy", "cleanDataAndDuplicates")
     .addToUi();
 }
 
@@ -201,11 +201,66 @@ function checkDatabaseStatus() {
 }
 
 /**
- * Membersihkan akun dummy bawaan (Andi, Herman, mock pegawai/penandatangan)
+ * Menghapus baris duplikat dari sebuah sheet secara aman berdasarkan ID atau entitas unik
  */
-function cleanDummyData() {
+function deduplicateSheetRows(sheet) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow <= 2 || lastCol === 0) return 0;
+  
+  var headers = getHeaders(sheet);
+  var sName = sheet.getName();
+  var idColIdx = headers.indexOf("id");
+  var nipColIdx = headers.indexOf("nip");
+  var namaColIdx = headers.indexOf("nama");
+  var userColIdx = headers.indexOf("username");
+  
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var seenKeys = {};
+  var rowsToDelete = [];
+  
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var id = String(row[idColIdx] || "").trim();
+    if (!id) continue;
+    
+    var key = "id:" + id;
+    if (sName === "pegawai") {
+      var nip = (nipColIdx !== -1) ? String(row[nipColIdx] || "").replace(/\s+/g, "") : "";
+      var nama = (namaColIdx !== -1) ? String(row[namaColIdx] || "").trim().toLowerCase() : "";
+      if (nip && nip !== "-" && nip !== "0") {
+        key = "nip:" + nip;
+      } else if (nama) {
+        key = "nama:" + nama;
+      }
+    } else if (sName === "user_accounts" && userColIdx !== -1) {
+      var uname = String(row[userColIdx] || "").trim().toLowerCase();
+      if (uname) key = "user:" + uname;
+    }
+    
+    if (seenKeys[key]) {
+      // Baris ini adalah duplikat, simpan nomor baris spreadsheet (+2)
+      rowsToDelete.push(i + 2);
+    } else {
+      seenKeys[key] = true;
+    }
+  }
+  
+  // Hapus dari indeks baris terbesar ke terkecil agar pergeseran baris tidak merusak nomor baris
+  for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+    sheet.deleteRow(rowsToDelete[d]);
+  }
+  
+  return rowsToDelete.length;
+}
+
+/**
+ * Membersihkan data dummy sekaligus menghapus data dobol/duplikat di seluruh lembar kerja
+ */
+function cleanDataAndDuplicates() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var removed = 0;
+  var removedDummy = 0;
+  var removedDuplicates = 0;
   
   // 1. Bersihkan user_accounts
   var userSheet = ss.getSheetByName("user_accounts");
@@ -221,9 +276,10 @@ function cleanDummyData() {
           uName.indexOf("andi saputra") !== -1 || uName.indexOf("herman monoarfa") !== -1 ||
           (uUsername === "eriyanto" && uId !== "user-admin")) {
         userSheet.deleteRow(i + 1);
-        removed++;
+        removedDummy++;
       }
     }
+    removedDuplicates += deduplicateSheetRows(userSheet);
   }
 
   // 2. Bersihkan pegawai
@@ -240,9 +296,10 @@ function cleanDummyData() {
           pNama.indexOf("andi saputra") !== -1 || pNama.indexOf("herman monoarfa") !== -1 ||
           (pNama === "eriyanto" && pNip === "199008152018011002")) {
         pegawaiSheet.deleteRow(j + 1);
-        removed++;
+        removedDummy++;
       }
     }
+    removedDuplicates += deduplicateSheetRows(pegawaiSheet);
   }
 
   // 3. Bersihkan penandatangan
@@ -258,16 +315,31 @@ function cleanDummyData() {
           sNama.indexOf("andi saputra") !== -1 || sNama.indexOf("herman monoarfa") !== -1 ||
           (sNama === "eriyanto" && sNip === "199008152018011002")) {
         penSheet.deleteRow(k + 1);
-        removed++;
+        removedDummy++;
       }
+    }
+    removedDuplicates += deduplicateSheetRows(penSheet);
+  }
+
+  // 4. Bersihkan duplikat pada lembar master dan transaksi lainnya
+  var otherSheets = ["jabatan", "pangkat", "unit_kerja", "dipa", "sbm", "nota_dinas", "spt", "sppd", "laporan"];
+  for (var m = 0; m < otherSheets.length; m++) {
+    var sh = ss.getSheetByName(otherSheets[m]);
+    if (sh && sh.getLastRow() > 2) {
+      removedDuplicates += deduplicateSheetRows(sh);
     }
   }
 
   SpreadsheetApp.getUi().alert(
     "Pembersihan Berhasil!",
-    "Akun dan data dummy telah dibersihkan (" + removed + " baris dihapus). Hanya akun admin dan data riil yang dipertahankan.",
+    "Pembersihan database selesai:\n• Data dummy dibersihkan: " + removedDummy + " baris\n• Data dobol / duplikat dibersihkan: " + removedDuplicates + " baris\n\nDatabase kini rapi dan bebas dari data ganda.",
     SpreadsheetApp.getUi().ButtonSet.OK
   );
+}
+
+// Alias kompatibilitas
+function cleanDummyData() {
+  cleanDataAndDuplicates();
 }
 
 /**
@@ -842,7 +914,7 @@ function handleDelete(sheet, id, userId) {
 }
 
 /**
- * Operasi BULK INSERT / REPLACE
+ * Operasi BULK UPSERT (Update jika ID/Kunci ada, Insert jika belum ada, serta Hapus Duplikat)
  */
 function handleBulkInsertOrUpdate(sheet, items) {
   if (!Array.isArray(items)) {
@@ -851,26 +923,90 @@ function handleBulkInsertOrUpdate(sheet, items) {
   
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(20000);
+    lock.waitLock(30000);
     
     var headers = getHeaders(sheet);
+    var idColIdx = headers.indexOf("id");
+    if (idColIdx === -1) idColIdx = 0;
+    
+    var sName = sheet.getName();
+    var lastRow = sheet.getLastRow();
+    var existingRows = [];
+    if (lastRow > 1) {
+      existingRows = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    }
+    
+    // Peta baris yang ada di spreadsheet berdasarkan key unik
+    var getRowKey = function(objOrRow, isRow) {
+      var id = isRow ? String(objOrRow[idColIdx] || "").trim() : String(objOrRow.id || "").trim();
+      if (sName === "pegawai") {
+        var nipIdx = headers.indexOf("nip");
+        var namaIdx = headers.indexOf("nama");
+        var nip = isRow ? String((nipIdx !== -1 ? objOrRow[nipIdx] : "") || "").replace(/\s+/g, "") : String(objOrRow.nip || "").replace(/\s+/g, "");
+        var nama = isRow ? String((namaIdx !== -1 ? objOrRow[namaIdx] : "") || "").trim().toLowerCase() : String(objOrRow.nama || "").trim().toLowerCase();
+        if (nip && nip !== "-" && nip !== "0") return "nip:" + nip;
+        if (nama) return "nama:" + nama;
+      } else if (sName === "user_accounts") {
+        var uIdx = headers.indexOf("username");
+        var uname = isRow ? String((uIdx !== -1 ? objOrRow[uIdx] : "") || "").trim().toLowerCase() : String(objOrRow.username || "").trim().toLowerCase();
+        if (uname) return "user:" + uname;
+      }
+      return "id:" + id;
+    };
+    
+    var existingMap = {};
+    for (var r = 0; r < existingRows.length; r++) {
+      var rKey = getRowKey(existingRows[r], true);
+      // Simpan index baris 1-based di spreadsheet (+2 karena baris 1 adalah header)
+      if (!existingMap[rKey]) {
+        existingMap[rKey] = r + 2;
+      }
+    }
+    
     var now = new Date().toISOString();
-    var rowsToAdd = [];
+    var rowsToAppend = [];
+    var updatedCount = 0;
+    var insertedCount = 0;
     
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
+      if (isDummyRecord(sName, item)) continue;
+      
+      var itemKey = getRowKey(item, false);
       if (!item.id) item.id = "bulk-" + Date.now() + "-" + i;
-      if (!item.created_at) item.created_at = now;
       item.updated_at = now;
-      rowsToAdd.push(objectToRowValues(item, headers));
+      
+      var existingRowIndex = existingMap[itemKey];
+      if (existingRowIndex) {
+        // UPDATE baris yang sudah ada
+        var updateVals = objectToRowValues(item, headers);
+        sheet.getRange(existingRowIndex, 1, 1, headers.length).setValues([updateVals]);
+        updatedCount++;
+      } else {
+        // INSERT baris baru
+        if (!item.created_at) item.created_at = now;
+        rowsToAppend.push(objectToRowValues(item, headers));
+        existingMap[itemKey] = sheet.getLastRow() + rowsToAppend.length + 1;
+        insertedCount++;
+      }
     }
     
-    if (rowsToAdd.length > 0) {
+    if (rowsToAppend.length > 0) {
       var startRow = sheet.getLastRow() + 1;
-      sheet.getRange(startRow, 1, rowsToAdd.length, headers.length).setValues(rowsToAdd);
+      sheet.getRange(startRow, 1, rowsToAppend.length, headers.length).setValues(rowsToAppend);
     }
     
-    return { success: true, count: rowsToAdd.length, message: "Bulk data berhasil disimpan" };
+    // Bersihkan duplikat sisa jika ada
+    var purgedDuplicates = deduplicateSheetRows(sheet);
+    
+    return {
+      success: true,
+      count: updatedCount + insertedCount,
+      updated: updatedCount,
+      inserted: insertedCount,
+      purgedDuplicates: purgedDuplicates,
+      message: "Bulk sync berhasil (" + updatedCount + " diupdate, " + insertedCount + " baru, " + purgedDuplicates + " duplikat dibersihkan)"
+    };
   } finally {
     lock.releaseLock();
   }
@@ -961,11 +1097,40 @@ function getItems(sheet, filterParams) {
   var results = [];
   var search = (filterParams && filterParams.search) ? filterParams.search.toLowerCase() : null;
   var sName = sheet.getName();
+  var seenIds = {};
+  var seenUniqueKeys = {};
   
   for (var i = 0; i < values.length; i++) {
     var obj = rowValuesToObject(values[i], headers);
     if (!obj.id) continue;
     if (isDummyRecord(sName, obj)) continue;
+    
+    // Deduplikasi ketat berdasarkan ID
+    var idKey = String(obj.id).trim();
+    if (seenIds[idKey]) continue;
+    
+    // Deduplikasi entitas unik (mencegah pegawai/akun ganda terkirim ke klien)
+    if (sName === "pegawai") {
+      var nipClean = String(obj.nip || "").replace(/\s+/g, "");
+      var namaClean = String(obj.nama || "").trim().toLowerCase();
+      var pKey = (nipClean && nipClean !== "-" && nipClean !== "0") ? ("nip:" + nipClean) : ("nama:" + namaClean);
+      if (seenUniqueKeys[pKey]) continue;
+      seenUniqueKeys[pKey] = true;
+    } else if (sName === "user_accounts") {
+      var uKey = String(obj.username || "").trim().toLowerCase();
+      if (uKey && seenUniqueKeys[uKey]) continue;
+      if (uKey) seenUniqueKeys[uKey] = true;
+    } else if (sName === "jabatan") {
+      var jKey = String(obj.nama || obj.nama_jabatan || "").trim().toLowerCase();
+      if (jKey && seenUniqueKeys[jKey]) continue;
+      if (jKey) seenUniqueKeys[jKey] = true;
+    } else if (sName === "unit_kerja") {
+      var ukKey = String(obj.nama || obj.nama_unit || "").trim().toLowerCase();
+      if (ukKey && seenUniqueKeys[ukKey]) continue;
+      if (ukKey) seenUniqueKeys[ukKey] = true;
+    }
+    
+    seenIds[idKey] = true;
     
     if (search) {
       var rowStr = JSON.stringify(obj).toLowerCase();

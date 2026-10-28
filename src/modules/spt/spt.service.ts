@@ -445,8 +445,13 @@ export const sptService = {
         const normalized = data.map((d) =>
           normalizeSeparatedSptPersonil(d as Spt),
         );
-        sptService.saveAll([...items, ...normalized]);
-        return normalized;
+        const map = new Map(items.map((i) => [i.id || i.nomor, i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || item.nomor, item);
+        });
+        const merged = Array.from(map.values());
+        sptService.saveAll(merged);
+        return merged;
       },
     );
   },

@@ -237,8 +237,13 @@ export const dipaService = {
         const normalized = data.map((d, idx) =>
           normalizeDipa(d, items.length + idx),
         );
-        dipaService.saveAll([...items, ...normalized]);
-        return normalized;
+        const map = new Map(items.map((i) => [i.id || i.kodeDipa, i]));
+        normalized.forEach((item) => {
+          if (item) map.set(item.id || item.kodeDipa, item);
+        });
+        const merged = Array.from(map.values());
+        dipaService.saveAll(merged);
+        return merged;
       },
     );
   },
