@@ -17,8 +17,6 @@ export const isDummyAccount = (
     raw.pegawaiId || raw.pegawai_id || "",
   ).toLowerCase().trim();
 
-  if (id === "user-pg1" || id === "user-pg2" || id === "user-pg3") return true;
-  if (pegawaiId === "pg1" || pegawaiId === "pg2" || pegawaiId === "pg3") return true;
   if (
     username === "andi" ||
     username === "herman" ||

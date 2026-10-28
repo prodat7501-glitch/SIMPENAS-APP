@@ -27,10 +27,9 @@ export const isDummyPegawai = (p: Pegawai | Record<string, unknown>): boolean =>
   const raw = p as Record<string, unknown>;
   const nama = String(raw.nama || "").trim().toLowerCase();
   const nip = String(raw.nip || "").replace(/\s+/g, "");
-  const id = String(raw.id || "").trim().toLowerCase();
-  if (id === "pg1" || id === "pg2" || id === "pg3") return true;
+  // Jangan blokir berdasarkan id pg1/pg2/pg3 agar pengguna leluasa mengisinya dengan data pegawai riil
   if (nama === "andi saputra" || nama.includes("herman monoarfa")) return true;
-  if (nama === "eriyanto" && (nip === "199008152018011002" || id === "pg1")) return true;
+  if (nama === "eriyanto" && nip === "199008152018011002") return true;
   if (nip === "198502122012011001" || nip === "197508242002121002") return true;
   return false;
 };

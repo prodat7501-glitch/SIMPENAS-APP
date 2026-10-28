@@ -271,10 +271,10 @@ function cleanDataAndDuplicates() {
       var uId = String(row[0] || "");
       var uUsername = String(row[1] || "").toLowerCase().trim();
       var uName = String(row[2] || "").toLowerCase().trim();
-      if (uId === "user-pg1" || uId === "user-pg2" || uId === "user-pg3" ||
-          uUsername === "andi" || uUsername === "herman" ||
+      if (uUsername === "andi" || uUsername === "herman" ||
+          uUsername === "andi.saputra" || uUsername === "herman.monoarfa" ||
           uName.indexOf("andi saputra") !== -1 || uName.indexOf("herman monoarfa") !== -1 ||
-          (uUsername === "eriyanto" && uId !== "user-admin")) {
+          (uUsername === "eriyanto" && uName === "eriyanto" && uId !== "user-admin")) {
         userSheet.deleteRow(i + 1);
         removedDummy++;
       }
@@ -288,11 +288,9 @@ function cleanDataAndDuplicates() {
     var pData = pegawaiSheet.getDataRange().getValues();
     for (var j = pData.length - 1; j >= 1; j--) {
       var pRow = pData[j];
-      var pId = String(pRow[0] || "");
       var pNip = String(pRow[1] || "").replace(/\s+/g, "");
       var pNama = String(pRow[2] || "").toLowerCase().trim();
-      if (pId === "pg1" || pId === "pg2" || pId === "pg3" ||
-          pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
+      if (pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
           pNama.indexOf("andi saputra") !== -1 || pNama.indexOf("herman monoarfa") !== -1 ||
           (pNama === "eriyanto" && pNip === "199008152018011002")) {
         pegawaiSheet.deleteRow(j + 1);
@@ -308,10 +306,9 @@ function cleanDataAndDuplicates() {
     var signData = penSheet.getDataRange().getValues();
     for (var k = signData.length - 1; k >= 1; k--) {
       var sRow = signData[k];
-      var sId = String(sRow[0] || "");
       var sNama = String(sRow[3] || "").toLowerCase().trim();
       var sNip = String(sRow[4] || "").replace(/\s+/g, "");
-      if (sId === "pn1" || sId === "pn2" || sId === "pn3" ||
+      if (sNip === "199008152018011002" || sNip === "198502122012011001" || sNip === "197508242002121002" ||
           sNama.indexOf("andi saputra") !== -1 || sNama.indexOf("herman monoarfa") !== -1 ||
           (sNama === "eriyanto" && sNip === "199008152018011002")) {
         penSheet.deleteRow(k + 1);
@@ -1058,27 +1055,24 @@ function isDummyRecord(sheetName, obj) {
     var uId = String(obj.id || "");
     var uUsername = String(obj.username || "").toLowerCase().trim();
     var uName = String(obj.name || "").toLowerCase().trim();
-    if (uId === "user-pg1" || uId === "user-pg2" || uId === "user-pg3" ||
-        uUsername === "andi" || uUsername === "herman" ||
+    if (uUsername === "andi" || uUsername === "herman" ||
+        uUsername === "andi.saputra" || uUsername === "herman.monoarfa" ||
         uName.indexOf("andi saputra") !== -1 || uName.indexOf("herman monoarfa") !== -1 ||
-        (uUsername === "eriyanto" && uId !== "user-admin")) {
+        (uUsername === "eriyanto" && uName === "eriyanto" && uId !== "user-admin")) {
       return true;
     }
   } else if (sheetName === "pegawai") {
-    var pId = String(obj.id || "");
     var pNip = String(obj.nip || "").replace(/\s+/g, "");
     var pNama = String(obj.nama || "").toLowerCase().trim();
-    if (pId === "pg1" || pId === "pg2" || pId === "pg3" ||
-        pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
+    if (pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
         pNama.indexOf("andi saputra") !== -1 || pNama.indexOf("herman monoarfa") !== -1 ||
         (pNama === "eriyanto" && pNip === "199008152018011002")) {
       return true;
     }
   } else if (sheetName === "penandatangan") {
-    var sId = String(obj.id || "");
     var sNama = String(obj.nama || "").toLowerCase().trim();
     var sNip = String(obj.nip || "").replace(/\s+/g, "");
-    if (sId === "pn1" || sId === "pn2" || sId === "pn3" ||
+    if (sNip === "199008152018011002" || sNip === "198502122012011001" || sNip === "197508242002121002" ||
         sNama.indexOf("andi saputra") !== -1 || sNama.indexOf("herman monoarfa") !== -1 ||
         (sNama === "eriyanto" && sNip === "199008152018011002")) {
       return true;

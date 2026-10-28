@@ -136,8 +136,6 @@ export const isDummyPenandatangan = (p: Penandatangan | Record<string, unknown>)
   const nip = String(raw.nip || "").replace(/\s+/g, "");
   const pegawaiId = String(raw.pegawaiId || raw.pegawai_id || raw.pegawaiIdRef || "").trim().toLowerCase();
 
-  if (id === "pn1" || id === "pn2" || id === "pn3") return true;
-  if (pegawaiId === "pg1" || pegawaiId === "pg2" || pegawaiId === "pg3") return true;
   if (nama.includes("andi saputra") || nama.includes("herman monoarfa")) return true;
   if (nama === "eriyanto" && nip === "199008152018011002") return true;
   if (nip === "198502122012011001" || nip === "197508242002121002") return true;
