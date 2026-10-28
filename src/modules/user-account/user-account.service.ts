@@ -1,10 +1,35 @@
-import { pegawaiService } from "@/modules/pegawai/pegawai.service";
+import { pegawaiService, isDummyPegawai } from "@/modules/pegawai/pegawai.service";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import type { UserAccountFormInput } from "./user-account.schema";
 import type { UserAccount } from "./user-account.types";
 import { apiClient, withApiFallback } from "@/services/api";
 
 const STORAGE_KEY = "simpenas_user_accounts";
+
+export const isDummyAccount = (
+  account: UserAccount | RawUserAccountApi | Record<string, unknown>,
+): boolean => {
+  const raw = account as Record<string, unknown>;
+  const username = String(raw.username || "").toLowerCase().trim();
+  const name = String(raw.name || "").toLowerCase().trim();
+  const id = String(raw.id || "").toLowerCase().trim();
+  const pegawaiId = String(
+    raw.pegawaiId || raw.pegawai_id || "",
+  ).toLowerCase().trim();
+
+  if (id === "user-pg1" || id === "user-pg2" || id === "user-pg3") return true;
+  if (pegawaiId === "pg1" || pegawaiId === "pg2" || pegawaiId === "pg3") return true;
+  if (
+    username === "andi" ||
+    username === "herman" ||
+    username === "andi.saputra" ||
+    username === "herman.monoarfa"
+  )
+    return true;
+  if (name.includes("andi saputra") || name.includes("herman monoarfa")) return true;
+  if (username === "eriyanto" && name === "eriyanto" && id !== "user-admin") return true;
+  return false;
+};
 
 export const DEFAULT_MOCK_PASSWORD = "password123";
 export const DEFAULT_MOCK_PASSWORD_HASH =
@@ -86,7 +111,12 @@ const readStoredAccounts = (): UserAccount[] => {
 
   try {
     const parsed = JSON.parse(stored) as UserAccount[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    const filtered = parsed.filter((account) => !isDummyAccount(account));
+    if (filtered.length !== parsed.length) {
+      saveAccounts(filtered);
+    }
+    return filtered;
   } catch {
     return [];
   }
@@ -94,14 +124,15 @@ const readStoredAccounts = (): UserAccount[] => {
 
 const saveAccounts = (accounts: UserAccount[]) => {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+    const filtered = accounts.filter((account) => !isDummyAccount(account));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   }
 };
 
 const synchronizeAccounts = (): UserAccount[] => {
-  const employees = pegawaiService.getAll();
+  const employees = pegawaiService.getAll().filter((p) => !isDummyPegawai(p));
   const storedAccounts = readStoredAccounts();
-  const accounts = [...storedAccounts];
+  const accounts = [...storedAccounts].filter((a) => !isDummyAccount(a));
 
   if (!accounts.some((account) => account.id === "user-admin")) {
     accounts.unshift(createAdministratorAccount());
@@ -290,9 +321,9 @@ export const userAccountService = {
           pegawaiService.apiGetAll(),
         ]);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        const accounts = list.map((item) =>
-          normalizeUserAccountFromApi(item as RawUserAccountApi),
-        );
+        const accounts = list
+          .map((item) => normalizeUserAccountFromApi(item as RawUserAccountApi))
+          .filter((account) => !isDummyAccount(account));
 
         // 1. Pastikan akun admin utama ada
         if (

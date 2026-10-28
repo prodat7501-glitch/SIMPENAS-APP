@@ -8,6 +8,7 @@ import { PenandatanganForm } from "@/modules/penandatangan/components/Penandatan
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
@@ -16,6 +17,7 @@ export default function PenandatanganPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove, toggleStatus } = usePenandatangan();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Penandatangan | null>(null);
@@ -46,18 +48,20 @@ export default function PenandatanganPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (
-      confirm(
-        "Apakah Anda yakin ingin menghapus data pejabat penandatangan ini?",
-      )
-    ) {
+    const isConfirmed = await confirm({
+      title: "Hapus Pejabat Penandatangan",
+      message: "Apakah Anda yakin ingin menghapus data pejabat penandatangan ini?",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data pejabat berhasil dihapus", "success");
+      addToast("Data pejabat penandatangan berhasil dihapus.", "success");
     }
   };
 

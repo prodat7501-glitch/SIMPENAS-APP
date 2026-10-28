@@ -17,6 +17,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExportDataButton } from "@/components/ui/export-data-button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus, X } from "lucide-react";
 import { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
@@ -101,6 +102,7 @@ export default function NotaDinasPage() {
   const { items: sppds } = useSppd();
   const { items: dipas } = useDipa();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const addActivity = useActivityStore((state) => state.add);
   const addNotification = useNotificationStore(
     (state) => state.addNotification,
@@ -186,16 +188,20 @@ export default function NotaDinasPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Hanya Administrator yang dapat menghapus Nota Dinas", "error");
       return;
     }
-    if (
-      confirm("Apakah Anda yakin ingin menghapus transaksi Nota Dinas ini?")
-    ) {
+    const isConfirmed = await confirm({
+      title: "Hapus Transaksi Nota Dinas",
+      message: "Apakah Anda yakin ingin menghapus transaksi Nota Dinas ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Nota Dinas berhasil dihapus", "success");
+      addToast("Nota Dinas berhasil dihapus.", "success");
     }
   };
 
@@ -666,8 +672,7 @@ export default function NotaDinasPage() {
                       {getPenandatanganDetail(
                         previewItem.penandatanganId,
                         previewItem,
-                      )?.jabatanPenandatangan ||
-                        "Kuasa Pengguna Anggaran (KPA)"}
+                      )?.jabatanPenandatangan || previewItem.dari || "-"}
                     </p>
                   </div>
                   <div className="space-y-0.5">
@@ -675,7 +680,7 @@ export default function NotaDinasPage() {
                       {getPenandatanganDetail(
                         previewItem.penandatanganId,
                         previewItem,
-                      )?.nama || "Herman Monoarfa, M.Si"}
+                      )?.nama || "-"}
                     </p>
                     <p className="text-gray-500 font-mono text-[10px]">
                       NIP.{" "}

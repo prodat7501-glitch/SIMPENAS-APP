@@ -5,6 +5,8 @@ import {
   requestDownloadFileName,
 } from "@/lib/download-file";
 
+import { useToast } from "@/components/ui/toast";
+
 export type PrintExportFormat = "print" | "doc" | "xls";
 
 interface ExportPrintDocumentOptions {
@@ -124,7 +126,7 @@ export async function exportPrintDocument({
 
   const clone = getPrintableClone();
   if (!clone) {
-    window.alert("Dokumen pratinjau tidak ditemukan.");
+    useToast.getState().addToast("Dokumen pratinjau tidak ditemukan.", "error");
     return false;
   }
 

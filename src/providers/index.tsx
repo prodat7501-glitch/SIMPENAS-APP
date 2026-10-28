@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ThemeProvider } from "./ThemeProvider";
 import { QueryProvider } from "./QueryProvider";
 import { ToastContainer } from "@/components/ui/toast";
+import { ConfirmDialogContainer } from "@/components/ui/confirm-dialog";
 import { TemplateProvider } from "./TemplateProvider";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -18,6 +19,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <TemplateProvider>
           {children}
           <ToastContainer />
+          <ConfirmDialogContainer />
         </TemplateProvider>
       </QueryProvider>
     </ThemeProvider>

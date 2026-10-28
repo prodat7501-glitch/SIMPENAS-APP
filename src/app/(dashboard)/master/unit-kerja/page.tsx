@@ -8,6 +8,7 @@ import { UnitKerjaForm } from "@/modules/unit-kerja/components/UnitKerjaForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { UnitKerja } from "@/modules/unit-kerja/unit-kerja.schema";
@@ -16,6 +17,7 @@ export default function UnitKerjaPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove } = useUnitKerja();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<UnitKerja | null>(null);
@@ -46,14 +48,20 @@ export default function UnitKerjaPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus data unit kerja ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Unit Kerja",
+      message: "Apakah Anda yakin ingin menghapus data unit kerja ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data unit kerja berhasil dihapus", "success");
+      addToast("Data unit kerja berhasil dihapus.", "success");
     }
   };
 

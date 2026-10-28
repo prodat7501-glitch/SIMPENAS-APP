@@ -8,6 +8,7 @@ import { JabatanForm } from "@/modules/jabatan/components/JabatanForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
@@ -16,6 +17,7 @@ export default function JabatanPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove } = useJabatan();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Jabatan | null>(null);
@@ -50,9 +52,15 @@ export default function JabatanPage() {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus data jabatan ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Jabatan",
+      message: "Apakah Anda yakin ingin menghapus data jabatan ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       await remove(id);
-      addToast("Data jabatan berhasil dihapus", "success");
+      addToast("Data jabatan berhasil dihapus.", "success");
     }
   };
 

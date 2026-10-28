@@ -8,6 +8,7 @@ import { PangkatForm } from "@/modules/pangkat/components/PangkatForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { Pangkat } from "@/modules/pangkat/pangkat.schema";
@@ -16,6 +17,7 @@ export default function PangkatPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove } = usePangkat();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Pangkat | null>(null);
@@ -46,16 +48,20 @@ export default function PangkatPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (
-      confirm("Apakah Anda yakin ingin menghapus data pangkat/golongan ini?")
-    ) {
+    const isConfirmed = await confirm({
+      title: "Hapus Pangkat/Golongan",
+      message: "Apakah Anda yakin ingin menghapus data pangkat/golongan ini?",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data pangkat/golongan berhasil dihapus", "success");
+      addToast("Data pangkat/golongan berhasil dihapus.", "success");
     }
   };
 

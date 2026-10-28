@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { demoDataService } from "../demo-data.service";
 import type { DemoDataSummary } from "../demo-data.schema";
 
@@ -40,6 +41,7 @@ export function DemoDataTransferCard({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const handleExport = async () => {
     setBusyAction("export");
@@ -64,7 +66,13 @@ export function DemoDataTransferCard({
   const handleImport = async (file: File) => {
     try {
       const inspection = await demoDataService.inspectFile(file);
-      if (!window.confirm(importConfirmation(inspection.summary))) return;
+      const isConfirmed = await confirm({
+        title: "Konfirmasi Impor Data Demo",
+        message: importConfirmation(inspection.summary),
+        variant: "warning",
+        confirmText: "Ya, Impor & Ganti Data",
+      });
+      if (!isConfirmed) return;
 
       setBusyAction("import");
       await demoDataService.restorePackage(inspection.data);

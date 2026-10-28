@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExportDataButton } from "@/components/ui/export-data-button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus, X } from "lucide-react";
 import { Spt } from "@/modules/spt/spt.schema";
@@ -78,6 +79,7 @@ export default function SptPage() {
   const { items: penandatangans } = usePenandatangan();
   const { items: notaDinasItems } = useNotaDinas();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const addNotification = useNotificationStore(
     (state) => state.addNotification,
   );
@@ -214,7 +216,7 @@ export default function SptPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Hanya Administrator yang dapat menghapus SPT", "error");
       return;
@@ -228,9 +230,15 @@ export default function SptPage() {
       addToast("Anda hanya dapat menghapus SPT dari Nota Dinas Anda", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus transaksi SPT ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Transaksi SPT",
+      message: "Apakah Anda yakin ingin menghapus transaksi Surat Perintah Tugas (SPT) ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("SPT berhasil dihapus", "success");
+      addToast("SPT berhasil dihapus.", "success");
     }
   };
 
@@ -722,8 +730,7 @@ export default function SptPage() {
                   </div>
                   <div className="space-y-0.5">
                     <p className="font-extrabold underline uppercase">
-                      {getSptSigningOfficial(previewItem)?.nama ||
-                        "Herman Monoarfa, M.Si"}
+                      {getSptSigningOfficial(previewItem)?.nama || "-"}
                     </p>
                     {!isSptKomisioner(previewItem) && (
                       <p className="text-gray-500 text-xs">

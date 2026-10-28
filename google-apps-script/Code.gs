@@ -139,6 +139,7 @@ function onOpen() {
     .createMenu("⚡ SIMPENAS")
     .addItem("Inisialisasi Database (Setup Awal)", "setupDatabase")
     .addItem("Cek Status Server & Data", "checkDatabaseStatus")
+    .addItem("Bersihkan Akun & Data Dummy", "cleanDummyData")
     .addToUi();
 }
 
@@ -200,18 +201,85 @@ function checkDatabaseStatus() {
 }
 
 /**
+ * Membersihkan akun dummy bawaan (Andi, Herman, mock pegawai/penandatangan)
+ */
+function cleanDummyData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var removed = 0;
+  
+  // 1. Bersihkan user_accounts
+  var userSheet = ss.getSheetByName("user_accounts");
+  if (userSheet && userSheet.getLastRow() > 1) {
+    var data = userSheet.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      var row = data[i];
+      var uId = String(row[0] || "");
+      var uUsername = String(row[1] || "").toLowerCase().trim();
+      var uName = String(row[2] || "").toLowerCase().trim();
+      if (uId === "user-pg1" || uId === "user-pg2" || uId === "user-pg3" ||
+          uUsername === "andi" || uUsername === "herman" ||
+          uName.indexOf("andi saputra") !== -1 || uName.indexOf("herman monoarfa") !== -1 ||
+          (uUsername === "eriyanto" && uId !== "user-admin")) {
+        userSheet.deleteRow(i + 1);
+        removed++;
+      }
+    }
+  }
+
+  // 2. Bersihkan pegawai
+  var pegawaiSheet = ss.getSheetByName("pegawai");
+  if (pegawaiSheet && pegawaiSheet.getLastRow() > 1) {
+    var pData = pegawaiSheet.getDataRange().getValues();
+    for (var j = pData.length - 1; j >= 1; j--) {
+      var pRow = pData[j];
+      var pId = String(pRow[0] || "");
+      var pNip = String(pRow[1] || "").replace(/\s+/g, "");
+      var pNama = String(pRow[2] || "").toLowerCase().trim();
+      if (pId === "pg1" || pId === "pg2" || pId === "pg3" ||
+          pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
+          pNama.indexOf("andi saputra") !== -1 || pNama.indexOf("herman monoarfa") !== -1 ||
+          (pNama === "eriyanto" && pNip === "199008152018011002")) {
+        pegawaiSheet.deleteRow(j + 1);
+        removed++;
+      }
+    }
+  }
+
+  // 3. Bersihkan penandatangan
+  var penSheet = ss.getSheetByName("penandatangan");
+  if (penSheet && penSheet.getLastRow() > 1) {
+    var signData = penSheet.getDataRange().getValues();
+    for (var k = signData.length - 1; k >= 1; k--) {
+      var sRow = signData[k];
+      var sId = String(sRow[0] || "");
+      var sNama = String(sRow[3] || "").toLowerCase().trim();
+      var sNip = String(sRow[4] || "").replace(/\s+/g, "");
+      if (sId === "pn1" || sId === "pn2" || sId === "pn3" ||
+          sNama.indexOf("andi saputra") !== -1 || sNama.indexOf("herman monoarfa") !== -1 ||
+          (sNama === "eriyanto" && sNip === "199008152018011002")) {
+        penSheet.deleteRow(k + 1);
+        removed++;
+      }
+    }
+  }
+
+  SpreadsheetApp.getUi().alert(
+    "Pembersihan Berhasil!",
+    "Akun dan data dummy telah dibersihkan (" + removed + " baris dihapus). Hanya akun admin dan data riil yang dipertahankan.",
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+/**
  * Pengisian Master Data Awal (Admin, Jabatan, Pangkat, Unit Kerja, Penomoran)
  */
 function seedInitialData(ss) {
   var userSheet = ss.getSheetByName("user_accounts");
   if (userSheet && userSheet.getLastRow() <= 1) {
     var now = new Date().toISOString();
-    // Akun bawaan
+    // Akun bawaan (Hanya Administrator utama)
     var defaultUsers = [
-      ["user-admin", "admin", "Administrator SIMPENAS", "admin@kpu.go.id", "Administrator", "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", true, "", now, now],
-      ["user-pg1", "eriyanto", "Eriyanto", "eriyanto@kpu.go.id", "Pegawai", "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", true, "pg1", now, now],
-      ["user-pg2", "andi", "Andi Saputra", "andi@kpu.go.id", "Supervisor", "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", true, "pg2", now, now],
-      ["user-pg3", "herman", "Herman Monoarfa, M.Si", "herman@kpu.go.id", "Supervisor", "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", true, "pg3", now, now]
+      ["user-admin", "admin", "Administrator SIMPENAS", "admin@kpu.go.id", "Administrator", "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", true, "", now, now]
     ];
     userSheet.getRange(2, 1, defaultUsers.length, defaultUsers[0].length).setValues(defaultUsers);
   }
@@ -257,28 +325,6 @@ function seedInitialData(ss) {
       ["p7", "II", "d", "Pengatur Tingkat I", now, now]
     ];
     pangkatSheet.getRange(2, 1, defaultPangkats.length, defaultPangkats[0].length).setValues(defaultPangkats);
-  }
-  
-  var pegawaiSheet = ss.getSheetByName("pegawai");
-  if (pegawaiSheet && pegawaiSheet.getLastRow() <= 1) {
-    var now = new Date().toISOString();
-    var defaultPegawais = [
-      ["pg1", "19900815 201801 1 002", "Eriyanto", "j6", "u4", "p6", "ASN/Sekretariat", "Pegawai", "Aktif", now, now],
-      ["pg2", "19850212 201201 1 001", "Andi Saputra", "j5", "u4", "p4", "ASN/Sekretariat", "Supervisor", "Aktif", now, now],
-      ["pg3", "19750824 200212 1 002", "Herman Monoarfa, M.Si", "j1", "u1", "p1", "ASN/Sekretariat", "Supervisor", "Aktif", now, now]
-    ];
-    pegawaiSheet.getRange(2, 1, defaultPegawais.length, defaultPegawais[0].length).setValues(defaultPegawais);
-  }
-  
-  var penandatanganSheet = ss.getSheetByName("penandatangan");
-  if (penandatanganSheet && penandatanganSheet.getLastRow() <= 1) {
-    var now = new Date().toISOString();
-    var defaultSigners = [
-      ["pn1", "KPA", "pg3", "Herman Monoarfa, M.Si", "19750824 200212 1 002", "Kuasa Pengguna Anggaran (KPA)", true, now, now],
-      ["pn2", "PPK", "pg2", "Andi Saputra", "19850212 201201 1 001", "Pejabat Pembuat Komitmen (PPK)", true, now, now],
-      ["pn3", "Bendahara", "pg1", "Eriyanto", "19900815 201801 1 002", "Bendahara Pengeluaran", true, now, now]
-    ];
-    penandatanganSheet.getRange(2, 1, defaultSigners.length, defaultSigners[0].length).setValues(defaultSigners);
   }
   
   var nomorSheet = ss.getSheetByName("pengaturan_penomoran");
@@ -870,6 +916,41 @@ function getHeaders(sheet) {
   return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 }
 
+function isDummyRecord(sheetName, obj) {
+  if (!obj) return false;
+  if (sheetName === "user_accounts") {
+    var uId = String(obj.id || "");
+    var uUsername = String(obj.username || "").toLowerCase().trim();
+    var uName = String(obj.name || "").toLowerCase().trim();
+    if (uId === "user-pg1" || uId === "user-pg2" || uId === "user-pg3" ||
+        uUsername === "andi" || uUsername === "herman" ||
+        uName.indexOf("andi saputra") !== -1 || uName.indexOf("herman monoarfa") !== -1 ||
+        (uUsername === "eriyanto" && uId !== "user-admin")) {
+      return true;
+    }
+  } else if (sheetName === "pegawai") {
+    var pId = String(obj.id || "");
+    var pNip = String(obj.nip || "").replace(/\s+/g, "");
+    var pNama = String(obj.nama || "").toLowerCase().trim();
+    if (pId === "pg1" || pId === "pg2" || pId === "pg3" ||
+        pNip === "199008152018011002" || pNip === "198502122012011001" || pNip === "197508242002121002" ||
+        pNama.indexOf("andi saputra") !== -1 || pNama.indexOf("herman monoarfa") !== -1 ||
+        (pNama === "eriyanto" && pNip === "199008152018011002")) {
+      return true;
+    }
+  } else if (sheetName === "penandatangan") {
+    var sId = String(obj.id || "");
+    var sNama = String(obj.nama || "").toLowerCase().trim();
+    var sNip = String(obj.nip || "").replace(/\s+/g, "");
+    if (sId === "pn1" || sId === "pn2" || sId === "pn3" ||
+        sNama.indexOf("andi saputra") !== -1 || sNama.indexOf("herman monoarfa") !== -1 ||
+        (sNama === "eriyanto" && sNip === "199008152018011002")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function getItems(sheet, filterParams) {
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
@@ -879,10 +960,12 @@ function getItems(sheet, filterParams) {
   var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var results = [];
   var search = (filterParams && filterParams.search) ? filterParams.search.toLowerCase() : null;
+  var sName = sheet.getName();
   
   for (var i = 0; i < values.length; i++) {
     var obj = rowValuesToObject(values[i], headers);
     if (!obj.id) continue;
+    if (isDummyRecord(sName, obj)) continue;
     
     if (search) {
       var rowStr = JSON.stringify(obj).toLowerCase();
@@ -898,7 +981,9 @@ function getItemById(sheet, id) {
   if (rowIndex === -1) return null;
   var headers = getHeaders(sheet);
   var values = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
-  return rowValuesToObject(values, headers);
+  var obj = rowValuesToObject(values, headers);
+  if (isDummyRecord(sheet.getName(), obj)) return null;
+  return obj;
 }
 
 function findRowIndexById(sheet, id) {

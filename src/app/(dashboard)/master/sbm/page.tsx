@@ -8,6 +8,7 @@ import { SBMForm } from "@/modules/sbm/components/SBMForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { SBM } from "@/modules/sbm/sbm.schema";
@@ -16,6 +17,7 @@ export default function SbmPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove } = useSbm();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SBM | null>(null);
@@ -46,14 +48,20 @@ export default function SbmPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus data SBM ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Standar Biaya Masukan",
+      message: "Apakah Anda yakin ingin menghapus data Standar Biaya Masukan (SBM) ini?",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data SBM berhasil dihapus", "success");
+      addToast("Data SBM berhasil dihapus.", "success");
     }
   };
 

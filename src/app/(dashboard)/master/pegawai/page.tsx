@@ -11,6 +11,7 @@ import { PegawaiForm } from "@/modules/pegawai/components/PegawaiForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
@@ -22,6 +23,7 @@ export default function PegawaiPage() {
   const { items: unitKerjas } = useUnitKerja();
   const { items: pangkats } = usePangkat();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Pegawai | null>(null);
@@ -51,14 +53,20 @@ export default function PegawaiPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus data pegawai ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Data Pegawai",
+      message: "Apakah Anda yakin ingin menghapus data pegawai ini? Tindakan ini bersifat permanen dan data yang dihapus tidak dapat dipulihkan.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data pegawai berhasil dihapus", "success");
+      addToast("Data pegawai berhasil dihapus.", "success");
     }
   };
 

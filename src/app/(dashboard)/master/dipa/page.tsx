@@ -8,6 +8,7 @@ import { DIPAForm } from "@/modules/dipa/components/DIPAForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Plus } from "lucide-react";
 import type { DIPA, DipaFormData } from "@/modules/dipa/dipa.schema";
@@ -16,6 +17,7 @@ export default function DipaPage() {
   const { hasPermission } = useAuth();
   const { items, add, update, remove } = useDipa();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DIPA | null>(null);
@@ -46,14 +48,20 @@ export default function DipaPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canDelete) {
       addToast("Anda tidak memiliki izin untuk menghapus data", "error");
       return;
     }
-    if (confirm("Apakah Anda yakin ingin menghapus data anggaran DIPA ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Anggaran DIPA",
+      message: "Apakah Anda yakin ingin menghapus data anggaran DIPA ini?",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (isConfirmed) {
       remove(id);
-      addToast("Data anggaran DIPA berhasil dihapus", "success");
+      addToast("Data anggaran DIPA berhasil dihapus.", "success");
     }
   };
 

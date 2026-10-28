@@ -9,6 +9,7 @@ import { ExportDataButton } from "@/components/ui/export-data-button";
 import { Dialog } from "@/components/ui/dialog";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import {
   canAccessSppdByNotaDinas,
@@ -38,6 +39,7 @@ const isApprovedSpt = (status: string) =>
 export default function SppdPage() {
   const { user, hasPermission } = useAuth();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const { items: spts } = useSpt();
   const { items: notaDinasItems } = useNotaDinas();
   const { items: pegawais } = usePegawai();
@@ -189,11 +191,17 @@ export default function SppdPage() {
       addToast("Anda hanya dapat menghapus SPPD dari Nota Dinas Anda", "error");
       return;
     }
-    if (!confirm("Apakah Anda yakin ingin menghapus SPPD ini?")) return;
+    const isConfirmed = await confirm({
+      title: "Hapus Dokumen SPPD",
+      message: "Apakah Anda yakin ingin menghapus dokumen Surat Perintah Perjalanan Dinas (SPPD) ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (!isConfirmed) return;
 
     try {
       await remove(id);
-      addToast("SPPD berhasil dihapus", "success");
+      addToast("SPPD berhasil dihapus.", "success");
     } catch (deleteError) {
       const message =
         deleteError instanceof Error

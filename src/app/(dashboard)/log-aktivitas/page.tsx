@@ -16,16 +16,18 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useActivityStore } from "@/stores/activity.store";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatTableDateTime } from "@/lib/formatters";
 export default function LogPage() {
   const { user, hasPermission } = useAuth();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const store = useActivityStore();
   const [search, setSearch] = useState("");
   if (!hasPermission("Log Aktivitas", "R")) return <p>Akses ditolak.</p>;
   const canClear =
     user?.role === "Administrator" && hasPermission("Log Aktivitas", "D");
-  const clearActivity = () => {
+  const clearActivity = async () => {
     if (!user || !canClear) {
       addToast(
         "Hanya Administrator yang dapat membersihkan Log Aktivitas.",
@@ -33,11 +35,13 @@ export default function LogPage() {
       );
       return;
     }
-    if (
-      !window.confirm(
-        `Bersihkan ${store.items.length} entri Log Aktivitas? Satu catatan audit pembersihan akan tetap disimpan.`,
-      )
-    ) {
+    const isConfirmed = await confirm({
+      title: "Bersihkan Log Aktivitas",
+      message: `Bersihkan ${store.items.length} entri Log Aktivitas? Satu catatan audit pembersihan akan tetap disimpan.`,
+      variant: "danger",
+      confirmText: "Ya, Bersihkan",
+    });
+    if (!isConfirmed) {
       return;
     }
     try {

@@ -60,56 +60,95 @@ export const useToast = create<ToastState>((set) => ({
 export function ToastContainer() {
   const { toasts, removeToast } = useToast();
 
-  const icons = {
-    success: CheckCircle,
-    error: AlertCircle,
-    info: Info,
-    warning: AlertTriangle,
+  const config = {
+    success: {
+      icon: CheckCircle,
+      badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+      border: "border-emerald-500/30 dark:border-emerald-500/20",
+      accent: "bg-emerald-500",
+      title: "Berhasil",
+    },
+    error: {
+      icon: AlertCircle,
+      badge: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+      border: "border-red-500/30 dark:border-red-500/20",
+      accent: "bg-red-500",
+      title: "Perhatian / Gagal",
+    },
+    warning: {
+      icon: AlertTriangle,
+      badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+      border: "border-amber-500/30 dark:border-amber-500/20",
+      accent: "bg-amber-500",
+      title: "Peringatan",
+    },
+    info: {
+      icon: Info,
+      badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+      border: "border-blue-500/30 dark:border-blue-500/20",
+      accent: "bg-blue-500",
+      title: "Informasi",
+    },
   };
 
   return (
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed bottom-4 inset-x-4 sm:left-auto sm:right-4 z-50 flex flex-col gap-2 sm:w-full sm:max-w-sm pointer-events-none"
+      className="fixed top-4 inset-x-4 sm:left-auto sm:right-4 z-[9999] flex flex-col gap-2.5 sm:w-full sm:max-w-md pointer-events-none"
     >
       <AnimatePresence>
         {toasts.map((t) => {
-          const Icon = icons[t.type];
+          const itemConfig = config[t.type] || config.info;
+          const Icon = itemConfig.icon;
           return (
             <motion.div
               key={t.id}
               layout
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{
                 opacity: 0,
                 scale: 0.95,
-                y: -20,
+                y: -15,
                 transition: { duration: 0.15 },
               }}
               className={cn(
-                "flex items-center gap-3 p-4 rounded-xl shadow-lg border text-xs font-semibold pointer-events-auto bg-card text-foreground border-border",
-                t.type === "success" && "border-success/30",
-                t.type === "error" && "border-danger/30",
-                t.type === "warning" && "border-warning/30",
-                t.type === "info" && "border-accent/30",
+                "relative flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl shadow-2xl border text-xs pointer-events-auto bg-card/95 backdrop-blur-md text-foreground transition-all overflow-hidden",
+                itemConfig.border,
               )}
             >
-              <Icon
+              {/* Left Accent Bar */}
+              <div
                 className={cn(
-                  "w-4 h-4 shrink-0",
-                  t.type === "success" && "text-success",
-                  t.type === "error" && "text-danger",
-                  t.type === "warning" && "text-warning",
-                  t.type === "info" && "text-accent",
+                  "absolute left-0 top-0 bottom-0 w-1",
+                  itemConfig.accent,
                 )}
               />
-              <span className="flex-1 leading-snug">{t.message}</span>
+
+              <div
+                className={cn(
+                  "p-2 rounded-xl border shrink-0 flex items-center justify-center mt-0.5",
+                  itemConfig.badge,
+                )}
+              >
+                <Icon className="w-4 h-4" />
+              </div>
+
+              <div className="flex-1 min-w-0 pr-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-0.5">
+                  {itemConfig.title}
+                </p>
+                <p className="font-semibold text-foreground text-xs leading-relaxed break-words">
+                  {t.message}
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => removeToast(t.id)}
-                className="p-0.5 rounded text-muted-foreground hover:bg-muted cursor-pointer"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer transition shrink-0"
+                aria-label="Tutup notifikasi"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useDipa } from "@/modules/dipa/useDipa";
 import { useJabatan } from "@/modules/jabatan/useJabatan";
@@ -55,6 +56,7 @@ const required: Partial<Record<JenisDokumen, JenisDokumen>> = {
 export function DokumenKeuanganPage({ jenis }: { jenis: JenisDokumen }) {
   const { user, hasPermission } = useAuth();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const { items: reports, isLoading: reportsLoading } = useLaporan();
   const { items: sppds, isLoading: sppdsLoading } = useSppd();
   const { items: spts } = useSpt();
@@ -126,11 +128,13 @@ export function DokumenKeuanganPage({ jenis }: { jenis: JenisDokumen }) {
       return;
     }
     if (jenis !== "SPBY") return;
-    if (
-      !confirm(
-        "Buat ulang SPBY akan menimpa dokumen SPBY lama untuk SPJ ini. Lanjutkan?",
-      )
-    ) {
+    const isConfirmed = await confirm({
+      title: "Buat Ulang SPBY",
+      message: "Buat ulang SPBY akan menimpa dokumen SPBY lama untuk SPJ ini. Lanjutkan?",
+      variant: "warning",
+      confirmText: "Ya, Buat Ulang",
+    });
+    if (!isConfirmed) {
       return;
     }
 
@@ -181,11 +185,13 @@ export function DokumenKeuanganPage({ jenis }: { jenis: JenisDokumen }) {
       );
       return;
     }
-    if (
-      !confirm(
-        `Hapus ${document.jenis} nomor ${document.nomor}? Dokumen yang dihapus tidak dapat dipulihkan.`,
-      )
-    ) {
+    const isConfirmed = await confirm({
+      title: `Hapus ${document.jenis}`,
+      message: `Hapus ${document.jenis} nomor ${document.nomor}? Dokumen yang dihapus tidak dapat dipulihkan.`,
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (!isConfirmed) {
       return;
     }
 

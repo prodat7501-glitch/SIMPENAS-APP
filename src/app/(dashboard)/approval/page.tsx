@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Timeline } from "@/components/ui/timeline";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { ApprovalDetail } from "@/modules/approval/components/ApprovalDetail";
 import { ApprovalTable } from "@/modules/approval/components/ApprovalTable";
@@ -17,6 +18,7 @@ import { usePegawai } from "@/modules/pegawai/usePegawai";
 export default function ApprovalPage() {
   const { user, hasPermission } = useAuth();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const approval = useApproval();
   const { items: pegawais } = usePegawai();
   const { items: jabatans } = useJabatan();
@@ -54,11 +56,13 @@ export default function ApprovalPage() {
       );
       return;
     }
-    if (
-      !window.confirm(
-        `Bersihkan ${approval.history.length} riwayat approval? Dokumen Nota Dinas dan SPT tidak akan dihapus.`,
-      )
-    ) {
+    const isConfirmed = await confirm({
+      title: "Bersihkan Riwayat Approval",
+      message: `Bersihkan ${approval.history.length} riwayat approval? Dokumen Nota Dinas dan SPT tidak akan dihapus.`,
+      variant: "danger",
+      confirmText: "Ya, Bersihkan",
+    });
+    if (!isConfirmed) {
       return;
     }
     try {

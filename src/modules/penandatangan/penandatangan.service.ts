@@ -129,6 +129,21 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
   };
 };
 
+export const isDummyPenandatangan = (p: Penandatangan | Record<string, unknown>): boolean => {
+  const raw = p as Record<string, unknown>;
+  const id = String(raw.id || "").trim().toLowerCase();
+  const nama = String(raw.nama || raw.nama_pejabat || raw.namaPejabat || "").trim().toLowerCase();
+  const nip = String(raw.nip || "").replace(/\s+/g, "");
+  const pegawaiId = String(raw.pegawaiId || raw.pegawai_id || raw.pegawaiIdRef || "").trim().toLowerCase();
+
+  if (id === "pn1" || id === "pn2" || id === "pn3") return true;
+  if (pegawaiId === "pg1" || pegawaiId === "pg2" || pegawaiId === "pg3") return true;
+  if (nama.includes("andi saputra") || nama.includes("herman monoarfa")) return true;
+  if (nama === "eriyanto" && nip === "199008152018011002") return true;
+  if (nip === "198502122012011001" || nip === "197508242002121002") return true;
+  return false;
+};
+
 export const penandatanganService = {
   getAll: (): Penandatangan[] => {
     if (typeof window === "undefined") return [];
@@ -138,14 +153,17 @@ export const penandatanganService = {
     }
     try {
       const parsed = JSON.parse(stored);
-      return Array.isArray(parsed) ? parsed.map(normalizePenandatangan) : [];
+      return Array.isArray(parsed)
+        ? parsed.map(normalizePenandatangan).filter((item) => !isDummyPenandatangan(item))
+        : [];
     } catch {
       return [];
     }
   },
   saveAll: (data: Penandatangan[]) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      const filtered = data.filter((item) => !isDummyPenandatangan(item));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     }
   },
 
@@ -164,7 +182,9 @@ export const penandatanganService = {
           Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }
         >("/api/v1/penandatangan", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        const normalized = list.map(normalizePenandatangan);
+        const normalized = list
+          .map(normalizePenandatangan)
+          .filter((item) => !isDummyPenandatangan(item));
         if (normalized.length > 0) {
           penandatanganService.saveAll(normalized);
         }

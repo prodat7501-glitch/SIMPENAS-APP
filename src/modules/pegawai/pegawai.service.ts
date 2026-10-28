@@ -23,66 +23,46 @@ const normalizePegawai = (item: Pegawai | Record<string, unknown>): Pegawai => {
   };
 };
 
-const defaultPegawai: Pegawai[] = [
-  {
-    id: "pg1",
-    kategoriPegawai: "ASN/Sekretariat",
-    nip: "19900815 201801 1 002",
-    nama: "Eriyanto",
-    jabatanId: "j4",
-    unitKerjaId: "u4",
-    pangkatId: "p6",
-    roleAplikasi: "Pegawai",
-    status: "Aktif",
-  },
-  {
-    id: "pg2",
-    kategoriPegawai: "ASN/Sekretariat",
-    nip: "19850212 201201 1 001",
-    nama: "Andi Saputra",
-    jabatanId: "j3",
-    unitKerjaId: "u4",
-    pangkatId: "p4",
-    roleAplikasi: "Supervisor",
-    status: "Aktif",
-  },
-  {
-    id: "pg3",
-    kategoriPegawai: "ASN/Sekretariat",
-    nip: "19750824 200212 1 002",
-    nama: "Herman Monoarfa, M.Si",
-    jabatanId: "j1",
-    unitKerjaId: "u1",
-    pangkatId: "p1",
-    roleAplikasi: "Supervisor",
-    status: "Aktif",
-  },
-];
+export const isDummyPegawai = (p: Pegawai | Record<string, unknown>): boolean => {
+  const raw = p as Record<string, unknown>;
+  const nama = String(raw.nama || "").trim().toLowerCase();
+  const nip = String(raw.nip || "").replace(/\s+/g, "");
+  const id = String(raw.id || "").trim().toLowerCase();
+  if (id === "pg1" || id === "pg2" || id === "pg3") return true;
+  if (nama === "andi saputra" || nama.includes("herman monoarfa")) return true;
+  if (nama === "eriyanto" && (nip === "199008152018011002" || id === "pg1")) return true;
+  if (nip === "198502122012011001" || nip === "197508242002121002") return true;
+  return false;
+};
+
+const defaultPegawai: Pegawai[] = [];
 
 export const pegawaiService = {
   getAll: (): Pegawai[] => {
     if (typeof window === "undefined") return defaultPegawai;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultPegawai));
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(stored) as Pegawai[];
+      const normalized = (Array.isArray(parsed) ? parsed : [])
+        .map(normalizePegawai)
+        .filter((p) => !isDummyPegawai(p));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
       return sortPegawais(
-        defaultPegawai,
+        normalized,
         jabatanService.getAll(),
         pangkatService.getAll(),
       );
+    } catch {
+      return [];
     }
-    const parsed = JSON.parse(stored) as Pegawai[];
-    const normalized = parsed.map(normalizePegawai);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-    return sortPegawais(
-      normalized,
-      jabatanService.getAll(),
-      pangkatService.getAll(),
-    );
   },
   saveAll: (data: Pegawai[]) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      const filtered = data.filter((p) => !isDummyPegawai(p));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     }
   },
   // REST API Integration (/api/v1/pegawai)
@@ -100,7 +80,9 @@ export const pegawaiService = {
           Pegawai[] | { data?: Pegawai[]; items?: Pegawai[] }
         >("/api/v1/pegawai", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        const normalized = list.map(normalizePegawai);
+        const normalized = list
+          .map(normalizePegawai)
+          .filter((p) => !isDummyPegawai(p));
         if (normalized.length > 0) {
           pegawaiService.saveAll(normalized);
         }

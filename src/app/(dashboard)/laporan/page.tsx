@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import {
   canAccessLaporanByNotaDinas,
@@ -33,6 +34,7 @@ import { useSpt } from "@/modules/spt/useSpt";
 export default function LaporanPage() {
   const { user, hasPermission } = useAuth();
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const { items: sppds } = useSppd();
   const { items: spts } = useSpt();
   const { items: notas } = useNotaDinas();
@@ -190,9 +192,15 @@ export default function LaporanPage() {
       );
       return;
     }
-    if (!confirm("Hapus laporan ini?")) return;
+    const isConfirmed = await confirm({
+      title: "Hapus Laporan Perjalanan",
+      message: "Apakah Anda yakin ingin menghapus laporan perjalanan dinas ini? Tindakan ini bersifat permanen.",
+      variant: "danger",
+      confirmText: "Ya, Hapus Data",
+    });
+    if (!isConfirmed) return;
     await laporan.remove(id);
-    addToast("Laporan berhasil dihapus", "success");
+    addToast("Laporan berhasil dihapus.", "success");
   };
   const verify = async (
     status: Extract<LaporanStatus, "Perlu Revisi" | "Terverifikasi">,

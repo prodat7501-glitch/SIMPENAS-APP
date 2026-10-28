@@ -15,6 +15,7 @@ import { Trash2, FileText, User, Hash, PlusCircle } from "lucide-react";
 import { z } from "zod";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
 import { isPenandatanganAvailable } from "@/modules/penandatangan/penandatangan.service";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type JenisPersonilSpt = "Sekretariat" | "Komisioner";
 type SubmitAction = "save" | "saveAndNextKomisioner";
@@ -42,6 +43,7 @@ export function SptForm({
   onGenerateNomor,
   onNumberReserved,
 }: SptFormProps) {
+  const { alert: showAlert } = useConfirm();
   const [jenisPersonilSpt, setJenisPersonilSpt] =
     React.useState<JenisPersonilSpt>("Sekretariat");
   const [submitAction, setSubmitAction] = React.useState<SubmitAction>("save");
@@ -323,15 +325,21 @@ export function SptForm({
         const rest = data;
         const signerText = getSignerText(rest.penandatanganId);
         if (isKomisionerSpt && !isKetuaKpuSigner(signerText)) {
-          alert(
-            "SPT yang berisi Komisioner KPU wajib ditandatangani oleh Ketua KPU.",
-          );
+          void showAlert({
+            title: "Pejabat Penandatangan Tidak Sesuai",
+            message: "SPT yang memuat personel Komisioner KPU wajib ditandatangani oleh Ketua KPU.",
+            variant: "warning",
+            confirmText: "Mengerti",
+          });
           return;
         }
         if (!isKomisionerSpt && !isSekretarisSigner(signerText)) {
-          alert(
-            "SPT Sekretariat wajib ditandatangani oleh Sekretaris/PLT Sekretaris/PLH Sekretaris.",
-          );
+          void showAlert({
+            title: "Pejabat Penandatangan Tidak Sesuai",
+            message: "SPT Sekretariat wajib ditandatangani oleh Sekretaris / PLT Sekretaris / PLH Sekretaris KPU.",
+            variant: "warning",
+            confirmText: "Mengerti",
+          });
           return;
         }
         onSubmit(

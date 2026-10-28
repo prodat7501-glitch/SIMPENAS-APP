@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import {
   documentTypes,
@@ -56,6 +57,7 @@ export default function PengaturanPage() {
     note: "",
   });
   const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const queryClient = useQueryClient();
   const canUpdate = hasPermission("Pengaturan Penomoran", "U");
   const preview = useMemo(
@@ -66,11 +68,14 @@ export default function PengaturanPage() {
     managedNumberTypes.includes(item.documentType),
   );
 
-  const handleApplyExistingNumbers = () => {
+  const handleApplyExistingNumbers = async () => {
     if (!canUpdate) return;
-    const ok = confirm(
-      "Terapkan format nomor terbaru ke SPT dan SPPD existing? Nomor lama akan diganti sesuai format saat ini.",
-    );
+    const ok = await confirm({
+      title: "Terapkan Format Penomoran",
+      message: "Terapkan format nomor terbaru ke SPT dan SPPD existing? Nomor lama akan diganti sesuai format saat ini.",
+      variant: "warning",
+      confirmText: "Ya, Terapkan",
+    });
     if (!ok) return;
     try {
       const changes = applyExistingNumberingService.applySptAndSppd();
@@ -113,11 +118,14 @@ export default function PengaturanPage() {
     }
   };
 
-  const handleCancelBooking = (item: NumberHistory) => {
+  const handleCancelBooking = async (item: NumberHistory) => {
     if (!canUpdate) return;
-    const ok = confirm(
-      `Batalkan booking nomor ${item.number}? Nomor ini akan tersedia kembali.`,
-    );
+    const ok = await confirm({
+      title: "Batalkan Booking Nomor",
+      message: `Batalkan booking nomor ${item.number}? Nomor ini akan tersedia kembali untuk penomoran.`,
+      variant: "warning",
+      confirmText: "Ya, Batalkan",
+    });
     if (!ok) return;
     try {
       penomoranService.cancelBooking(
