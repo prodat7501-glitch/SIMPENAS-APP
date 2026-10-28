@@ -19,34 +19,118 @@ export type ApprovalItem =
   | (NotaDinas & { documentType: "Nota Dinas" })
   | (Spt & { documentType: "SPT" });
 
-type LegacyApprovalHistory = ApprovalHistory & {
-  sptId?: string;
-  nomorSpt?: string;
+const normalizeHistory = (raw: unknown): ApprovalHistory => {
+  const item =
+    (typeof raw === "object" && raw !== null
+      ? raw
+      : {}) as Record<string, unknown>;
+
+  const id = String(item.id || `apprv-${Date.now()}`);
+  const documentId = String(
+    item.documentId || item.document_id || item.sptId || "",
+  );
+  const docTypeRaw = String(
+    item.documentType || item.document_type || "Nota Dinas",
+  );
+  const documentType: "Nota Dinas" | "SPT" = docTypeRaw
+    .toLowerCase()
+    .includes("spt")
+    ? "SPT"
+    : "Nota Dinas";
+
+  // Ambil atau pulihkan nomor dokumen
+  let nomorDokumen = String(
+    item.nomorDokumen || item.nomor_dokumen || item.nomorSpt || item.nomor || "",
+  ).trim();
+
+  if (!nomorDokumen || nomorDokumen === "-") {
+    if (documentId) {
+      if (documentType === "Nota Dinas") {
+        const nd = notaDinasService.getAll().find((n) => n.id === documentId);
+        if (nd && nd.nomor && nd.nomor !== "-") {
+          nomorDokumen = nd.nomor;
+        } else if (nd && nd.perihal) {
+          nomorDokumen = `(${nd.perihal})`;
+        }
+      } else {
+        const spt = sptService.getAll().find((s) => s.id === documentId);
+        if (spt && spt.nomor && spt.nomor !== "-") {
+          nomorDokumen = spt.nomor;
+        }
+      }
+    } else {
+      // Jika documentId pada baris historis kosong, cari Nota Dinas terakhir yang berstatus Disetujui
+      const approvedNota = notaDinasService
+        .getAll()
+        .find((n) => n.status === "Disetujui");
+      if (approvedNota && approvedNota.nomor && approvedNota.nomor !== "-") {
+        nomorDokumen = approvedNota.nomor;
+      }
+    }
+  }
+  if (!nomorDokumen) nomorDokumen = "-";
+
+  // Ambil atau pulihkan status keputusan
+  const rawStatus = String(
+    item.status || item.to_status || item.action || "Disetujui",
+  ).trim();
+  const status: "Disetujui" | "Perlu Revisi" =
+    rawStatus.toLowerCase().includes("revisi") ||
+    rawStatus.toLowerCase().includes("tolak")
+      ? "Perlu Revisi"
+      : "Disetujui";
+
+  // Ambil atau pulihkan tanggal keputusan
+  let tanggal = String(
+    item.tanggal || item.created_at || item.createdAt || "",
+  ).trim();
+  if (!tanggal || isNaN(new Date(tanggal).getTime())) {
+    tanggal = new Date().toISOString();
+  }
+
+  // Ambil atau pulihkan approver
+  let approver = String(
+    item.approver || item.user_name || item.userName || "",
+  ).trim();
+  if (!approver || approver === "undefined") {
+    approver = "Sekretaris KPU";
+  }
+
+  const catatan = String(item.catatan || item.note || "").trim();
+  const recipientPegawaiId = item.recipientPegawaiId
+    ? String(item.recipientPegawaiId)
+    : item.recipient_pegawai_id
+    ? String(item.recipient_pegawai_id)
+    : undefined;
+
+  return {
+    id,
+    documentId,
+    documentType,
+    nomorDokumen,
+    tanggal,
+    approver,
+    status,
+    catatan,
+    recipientPegawaiId,
+  };
 };
 
-const normalizeHistory = (item: LegacyApprovalHistory): ApprovalHistory => ({
-  id: item.id,
-  documentId: item.documentId ?? item.sptId ?? "",
-  documentType: item.documentType ?? "SPT",
-  nomorDokumen: item.nomorDokumen ?? item.nomorSpt ?? "-",
-  tanggal: item.tanggal,
-  approver: item.approver,
-  status: item.status,
-  catatan: item.catatan,
-  recipientPegawaiId: item.recipientPegawaiId,
-});
+const getHistory = (): ApprovalHistory[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    return (Array.isArray(raw) ? raw : []).map(normalizeHistory);
+  } catch {
+    return [];
+  }
+};
 
-const getHistory = (): ApprovalHistory[] =>
-  typeof window === "undefined"
-    ? []
-    : (
-        JSON.parse(
-          localStorage.getItem(HISTORY_KEY) ?? "[]",
-        ) as LegacyApprovalHistory[]
-      ).map(normalizeHistory);
 const saveHistory = (items: ApprovalHistory[]) => {
-  if (typeof window !== "undefined")
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+  if (typeof window !== "undefined") {
+    const normalized = items.map(normalizeHistory);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(normalized));
+  }
 };
 
 export const approvalService = {
@@ -63,26 +147,51 @@ export const approvalService = {
     ];
     return pending.filter((item) => canUserApproveDocument(user, item, notas));
   },
-  listHistory: async (params?: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }): Promise<ApprovalHistory[]> => {
+
+  listHistory: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<ApprovalHistory[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.get<ApprovalHistory[] | { data?: ApprovalHistory[]; items?: ApprovalHistory[] }>("/api/v1/approval-history", params);
+        const res = await apiClient.get<
+          ApprovalHistory[] | { data?: ApprovalHistory[]; items?: ApprovalHistory[] }
+        >("/api/v1/approval-history", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map(normalizeHistory);
+        const normalized = list.map(normalizeHistory);
+        if (normalized.length > 0) {
+          saveHistory(normalized);
+        }
+        return normalized;
       },
-      () => getHistory()
+      () => getHistory(),
     );
   },
+
   clearHistory: async (role: UserRole): Promise<number> => {
-    if (role !== "Administrator") {
+    if (role !== "Administrator" && role !== "Supervisor") {
       throw new Error(
-        "Hanya Administrator yang dapat membersihkan riwayat approval.",
+        "Hanya Administrator atau Supervisor yang dapat membersihkan riwayat approval.",
       );
     }
-    const total = getHistory().length;
+    const current = getHistory();
+    const total = current.length;
+    try {
+      await Promise.allSettled(
+        current.map((i) =>
+          apiClient.delete(`/api/v1/approval-history/${i.id}`),
+        ),
+      );
+    } catch (e) {
+      console.warn("Gagal menghapus riwayat approval di cloud:", e);
+    }
     saveHistory([]);
     return total;
   },
+
   decide: async (
     input: ApprovalDecision,
     user: UserSession,
@@ -115,18 +224,34 @@ export const approvalService = {
     );
     if (isNotaDinas) {
       notaDinasService.saveAll(updatedItems as NotaDinas[]);
+      try {
+        await notaDinasService.apiUpdate(data.documentId, {
+          status: data.decision,
+          catatanRevisi,
+        });
+      } catch (e) {
+        console.warn("Gagal update status nota dinas ke cloud:", e);
+      }
     } else {
       sptService.saveAll(updatedItems as Spt[]);
+      try {
+        await sptService.apiUpdate(data.documentId, {
+          status: data.decision,
+        });
+      } catch (e) {
+        console.warn("Gagal update status spt ke cloud:", e);
+      }
     }
     const recipientPegawaiId = isNotaDinas
       ? getNotaDinasCreatorPegawaiId(target as NotaDinas)
       : (target as Spt).createdByPegawaiId ||
         (target as Spt).personil[0]?.pegawaiId;
+
     const history: ApprovalHistory = {
       id: `approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       documentId: data.documentId,
       documentType: data.documentType,
-      nomorDokumen: target.nomor,
+      nomorDokumen: target.nomor || "-",
       tanggal: new Date().toISOString(),
       approver: data.approver,
       status: data.decision,
@@ -134,30 +259,67 @@ export const approvalService = {
       recipientPegawaiId,
     };
 
+    const payload = {
+      ...history,
+      document_id: history.documentId,
+      document_type: history.documentType,
+      nomor_dokumen: history.nomorDokumen,
+      status: history.status,
+      to_status: history.status,
+      action: history.status,
+      catatan: history.catatan,
+      note: history.catatan,
+      approver: history.approver,
+      user_name: history.approver,
+      recipient_pegawai_id: history.recipientPegawaiId,
+      tanggal: history.tanggal,
+      created_at: history.tanggal,
+    };
+
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<ApprovalHistory | { data?: ApprovalHistory }>("/api/v1/approval-history", history);
-        const unwrapped = (res as { data?: ApprovalHistory }).data || (res as ApprovalHistory);
-        return normalizeHistory(unwrapped);
+        const res = await apiClient.post<
+          ApprovalHistory | { data?: ApprovalHistory }
+        >("/api/v1/approval-history", payload);
+        const unwrapped =
+          (res as { data?: ApprovalHistory }).data || (res as ApprovalHistory);
+        const normalized = normalizeHistory(unwrapped);
+        saveHistory([
+          normalized,
+          ...getHistory().filter((h) => h.id !== normalized.id),
+        ]);
+        return normalized;
       },
       async () => {
-        saveHistory([history, ...getHistory()]);
+        saveHistory([
+          history,
+          ...getHistory().filter((h) => h.id !== history.id),
+        ]);
         return history;
-      }
+      },
     );
   },
-  apiBulkCreate: async (data: Partial<ApprovalHistory>[]): Promise<ApprovalHistory[]> => {
+
+  apiBulkCreate: async (
+    data: Partial<ApprovalHistory>[],
+  ): Promise<ApprovalHistory[]> => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.bulkPost<ApprovalHistory[] | { data?: ApprovalHistory[] }>("/api/v1/approval-history", data);
+        const res = await apiClient.bulkPost<
+          ApprovalHistory[] | { data?: ApprovalHistory[] }
+        >("/api/v1/approval-history", data);
         const list = Array.isArray(res) ? res : res.data || [];
-        return list.map(normalizeHistory);
+        const normalized = list.map(normalizeHistory);
+        saveHistory(normalized);
+        return normalized;
       },
       async () => {
-        const normalized = data.map((d) => normalizeHistory(d as ApprovalHistory));
+        const normalized = data.map((d) =>
+          normalizeHistory(d as ApprovalHistory),
+        );
         saveHistory([...normalized, ...getHistory()]);
         return normalized;
-      }
+      },
     );
   },
 };

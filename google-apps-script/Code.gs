@@ -68,7 +68,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "jenis", "nomor", "tanggal", "sppd_id", "jumlah_dibayarkan", "terbilang", "untuk_pembayaran", "penerima_nama", "penerima_nip", "bendahara_nama", "ppk_nama", "data_json", "created_at", "updated_at"
   ],
   approval_history: [
-    "id", "document_type", "document_id", "action", "from_status", "to_status", "note", "user_id", "user_name", "created_at"
+    "id", "document_type", "document_id", "nomor_dokumen", "status", "action", "from_status", "to_status", "catatan", "note", "approver", "user_id", "user_name", "recipient_pegawai_id", "tanggal", "created_at", "updated_at"
   ],
   arsip_spj: [
     "id", "sppd_id", "nomor_sppd", "nama_file", "file_size", "url_file", "hash_file", "uploaded_by", "created_at"
@@ -1305,6 +1305,16 @@ function rowValuesToObject(rowValues, headers) {
   if (obj.uraian !== undefined && !obj.klasifikasiRincianOutput) obj.klasifikasiRincianOutput = obj.uraian;
   if (obj.pagu_awal !== undefined && obj.pagu === undefined) obj.pagu = obj.pagu_awal;
   if (obj.tahun !== undefined && !obj.tahunAnggaran) obj.tahunAnggaran = String(obj.tahun);
+
+  // Kompatibilitas cerdas untuk tabel approval_history
+  if (obj.document_id !== undefined && !obj.documentId) obj.documentId = obj.document_id;
+  if (obj.document_type !== undefined && !obj.documentType) obj.documentType = obj.document_type;
+  if (obj.nomor_dokumen !== undefined && !obj.nomorDokumen) obj.nomorDokumen = obj.nomor_dokumen;
+  if (!obj.status) obj.status = obj.to_status || obj.action || "Disetujui";
+  if (!obj.catatan) obj.catatan = obj.note || "";
+  if (!obj.approver) obj.approver = obj.user_name || "Sekretaris";
+  if (!obj.tanggal) obj.tanggal = obj.created_at || new Date().toISOString();
+  if (obj.recipient_pegawai_id !== undefined && !obj.recipientPegawaiId) obj.recipientPegawaiId = obj.recipient_pegawai_id;
   
   return obj;
 }
@@ -1323,6 +1333,19 @@ function objectToRowValues(obj, headers) {
   else if (obj.program && !obj.uraian) obj.uraian = obj.program;
   if (obj.pagu !== undefined && obj.pagu_awal === undefined) obj.pagu_awal = obj.pagu;
   if (obj.tahunAnggaran && !obj.tahun) obj.tahun = obj.tahunAnggaran;
+
+  // Mapping fallback jika input approval_history dari frontend
+  if (obj.documentId && !obj.document_id) obj.document_id = obj.documentId;
+  if (obj.documentType && !obj.document_type) obj.document_type = obj.documentType;
+  if (obj.nomorDokumen && !obj.nomor_dokumen) obj.nomor_dokumen = obj.nomorDokumen;
+  if (obj.status) {
+    if (!obj.to_status) obj.to_status = obj.status;
+    if (!obj.action) obj.action = obj.status;
+  }
+  if (obj.catatan && !obj.note) obj.note = obj.catatan;
+  if (obj.approver && !obj.user_name) obj.user_name = obj.approver;
+  if (obj.recipientPegawaiId && !obj.recipient_pegawai_id) obj.recipient_pegawai_id = obj.recipientPegawaiId;
+  if (obj.tanggal && !obj.created_at) obj.created_at = obj.tanggal;
 
   var row = [];
   for (var i = 0; i < headers.length; i++) {

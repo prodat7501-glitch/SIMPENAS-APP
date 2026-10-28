@@ -24,7 +24,8 @@ export default function ApprovalPage() {
   const { items: jabatans } = useJabatan();
   const canApprove = hasPermission("Approval", "A");
   const canClearHistory =
-    user?.role === "Administrator" && hasPermission("Approval", "D");
+    (user?.role === "Administrator" || user?.role === "Supervisor") &&
+    hasPermission("Approval", "D");
   if (!hasPermission("Approval", "R"))
     return (
       <Alert variant="error" title="Akses Ditolak">
@@ -51,7 +52,7 @@ export default function ApprovalPage() {
   const clearHistory = async () => {
     if (!user || !canClearHistory) {
       addToast(
-        "Hanya Administrator yang dapat membersihkan riwayat approval.",
+        "Hanya Administrator atau Supervisor yang dapat membersihkan riwayat approval.",
         "error",
       );
       return;
@@ -124,13 +125,40 @@ export default function ApprovalPage() {
           <Alert variant="info">Belum ada riwayat keputusan approval.</Alert>
         ) : (
           <Timeline
-            events={approval.history.map((item) => ({
-              id: item.id,
-              title: `${item.documentType} ${item.nomorDokumen} — ${item.status}`,
-              description: item.catatan || `Diproses oleh ${item.approver}`,
-              time: new Date(item.tanggal).toLocaleString("id-ID"),
-              status: item.status === "Disetujui" ? "success" : "danger",
-            }))}
+            events={approval.history.map((item) => {
+              const docNum =
+                item.nomorDokumen && item.nomorDokumen !== "-"
+                  ? item.nomorDokumen
+                  : "Tanpa Nomor";
+              const validDate =
+                item.tanggal && !isNaN(new Date(item.tanggal).getTime())
+                  ? new Date(item.tanggal).toLocaleString("id-ID", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                  : new Date().toLocaleString("id-ID", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    });
+              const approverName =
+                item.approver && item.approver !== "undefined"
+                  ? item.approver
+                  : "Sekretaris KPU";
+              const desc = item.catatan
+                ? item.catatan
+                : `Diproses oleh ${approverName}`;
+              const title = `${item.documentType || "Dokumen"} ${docNum} — ${
+                item.status || "Disetujui"
+              }`;
+
+              return {
+                id: item.id,
+                title,
+                description: desc,
+                time: validDate,
+                status: item.status === "Disetujui" ? "success" : "danger",
+              };
+            })}
           />
         )}
       </section>
