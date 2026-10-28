@@ -1,8 +1,10 @@
 import { Spt } from "./spt.schema";
 import { notaDinasService } from "@/modules/nota-dinas/nota-dinas.service";
 import { pegawaiService } from "@/modules/pegawai/pegawai.service";
+import { isPegawaiKomisioner } from "@/modules/pegawai/pegawai-order";
 import {
   createPenandatanganSnapshot,
+  isKetuaKpuSigner,
   penandatanganService,
 } from "@/modules/penandatangan/penandatangan.service";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
@@ -34,10 +36,7 @@ const getHighestStoredSequence = (items: Spt[]) =>
 const normalizeText = (value: string) => value.toLowerCase();
 const isKomisionerPegawai = (pegawaiId: string) => {
   const pegawai = pegawaiService.getAll().find((item) => item.id === pegawaiId);
-  return (
-    pegawai?.kategoriPegawai === "Ketua KPU" ||
-    pegawai?.kategoriPegawai === "Anggota KPU"
-  );
+  return isPegawaiKomisioner(pegawai);
 };
 const getSignerText = (penandatanganId: string) => {
   const signer = penandatanganService
@@ -49,7 +48,7 @@ const getSignerText = (penandatanganId: string) => {
 };
 const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
   const signerText = getSignerText(item.penandatanganId);
-  const isKetuaKpuSpt = signerText.includes("ketua kpu");
+  const isKetuaKpuSpt = isKetuaKpuSigner(signerText);
   const filteredPersonil = (item.personil || []).filter((person) =>
     isKetuaKpuSpt
       ? isKomisionerPegawai(person.pegawaiId)

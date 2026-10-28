@@ -122,9 +122,11 @@ const toNonNegativeNumber = (value: unknown) => {
 };
 
 const normalizeLampiranItem = (
-  item: LegacyLampiranItem,
+  rawItem: LegacyLampiranItem,
   jenis: NotaDinas["jenis"],
 ): LampiranItem => {
+  const item =
+    (typeof rawItem === "object" && rawItem !== null ? rawItem : {}) as LegacyLampiranItem;
   const volume = Math.max(1, Math.trunc(toNonNegativeNumber(item.volume)) || 1);
   const normalized: LampiranItem = {
     ...item,
@@ -198,7 +200,9 @@ const normalizeNotaDinas = (raw: unknown): NotaDinas => {
       rawLampiran = [];
     }
   }
-  const lampiranArray: LegacyLampiranItem[] = Array.isArray(rawLampiran) ? rawLampiran : [];
+  const lampiranArray: LegacyLampiranItem[] = Array.isArray(rawLampiran)
+    ? rawLampiran.filter((r): r is LegacyLampiranItem => Boolean(r && typeof r === "object"))
+    : [];
 
   const jenis = (item.jenis as NotaDinas["jenis"]) || "Luar Kota";
   const penandatanganId = String(item.penandatanganId || item.penandatangan_id || "");
@@ -235,8 +239,20 @@ const normalizeNotaDinas = (raw: unknown): NotaDinas => {
     }
   }
   if (!Array.isArray(travelConflicts)) travelConflicts = [];
+  const safeTravelConflicts = (travelConflicts as unknown[]).filter(
+    (c): c is NotaDinasTravelConflict => Boolean(c && typeof c === "object"),
+  );
 
-  const snapshot = (item.penandatanganSnapshot ?? item.penandatangan_snapshot) as NotaDinas["penandatanganSnapshot"];
+  let rawSnapshot = item.penandatanganSnapshot ?? item.penandatangan_snapshot;
+  if (typeof rawSnapshot === "string") {
+    try {
+      rawSnapshot = JSON.parse(rawSnapshot);
+    } catch {
+      rawSnapshot = null;
+    }
+  }
+  const snapshot =
+    (typeof rawSnapshot === "object" && rawSnapshot !== null ? rawSnapshot : null) as NotaDinas["penandatanganSnapshot"];
 
   const calculatedTotal = lampiran.reduce((sum, row) => sum + row.total, 0);
   const totalBiaya = calculatedTotal > 0 ? calculatedTotal : Number(item.totalBiaya || item.total_biaya || 0);
@@ -260,7 +276,7 @@ const normalizeNotaDinas = (raw: unknown): NotaDinas => {
     penandatanganId,
     createdByPegawaiId,
     catatanRevisi,
-    travelConflicts: travelConflicts as NotaDinasTravelConflict[],
+    travelConflicts: safeTravelConflicts,
     lampiran,
     totalBiaya,
     penandatanganSnapshot:

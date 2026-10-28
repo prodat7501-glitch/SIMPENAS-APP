@@ -7,6 +7,7 @@ import type { LoginInput } from "@/schemas/auth.schema";
 import { AuthService } from "@/services/auth.service";
 import { verifyTotpToken } from "@/lib/totp";
 import { userAccountService } from "@/modules/user-account/user-account.service";
+import { isKasubbagSigner } from "@/modules/penandatangan/penandatangan.service";
 
 const ADMIN_ONLY_DOCUMENT_DELETE = new Set([
   "Nota Dinas",
@@ -193,6 +194,17 @@ export function useAuth() {
     // Admin has access to almost everything (CRUD/etc.)
     if (role === "Administrator") {
       return true;
+    }
+
+    // Kasubbag (or Sub Bagian Keuangan) authoritative access to Nota Dinas
+    const isKasubbagUser =
+      role === "Sub Bagian Keuangan" ||
+      isKasubbagSigner(role) ||
+      isKasubbagSigner(user.username) ||
+      isKasubbagSigner(user.name);
+
+    if (isKasubbagUser && moduleName === "Nota Dinas") {
+      return ["C", "R", "U", "G", "P", "N"].includes(action);
     }
 
     // Role Supervisor permissions mapping

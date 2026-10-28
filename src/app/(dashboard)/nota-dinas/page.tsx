@@ -58,19 +58,23 @@ const formatTanggal = (value: string) => {
   }).format(date);
 };
 
-const normalizeName = (value: string) =>
-  value.trim().toLocaleLowerCase("id-ID");
+const normalizeName = (value: unknown) =>
+  String(value || "").trim().toLocaleLowerCase("id-ID");
 
-const normalizeNip = (value: string) => value.replace(/\D/g, "");
+const normalizeNip = (value: unknown) =>
+  String(value || "").replace(/\D/g, "");
 
 const getPrintableCostColumns = (item: NotaDinas): LampiranCostLine[] => {
   const columns = new Map<LampiranCostLine["key"], LampiranCostLine>();
-  (item.lampiran || []).forEach((row) => {
-    getLampiranCostLines(row, item.jenis).forEach((line) => {
-      if (line.subtotal > 0 && !columns.has(line.key)) {
-        columns.set(line.key, line);
-      }
-    });
+  const list = Array.isArray(item.lampiran) ? item.lampiran : [];
+  list.forEach((row) => {
+    if (row && typeof row === "object") {
+      getLampiranCostLines(row, item.jenis).forEach((line) => {
+        if (line && line.subtotal > 0 && !columns.has(line.key)) {
+          columns.set(line.key, line);
+        }
+      });
+    }
   });
   return Array.from(columns.values());
 };
@@ -110,12 +114,13 @@ export default function NotaDinasPage() {
   const userAccounts = useMemo(() => userAccountService.getAll(), []);
   const matchedUserAccount = useMemo(() => {
     if (!user) return null;
+    const userLogin = String(user.username || "").toLowerCase().trim();
     return (
       userAccounts.find((acc) => acc.id === user.id) ??
       userAccounts.find(
         (acc) =>
-          acc.username.toLowerCase().trim() ===
-          user.username.toLowerCase().trim(),
+          acc.username &&
+          acc.username.toLowerCase().trim() === userLogin,
       ) ??
       null
     );
@@ -146,7 +151,7 @@ export default function NotaDinasPage() {
     if (normalizedUserLoginName) {
       const found = pegawais.find((p) => {
         const pNip = normalizeNip(p.nip);
-        const pNama = p.nama.toLowerCase();
+        const pNama = (p.nama || "").toLowerCase();
         return (
           (pNip && pNip === normalizedUserLoginName) ||
           pNama.includes(normalizedUserLoginName) ||
@@ -186,10 +191,10 @@ export default function NotaDinasPage() {
   // Daftar seluruh pejabat penandatangan Kasubbag aktif
   const kasubbagPenandatangans = useMemo(() => {
     return penandatangans.filter((item) => {
-      const signerIdentity = `${item.jabatanPenandatangan} ${item.peran}`;
+      const signerIdentity = `${item.jabatanPenandatangan || ""} ${item.peran || ""}`;
       return (
         isKasubbagSigner(signerIdentity) &&
-        isPenandatanganAvailable(item, "Nota Dinas")
+        (item.status === "Aktif" || !item.status)
       );
     });
   }, [penandatangans]);
@@ -242,7 +247,7 @@ export default function NotaDinasPage() {
 
     // 4. Jika pengguna yang login adalah akun Kasubbag / Sub Bagian Keuangan / Administrator:
     // Hubungkan secara otomatis ke Pejabat Penandatangan Kasubbag yang terdaftar
-    if (isUserKasubbag || user?.role === "Administrator") {
+    if (isUserKasubbag || user?.role === "Administrator" || user?.role === "Supervisor") {
       if (currentPegawaiJabatan) {
         const matched = kasubbagPenandatangans.find((item) => {
           const j1 = normalizeName(item.jabatanPenandatangan);
@@ -254,7 +259,7 @@ export default function NotaDinasPage() {
       return kasubbagPenandatangans[0];
     }
 
-    return null;
+    return kasubbagPenandatangans[0] || null;
   }, [
     kasubbagPenandatangans,
     currentPegawai,
@@ -336,10 +341,13 @@ export default function NotaDinasPage() {
 
   const handleFormSubmit = (data: Omit<NotaDinas, "id">) => {
     const authoritativePenandatanganId =
-      editingItem?.penandatanganId ?? currentNotaDinasPenandatangan?.id;
+      data.penandatanganId ||
+      editingItem?.penandatanganId ||
+      currentNotaDinasPenandatangan?.id ||
+      kasubbagPenandatangans[0]?.id;
     if (!authoritativePenandatanganId) {
       addToast(
-        "Akun login belum terhubung dengan Pejabat Penandatangan Nota Dinas aktif",
+        "Belum ada data Pejabat Kasubbag aktif di Master Penandatangan",
         "error",
       );
       return;
@@ -504,11 +512,12 @@ export default function NotaDinasPage() {
               {
                 header: "Personil",
                 value: (item) =>
-                  (item.lampiran || [])
+                  (Array.isArray(item.lampiran) ? item.lampiran : [])
                     .map(
                       (row) =>
-                        pegawais.find((pegawai) => pegawai.id === row.pegawaiId)
-                          ?.nama ?? row.pegawaiId,
+                        (row && row.pegawaiId
+                          ? pegawais.find((pegawai) => pegawai.id === row.pegawaiId)?.nama ?? row.pegawaiId
+                          : "-"),
                     )
                     .join(", "),
                 width: 240,
@@ -525,18 +534,11 @@ export default function NotaDinasPage() {
           {canCreate && (
             <Button
               onClick={() => {
-                if (!currentNotaDinasPenandatangan) {
-                  if (kasubbagPenandatangans.length === 0) {
-                    addToast(
-                      "Belum ada data Pejabat Kasubbag aktif di Master Penandatangan. Silakan daftarkan pejabat Kasubbag terlebih dahulu di menu Master Penandatangan.",
-                      "error",
-                    );
-                  } else {
-                    addToast(
-                      "Hanya Kepala Subbagian (Kasubbag) yang terdaftar di Master Penandatangan yang berwenang membuat Nota Dinas.",
-                      "error",
-                    );
-                  }
+                if (kasubbagPenandatangans.length === 0) {
+                  addToast(
+                    "Belum ada data Pejabat Kasubbag aktif di Master Penandatangan. Silakan daftarkan pejabat Kasubbag terlebih dahulu di menu Master Penandatangan.",
+                    "error",
+                  );
                   return;
                 }
                 setEditingItem(null);

@@ -9,12 +9,21 @@ import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Select } from "@/components/ui/select";
 import { Spt, sptSchema } from "../spt.schema";
 import { Pegawai } from "@/modules/pegawai/pegawai.schema";
-import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
+import {
+  isPegawaiKomisioner as checkIsPegawaiKomisioner,
+  sortByPegawaiOrder,
+} from "@/modules/pegawai/pegawai-order";
 import { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
 import { Trash2, FileText, User, Hash, PlusCircle } from "lucide-react";
 import { z } from "zod";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
-import { isPenandatanganAvailable } from "@/modules/penandatangan/penandatangan.service";
+import {
+  createPenandatanganSnapshot,
+  isKetuaKpuSigner,
+  isPenandatanganAvailable,
+  isSekretarisSigner,
+} from "@/modules/penandatangan/penandatangan.service";
+import { useJabatan } from "@/modules/jabatan/useJabatan";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type JenisPersonilSpt = "Sekretariat" | "Komisioner";
@@ -43,6 +52,7 @@ export function SptForm({
   onGenerateNomor,
   onNumberReserved,
 }: SptFormProps) {
+  const { items: jabatans } = useJabatan();
   const { alert: showAlert } = useConfirm();
   const [jenisPersonilSpt, setJenisPersonilSpt] =
     React.useState<JenisPersonilSpt>("Sekretariat");
@@ -113,26 +123,13 @@ export function SptForm({
   const selectedNotaDinas = notaDinasItems.find(
     (item) => item.id === watchNotaDinasId,
   );
-  const isSekretarisSigner = (value: string) => {
-    const text = value.toLowerCase();
-    return (
-      text.includes("sekretaris") ||
-      text.includes("plt sekretaris") ||
-      text.includes("plh sekretaris")
-    );
-  };
-  const isKetuaKpuSigner = (value: string) =>
-    value.toLowerCase().includes("ketua kpu");
   const getSignerText = (id: string) => {
     const signer = penandatangans.find((item) => item.id === id);
     return signer ? `${signer.jabatanPenandatangan} ${signer.peran}` : "";
   };
   const isPegawaiKomisioner = (pegawaiId: string) => {
     const pegawai = pegawais.find((item) => item.id === pegawaiId);
-    return (
-      pegawai?.kategoriPegawai === "Ketua KPU" ||
-      pegawai?.kategoriPegawai === "Anggota KPU"
-    );
+    return checkIsPegawaiKomisioner(pegawai, jabatans);
   };
   const filterPersonilByJenis = (nota: NotaDinas, jenis: JenisPersonilSpt) =>
     sortByPegawaiOrder(
@@ -155,9 +152,7 @@ export function SptForm({
   const notaIsMixed = Boolean(
     selectedNotaDinas && notaHasKomisioner && notaHasSekretariat,
   );
-  const isKomisionerSpt =
-    watchPersonil.length > 0 &&
-    watchPersonil.every((person) => isPegawaiKomisioner(person.pegawaiId));
+  const isKomisionerSpt = jenisPersonilSpt === "Komisioner";
   const hasExistingSptForJenis = (
     notaDinasId: string,
     jenis: JenisPersonilSpt,
@@ -168,7 +163,7 @@ export function SptForm({
       }
       const itemIsKomisioner =
         item.personil.length > 0 &&
-        item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId));
+        item.personil.some((person) => isPegawaiKomisioner(person.pegawaiId));
       return jenis === "Komisioner" ? itemIsKomisioner : !itemIsKomisioner;
     });
   const penandatanganOptions = penandatangans.filter((item) => {
@@ -232,19 +227,25 @@ export function SptForm({
       );
       const initialIsKomisioner =
         initialValues.personil.length > 0 &&
-        initialValues.personil.every((person) =>
+        initialValues.personil.some((person) =>
           isPegawaiKomisioner(person.pegawaiId),
         );
-      const nextJenis: JenisPersonilSpt = initialIsKomisioner
-        ? "Komisioner"
-        : "Sekretariat";
+      const signerIsKetua = isKetuaKpuSigner(
+        getSignerText(initialValues.penandatanganId),
+      );
+      const nextJenis: JenisPersonilSpt =
+        initialIsKomisioner || signerIsKetua ? "Komisioner" : "Sekretariat";
       setJenisPersonilSpt(nextJenis);
       setValue(
         "personil",
         nota
           ? filterPersonilByJenis(nota, nextJenis)
           : sortByPegawaiOrder(
-              initialValues.personil,
+              initialValues.personil.filter((person) =>
+                nextJenis === "Komisioner"
+                  ? isPegawaiKomisioner(person.pegawaiId)
+                  : !isPegawaiKomisioner(person.pegawaiId),
+              ),
               (person) => person.pegawaiId,
               pegawais,
             ),
@@ -272,28 +273,58 @@ export function SptForm({
 
   const handleNotaDinasChange = (notaDinasId: string) => {
     const nota = notaDinasItems.find((item) => item.id === notaDinasId);
+    if (!nota) {
+      setValue("notaDinasId", "", { shouldValidate: true });
+      setValue("personil", [], { shouldValidate: true });
+      return;
+    }
+
     const hasSekretariat =
-      nota?.lampiran.some((item) => !isPegawaiKomisioner(item.pegawaiId)) ??
+      nota.lampiran.some((item) => !isPegawaiKomisioner(item.pegawaiId)) ??
       false;
     const hasKomisioner =
-      nota?.lampiran.some((item) => isPegawaiKomisioner(item.pegawaiId)) ??
+      nota.lampiran.some((item) => isPegawaiKomisioner(item.pegawaiId)) ??
       false;
-    const availableJenis: JenisPersonilSpt[] = [
-      ...(hasSekretariat && !hasExistingSptForJenis(notaDinasId, "Sekretariat")
-        ? (["Sekretariat"] as JenisPersonilSpt[])
-        : []),
-      ...(hasKomisioner && !hasExistingSptForJenis(notaDinasId, "Komisioner")
-        ? (["Komisioner"] as JenisPersonilSpt[])
-        : []),
-    ];
-    const nextJenis =
-      availableJenis[0] ?? (hasSekretariat ? "Sekretariat" : "Komisioner");
+
+    let nextJenis: JenisPersonilSpt = "Sekretariat";
+    if (!hasSekretariat && hasKomisioner) {
+      nextJenis = "Komisioner";
+    } else if (
+      hasSekretariat &&
+      hasExistingSptForJenis(notaDinasId, "Sekretariat") &&
+      hasKomisioner
+    ) {
+      nextJenis = "Komisioner";
+    } else if (hasSekretariat) {
+      nextJenis = "Sekretariat";
+    } else {
+      nextJenis = "Komisioner";
+    }
+
     setJenisPersonilSpt(nextJenis);
     setValue("notaDinasId", notaDinasId, { shouldValidate: true });
-    setValue("personil", nota ? filterPersonilByJenis(nota, nextJenis) : [], {
+    setValue("personil", filterPersonilByJenis(nota, nextJenis), {
       shouldValidate: true,
     });
-    if (nota && !initialValues) {
+
+    const matchingSigners = penandatangans.filter((item) => {
+      const signerText = `${item.jabatanPenandatangan} ${item.peran}`;
+      const roleMatches =
+        nextJenis === "Komisioner"
+          ? isKetuaKpuSigner(signerText)
+          : isSekretarisSigner(signerText);
+      return (
+        roleMatches && isPenandatanganAvailable(item, "SPT", watchTanggalMulai)
+      );
+    });
+
+    if (matchingSigners.length > 0) {
+      setValue("penandatanganId", matchingSigners[0].id || "", {
+        shouldValidate: true,
+      });
+    }
+
+    if (!initialValues) {
       const copiedFromExistingSpt = applyReusableSptText(notaDinasId);
       if (!copiedFromExistingSpt) {
         setValue("untuk", [{ text: nota.isi }]);
@@ -310,13 +341,32 @@ export function SptForm({
     }
     setJenisPersonilSpt(jenis);
     if (!selectedNotaDinas) return;
+
     setValue("personil", filterPersonilByJenis(selectedNotaDinas, jenis), {
       shouldValidate: true,
     });
     if (selectedNotaDinas.id) {
       applyReusableSptText(selectedNotaDinas.id);
     }
-    setValue("penandatanganId", "", { shouldValidate: true });
+
+    const matchingSigners = penandatangans.filter((item) => {
+      const signerText = `${item.jabatanPenandatangan} ${item.peran}`;
+      const roleMatches =
+        jenis === "Komisioner"
+          ? isKetuaKpuSigner(signerText)
+          : isSekretarisSigner(signerText);
+      return (
+        roleMatches && isPenandatanganAvailable(item, "SPT", watchTanggalMulai)
+      );
+    });
+
+    if (matchingSigners.length > 0) {
+      setValue("penandatanganId", matchingSigners[0].id || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("penandatanganId", "", { shouldValidate: true });
+    }
   };
 
   return (
@@ -342,19 +392,49 @@ export function SptForm({
           });
           return;
         }
+        const strictlyFilteredPersonil = (rest.personil || [])
+          .map((p) => ({ pegawaiId: p.pegawaiId || "" }))
+          .filter((p) =>
+            isKomisionerSpt
+              ? isPegawaiKomisioner(p.pegawaiId)
+              : !isPegawaiKomisioner(p.pegawaiId),
+          );
+
+        if (strictlyFilteredPersonil.length === 0) {
+          void showAlert({
+            title: "Personil Tidak Ditemukan",
+            message: `Tidak ada personil ${jenisPersonilSpt} dalam Nota Dinas ini.`,
+            variant: "warning",
+            confirmText: "Mengerti",
+          });
+          return;
+        }
+
+        const chosenSigner = penandatangans.find(
+          (p) => p.id === rest.penandatanganId,
+        );
+        const snapshot =
+          initialValues?.penandatanganSnapshot ??
+          (chosenSigner
+            ? createPenandatanganSnapshot(
+                chosenSigner,
+                "SPT",
+                rest.tanggalMulai,
+                true,
+              )
+            : null);
+
         onSubmit(
           {
             ...rest,
-            penandatanganSnapshot: initialValues?.penandatanganSnapshot ?? null,
+            penandatanganSnapshot: snapshot,
             status: rest.status || "Draft",
             menimbang: (rest.menimbang || []).map((m) => ({
               text: m.text || "",
             })),
             dasar: (rest.dasar || []).map((d) => ({ text: d.text || "" })),
             untuk: (rest.untuk || []).map((u) => ({ text: u.text || "" })),
-            personil: (rest.personil || []).map((p) => ({
-              pegawaiId: p.pegawaiId || "",
-            })),
+            personil: strictlyFilteredPersonil,
           },
           { keepOpen: submitAction === "saveAndNextKomisioner" },
         );
@@ -395,6 +475,58 @@ export function SptForm({
             {errors.notaDinasId && (
               <p className="text-[10px] text-danger font-bold mt-1">
                 {errors.notaDinasId.message}
+              </p>
+            )}
+          </div>
+
+          {/* Pemisah Kelompok SPT: Komisioner vs Sekretariat */}
+          <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+            <label className="block text-[10px] font-bold text-primary uppercase">
+              Kelompok SPT Terpisah <span className="text-danger">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleJenisPersonilChange("Sekretariat")}
+                disabled={Boolean(
+                  !initialValues &&
+                    selectedNotaDinas?.id &&
+                    hasExistingSptForJenis(selectedNotaDinas.id, "Sekretariat"),
+                )}
+                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
+                  jenisPersonilSpt === "Sekretariat"
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card text-muted-foreground border-border hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                }`}
+              >
+                SPT Sekretariat
+                <span className="block text-[9px] font-normal opacity-80">
+                  (TTD: Sekretaris KPU)
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleJenisPersonilChange("Komisioner")}
+                disabled={Boolean(
+                  !initialValues &&
+                    selectedNotaDinas?.id &&
+                    hasExistingSptForJenis(selectedNotaDinas.id, "Komisioner"),
+                )}
+                className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
+                  jenisPersonilSpt === "Komisioner"
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card text-muted-foreground border-border hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                }`}
+              >
+                SPT Komisioner
+                <span className="block text-[9px] font-normal opacity-80">
+                  (TTD: Ketua KPU)
+                </span>
+              </button>
+            </div>
+            {notaIsMixed && (
+              <p className="text-[10px] text-amber-600 font-medium leading-tight">
+                Nota Dinas ini memuat Komisioner & Sekretariat. Sistem memisahkan SPT dan penandatangan sesuai regulasi (Ketua KPU untuk Komisioner, Sekretaris untuk Sekretariat).
               </p>
             )}
           </div>
@@ -469,7 +601,8 @@ export function SptForm({
 
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Pejabat Penandatangan
+              Pejabat Penandatangan {isKomisionerSpt ? "(Wajib Ketua KPU)" : "(Wajib Sekretaris KPU)"}{" "}
+              <span className="text-danger">*</span>
             </label>
             <Select
               {...register("penandatanganId")}
@@ -478,11 +611,11 @@ export function SptForm({
               <option value="">
                 {isKomisionerSpt
                   ? "-- Pilih Ketua KPU --"
-                  : "-- Pilih Sekretaris/PLT/PLH Sekretaris --"}
+                  : "-- Pilih Sekretaris / PLT / PLH Sekretaris --"}
               </option>
               {penandatanganOptions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nama} ({p.peran})
+                  {p.nama} ({p.jabatanPenandatangan || p.peran})
                 </option>
               ))}
             </Select>

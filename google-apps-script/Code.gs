@@ -1450,6 +1450,15 @@ function rowValuesToObject(rowValues, headers) {
             break;
           }
         } catch (e) {}
+      } else if (s.indexOf(",") !== -1) {
+        var parts = s.split(",").map(function(item) { return item.trim(); }).filter(function(item) { return item.length > 0; });
+        if (parts.length > 0) {
+          cleanJenis = parts;
+          break;
+        }
+      } else if (s.length > 0 && s.indexOf("T") === -1 && s.indexOf(":") === -1) {
+        cleanJenis = [s];
+        break;
       }
     }
   }

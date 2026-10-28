@@ -66,6 +66,18 @@ export const isPegawaiInNotaDinas = (
   return (nota.lampiran || []).some((item) => item?.pegawaiId === pegawaiId);
 };
 
+export const isPegawaiRelatedToNotaDinas = (
+  pegawaiId: string | undefined,
+  nota?: NotaDinas | null,
+) => {
+  if (!pegawaiId || !nota) return false;
+  return (
+    nota.createdByPegawaiId === pegawaiId ||
+    nota.penandatanganId === pegawaiId ||
+    (nota.lampiran || []).some((item) => item?.pegawaiId === pegawaiId)
+  );
+};
+
 export const resolveNotaDinasChainManagerId = (
   notaDinasId: string,
   spts: Spt[],
@@ -92,7 +104,12 @@ export const canInitiateNotaDinasChain = (
   isAdministrator = false,
 ) => {
   if (isAdministrator) return true;
-  if (!isPegawaiInNotaDinas(pegawaiId, nota)) return false;
+  const isRelated =
+    Boolean(pegawaiId) &&
+    (nota.createdByPegawaiId === pegawaiId ||
+      nota.penandatanganId === pegawaiId ||
+      isPegawaiInNotaDinas(pegawaiId, nota));
+  if (!isRelated) return false;
 
   const managerId = nota?.id
     ? resolveNotaDinasChainManagerId(nota.id, spts)

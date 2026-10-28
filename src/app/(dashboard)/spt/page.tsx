@@ -5,7 +5,10 @@ import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSpt } from "@/modules/spt/useSpt";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
-import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
+import {
+  isPegawaiKomisioner as checkIsPegawaiKomisioner,
+  sortByPegawaiOrder,
+} from "@/modules/pegawai/pegawai-order";
 import { useJabatan } from "@/modules/jabatan/useJabatan";
 import { usePangkat } from "@/modules/pangkat/usePangkat";
 import { usePenandatangan } from "@/modules/penandatangan/usePenandatangan";
@@ -26,6 +29,7 @@ import {
   canAccessSptByNotaDinas,
   canInitiateNotaDinasChain,
   isPegawaiInNotaDinas,
+  isPegawaiRelatedToNotaDinas,
   resolveCurrentPegawai,
 } from "@/lib/document-access";
 import {
@@ -36,7 +40,10 @@ import { useDocumentTemplate } from "@/providers/TemplateProvider";
 import { PrintExportActions } from "@/components/ui/print-export-actions";
 import { PrintPageSetup } from "@/components/ui/print-preview";
 import type { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
-import { snapshotToPenandatangan } from "@/modules/penandatangan/penandatangan.service";
+import {
+  isKasubbagSigner,
+  snapshotToPenandatangan,
+} from "@/modules/penandatangan/penandatangan.service";
 
 const formatTanggalIndonesia = (dateStr: string) =>
   new Intl.DateTimeFormat("id-ID", {
@@ -108,15 +115,12 @@ export default function SptPage() {
   const isAdministrator = user?.role === "Administrator";
   const isPegawaiKomisioner = (id: string) => {
     const pegawai = pegawais.find((item) => item.id === id);
-    return (
-      pegawai?.kategoriPegawai === "Ketua KPU" ||
-      pegawai?.kategoriPegawai === "Anggota KPU"
-    );
+    return checkIsPegawaiKomisioner(pegawai, jabatans);
   };
   const getSptGroup = (item: Pick<Spt, "personil">) => {
     const personil = item?.personil || [];
     return personil.length > 0 &&
-      personil.every((person) => isPegawaiKomisioner(person?.pegawaiId))
+      personil.some((person) => isPegawaiKomisioner(person?.pegawaiId))
       ? "Komisioner"
       : "Sekretariat";
   };
@@ -138,20 +142,29 @@ export default function SptPage() {
     );
     return [...requiredGroups].some((group) => !existingGroups.has(group));
   };
-  const accessibleNotaDinasItems = scopeMutationsToNotaDinas
-    ? (notaDinasItems || []).filter((item) =>
-        isPegawaiInNotaDinas(currentPegawaiId, item),
-      )
-    : notaDinasItems || [];
-  const visibleSpts = scopeToNotaDinas
+  const isPrivilegedUser =
+    user?.role === "Administrator" ||
+    user?.role === "Supervisor" ||
+    user?.role === "Sub Bagian Keuangan" ||
+    isKasubbagSigner(user?.role) ||
+    isKasubbagSigner(user?.username) ||
+    isKasubbagSigner(user?.name);
+
+  const accessibleNotaDinasItems = isPrivilegedUser
+    ? notaDinasItems || []
+    : (notaDinasItems || []).filter((item) =>
+        isPegawaiRelatedToNotaDinas(currentPegawaiId, item),
+      );
+  const visibleSpts = scopeToNotaDinas && !isPrivilegedUser
     ? items.filter((item) =>
         canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),
       )
     : items;
-  const approvedAssignedNotaDinasItems = notaDinasItems.filter(
+  const approvedAssignedNotaDinasItems = (notaDinasItems || []).filter(
     (item) =>
+      item &&
       item.status === "Disetujui" &&
-      (isAdministrator || isPegawaiInNotaDinas(currentPegawaiId, item)),
+      (isPrivilegedUser || isPegawaiRelatedToNotaDinas(currentPegawaiId, item)),
   );
   const creatableNotaDinasItems = approvedAssignedNotaDinasItems.filter(
     (item) =>
@@ -159,13 +172,13 @@ export default function SptPage() {
         currentPegawaiId,
         item,
         items,
-        isAdministrator,
+        isPrivilegedUser,
       ) && Boolean(item.id && hasUncreatedSptGroup(item.id)),
   );
   const canCreateFromAccessibleNota =
     canCreate && creatableNotaDinasItems.length > 0;
   const canManageSpt = (item: Spt) =>
-    user?.role === "Administrator" ||
+    isPrivilegedUser ||
     (Boolean(currentPegawaiId) && item.createdByPegawaiId === currentPegawaiId);
 
   if (!canRead) {
@@ -335,9 +348,15 @@ export default function SptPage() {
     const p = penandatangans.find((x) => x.id === id);
     return p ? p : null;
   };
-  const isSptKomisioner = (item: Spt) =>
-    item.personil.length > 0 &&
-    item.personil.every((person) => isPegawaiKomisioner(person.pegawaiId));
+  const isSptKomisioner = (item: Spt) => {
+    const signer = getSptSigningOfficial(item);
+    const signerText = `${signer?.jabatanPenandatangan ?? ""} ${signer?.peran ?? ""}`.toLowerCase();
+    if (signerText.includes("ketua")) return true;
+    return (
+      item.personil.length > 0 &&
+      item.personil.some((person) => isPegawaiKomisioner(person.pegawaiId))
+    );
+  };
   const getSptSigningOfficial = (item: Spt): Penandatangan | null => {
     if (item.penandatanganSnapshot) {
       return snapshotToPenandatangan(item.penandatanganSnapshot);
@@ -345,9 +364,12 @@ export default function SptPage() {
     const signer = getPenandatanganDetail(item.penandatanganId);
     const signerText =
       `${signer?.jabatanPenandatangan ?? ""} ${signer?.peran ?? ""}`.toLowerCase();
-    if (!signerText.includes("ketua kpu")) return signer;
+    if (!signerText.includes("ketua")) return signer;
     const ketuaPegawai = pegawais.find(
-      (pegawai) => pegawai.kategoriPegawai === "Ketua KPU",
+      (pegawai) =>
+        checkIsPegawaiKomisioner(pegawai, jabatans) &&
+        (pegawai.kategoriPegawai === "Ketua KPU" ||
+          (jabatans.find((j) => j.id === pegawai.jabatanId)?.nama || "").toLowerCase().includes("ketua")),
     );
     return ketuaPegawai
       ? {
@@ -480,6 +502,7 @@ export default function SptPage() {
           canEditItem={canManageSpt}
           canDelete={canDelete}
           getNotaDinasNumber={getNotaDinasNumber}
+          isKomisionerSpt={isSptKomisioner}
         />
       </div>
 

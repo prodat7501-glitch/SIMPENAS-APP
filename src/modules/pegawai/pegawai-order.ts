@@ -84,6 +84,41 @@ export const getKategoriGolonganOrder = (golongan: string) => {
   return 2;
 };
 
+export const isPegawaiKomisioner = (
+  pegawai: Pegawai | undefined | null,
+  jabatans?: Jabatan[] | { id: string; nama?: string }[],
+): boolean => {
+  if (!pegawai) return false;
+  const kategori = normalize(pegawai.kategoriPegawai || "");
+  const jabatanFromList = jabatans
+    ? normalize(jabatans.find((item) => item.id === pegawai.jabatanId)?.nama ?? "")
+    : "";
+  const rawJabatan = normalize(
+    ((pegawai as Record<string, unknown>).jabatan ||
+      (pegawai as Record<string, unknown>).namaJabatan ||
+      (pegawai as Record<string, unknown>).jabatanNama ||
+      "").toString(),
+  );
+
+  return (
+    kategori === "ketua kpu" ||
+    kategori === "anggota kpu" ||
+    kategori.includes("komisioner") ||
+    kategori === "ketua" ||
+    kategori === "anggota" ||
+    jabatanFromList.includes("ketua kpu") ||
+    jabatanFromList.includes("anggota kpu") ||
+    jabatanFromList.includes("komisioner") ||
+    jabatanFromList === "ketua" ||
+    jabatanFromList === "anggota" ||
+    rawJabatan.includes("ketua kpu") ||
+    rawJabatan.includes("anggota kpu") ||
+    rawJabatan.includes("komisioner") ||
+    rawJabatan === "ketua" ||
+    rawJabatan === "anggota"
+  );
+};
+
 export const getPegawaiStructureOrder = (
   pegawai: Pegawai,
   jabatans: Jabatan[],

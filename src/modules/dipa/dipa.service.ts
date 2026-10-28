@@ -85,34 +85,49 @@ export const normalizeDipa = (value: unknown, index: number): DIPA => {
 };
 
 /**
- * Deduplikasi daftar DIPA berdasarkan ID unik, kode DIPA, atau kombinasi Tahun + KRO + Akun
+ * Deduplikasi daftar DIPA secara ketat berdasarkan ID unik, kode DIPA, kombinasi Tahun + KRO + Akun, dan uraian kegiatan
  */
 export const deduplicateDipa = (items: DIPA[]): DIPA[] => {
   const seenIds = new Set<string>();
-  const seenKeys = new Set<string>();
+  const seenKroAkun = new Set<string>();
+  const seenKodeDipa = new Set<string>();
+  const seenProgram = new Set<string>();
   const unique: DIPA[] = [];
 
-  for (const item of items) {
+  // Prioritaskan data riil dari backend dibandingkan data placeholder migrasi
+  const sorted = [...items].sort((a, b) => {
+    const aIsPlaceholder = (a.id || "").startsWith("dipa-migrated-") || a.kodeDipa?.startsWith("DIPA-") ? 1 : 0;
+    const bIsPlaceholder = (b.id || "").startsWith("dipa-migrated-") || b.kodeDipa?.startsWith("DIPA-") ? 1 : 0;
+    return aIsPlaceholder - bIsPlaceholder;
+  });
+
+  for (const item of sorted) {
     if (!item) continue;
     const cleanId = (item.id || "").trim();
     if (cleanId && seenIds.has(cleanId)) continue;
 
     const tahun = (item.tahunAnggaran || "").trim();
     const kode = (item.kodeDipa || "").trim().toLowerCase();
-    const kro = (item.kodeKro || "").trim().toLowerCase();
+    const kro = (item.kodeKro || "").trim().toLowerCase().replace(/^0+/, "");
     const akun = (item.kodeAkun || "").trim().toLowerCase();
     const program = (item.program || item.akunPerjalananDinas || "").trim().toLowerCase();
 
-    // Kunci unik: tahun + kode, atau tahun + KRO + akun, atau tahun + program
-    const key = kode
-      ? `${tahun}::${kode}`
-      : kro && akun
-      ? `${tahun}::${kro}.${akun}`
-      : `${tahun}::${program}`;
+    // Deduplikasi kombinasi KRO + Akun
+    const kroAkunKey = kro && akun && kro !== "-" && akun !== "-" ? `${tahun}::kro:${kro}::akun:${akun}` : "";
+    if (kroAkunKey && seenKroAkun.has(kroAkunKey)) continue;
 
-    if (key && seenKeys.has(key)) continue;
-    if (key) seenKeys.add(key);
+    // Deduplikasi Kode DIPA
+    const kodeKey = kode && !kode.startsWith("dipa-migrated") ? `${tahun}::kode:${kode}` : "";
+    if (kodeKey && seenKodeDipa.has(kodeKey)) continue;
+
+    // Deduplikasi Nama Program / Uraian
+    const programKey = program && program.length > 5 && program !== "belum diisi" ? `${tahun}::prog:${program}` : "";
+    if (programKey && seenProgram.has(programKey)) continue;
+
     if (cleanId) seenIds.add(cleanId);
+    if (kroAkunKey) seenKroAkun.add(kroAkunKey);
+    if (kodeKey) seenKodeDipa.add(kodeKey);
+    if (programKey) seenProgram.add(programKey);
 
     unique.push(item);
   }

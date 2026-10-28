@@ -24,6 +24,7 @@ import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { usePangkat } from "@/modules/pangkat/usePangkat";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
 import { usePenandatangan } from "@/modules/penandatangan/usePenandatangan";
+import { isKasubbagSigner } from "@/modules/penandatangan/penandatangan.service";
 import { SppdForm } from "@/modules/sppd/components/SppdForm";
 import { SppdPreview } from "@/modules/sppd/components/SppdPreview";
 import { SppdTable } from "@/modules/sppd/components/SppdTable";
@@ -76,8 +77,14 @@ export default function SppdPage() {
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;
   const scopeToNotaDinas = user?.role === "Pegawai";
-  const scopeMutationsToNotaDinas =
-    user?.role !== "Administrator" && user?.role !== "Sub Bagian Keuangan";
+  const isPrivilegedUser =
+    user?.role === "Administrator" ||
+    user?.role === "Supervisor" ||
+    user?.role === "Sub Bagian Keuangan" ||
+    isKasubbagSigner(user?.role) ||
+    isKasubbagSigner(user?.username) ||
+    isKasubbagSigner(user?.name);
+  const scopeMutationsToNotaDinas = !isPrivilegedUser;
   const isAdministrator = user?.role === "Administrator";
 
   const approvedSpts = spts
@@ -97,7 +104,7 @@ export default function SppdPage() {
     getSeriesManager(sptId)?.pengelolaNama ??
     "anggota lain";
   const canManageSeries = (sptId: string) =>
-    canManageSptChain(currentPegawaiId, sptId, spts, isAdministrator);
+    canManageSptChain(currentPegawaiId, sptId, spts, isPrivilegedUser);
   const manageableApprovedSpts = approvedSpts.filter((item) =>
     item.id ? canManageSeries(item.id) : true,
   );

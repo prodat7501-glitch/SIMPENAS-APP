@@ -68,7 +68,7 @@ const normalizeHistory = (raw: unknown): ApprovalHistory => {
       }
     }
   }
-  if (!nomorDokumen) nomorDokumen = "-";
+  if (!nomorDokumen || nomorDokumen === "undefined" || nomorDokumen === "null") nomorDokumen = "-";
 
   // Ambil atau pulihkan status keputusan
   const rawStatus = String(
@@ -84,7 +84,13 @@ const normalizeHistory = (raw: unknown): ApprovalHistory => {
   let tanggal = String(
     item.tanggal || item.created_at || item.createdAt || "",
   ).trim();
-  if (!tanggal || isNaN(new Date(tanggal).getTime())) {
+  if (
+    !tanggal ||
+    tanggal === "undefined" ||
+    tanggal === "null" ||
+    tanggal === "Invalid Date" ||
+    isNaN(new Date(tanggal).getTime())
+  ) {
     tanggal = new Date().toISOString();
   }
 
@@ -92,7 +98,7 @@ const normalizeHistory = (raw: unknown): ApprovalHistory => {
   let approver = String(
     item.approver || item.user_name || item.userName || "",
   ).trim();
-  if (!approver || approver === "undefined") {
+  if (!approver || approver === "undefined" || approver === "null") {
     approver = "Sekretaris KPU";
   }
 

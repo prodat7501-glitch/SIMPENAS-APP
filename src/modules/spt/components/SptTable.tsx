@@ -27,6 +27,7 @@ interface SptTableProps {
   canEditItem?: (item: Spt) => boolean;
   canDelete: boolean;
   getNotaDinasNumber: (notaDinasId: string) => string;
+  isKomisionerSpt?: (item: Spt) => boolean;
 }
 
 export function SptTable({
@@ -38,6 +39,7 @@ export function SptTable({
   canEditItem,
   canDelete,
   getNotaDinasNumber,
+  isKomisionerSpt,
 }: SptTableProps) {
   const [search, setSearch] = useState("");
 
@@ -99,7 +101,20 @@ export function SptTable({
                 <TableRow key={item.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-bold text-foreground font-mono text-xs">
-                    {item.nomor}
+                    <div>{item.nomor}</div>
+                    {isKomisionerSpt && (
+                      <span
+                        className={`inline-block mt-1 text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold ${
+                          isKomisionerSpt(item)
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300/50"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300/50"
+                        }`}
+                      >
+                        {isKomisionerSpt(item)
+                          ? "Komisioner (Ketua KPU)"
+                          : "Sekretariat (Sekretaris)"}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {getNotaDinasNumber(item.notaDinasId)}

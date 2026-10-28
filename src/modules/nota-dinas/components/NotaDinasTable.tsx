@@ -71,14 +71,16 @@ export function NotaDinasTable({
     return "success";
   };
 
-  const getConflictNames = (item: NotaDinas) =>
-    Array.from(
+  const getConflictNames = (item: NotaDinas) => {
+    const list = Array.isArray(item.travelConflicts) ? item.travelConflicts : [];
+    return Array.from(
       new Set(
-        (item.travelConflicts ?? []).map((conflict) =>
-          getPegawaiName(conflict.pegawaiId),
-        ),
+        list
+          .filter((c) => c && c.pegawaiId)
+          .map((conflict) => getPegawaiName(conflict.pegawaiId)),
       ),
     );
+  };
 
   return (
     <div className="space-y-4">

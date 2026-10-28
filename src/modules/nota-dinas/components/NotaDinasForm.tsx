@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useForm,
   useFieldArray,
@@ -26,7 +26,9 @@ import type { NotaDinasTravelConflict } from "../nota-dinas.service";
 import { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
 import {
+  createPenandatanganSnapshot,
   getNotaDinasApprovalDestination,
+  isKasubbagSigner,
   isPenandatanganAvailable,
   resolveNotaDinasApprover,
 } from "@/modules/penandatangan/penandatangan.service";
@@ -221,6 +223,7 @@ export function NotaDinasForm({
     setValue,
     setError,
     getValues,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof notaDinasSchema>>({
     resolver: zodResolver(notaDinasSchema),
@@ -280,12 +283,22 @@ export function NotaDinasForm({
       tanggalKembali: watchTanggalKembali,
     }),
   );
+  const kasubbagSigners = useMemo(() => {
+    return penandatangans.filter((item) => {
+      const signerIdentity = `${item.jabatanPenandatangan || ""} ${item.peran || ""}`;
+      return (
+        isKasubbagSigner(signerIdentity) &&
+        (item.status === "Aktif" || !item.status)
+      );
+    });
+  }, [penandatangans]);
+
   const masterPenandatangan = penandatangans.find(
-    (item) => item.id === initialValues?.penandatanganId,
+    (item) => item.id === (watch("penandatanganId") || initialValues?.penandatanganId),
   );
   const lockedPenandatangan = initialValues
     ? masterPenandatangan
-    : loginPenandatangan;
+    : (loginPenandatangan || kasubbagSigners[0]);
   const lockedPenandatanganName =
     initialValues?.penandatanganSnapshot?.nama ??
     lockedPenandatangan?.nama ??
@@ -296,10 +309,10 @@ export function NotaDinasForm({
     "";
   const lockedPenandatanganLabel = lockedPenandatanganName
     ? `${lockedPenandatanganName} — ${lockedPenandatanganJabatan}`
-    : "Pejabat penandatangan belum terhubung dengan akun login";
+    : "Pilih Pejabat Kasubbag";
   const loginPenandatanganAvailable = Boolean(
-    loginPenandatangan &&
-    isPenandatanganAvailable(loginPenandatangan, "Nota Dinas", watchTanggal),
+    lockedPenandatangan &&
+    isPenandatanganAvailable(lockedPenandatangan, "Nota Dinas", watchTanggal),
   );
   const notaDinasApprover = resolveNotaDinasApprover(
     penandatangans,
@@ -337,10 +350,11 @@ export function NotaDinasForm({
     }
 
     setValue("kepada", "Sekretaris KPU Kabupaten Gorontalo");
-    setValue("dari", defaultPengirimJabatan);
-    setValue("penandatanganId", loginPenandatangan?.id ?? "");
+    setValue("dari", defaultPengirimJabatan || lockedPenandatangan?.jabatanPenandatangan || "");
+    const defaultSignerId = loginPenandatangan?.id || kasubbagSigners[0]?.id || "";
+    setValue("penandatanganId", defaultSignerId);
     setValue("penandatanganSnapshot", null);
-  }, [defaultPengirimJabatan, initialValues, loginPenandatangan, setValue]);
+  }, [defaultPengirimJabatan, initialValues, loginPenandatangan, kasubbagSigners, lockedPenandatangan?.jabatanPenandatangan, setValue]);
 
   // SBM cross-reference helper
   const handlePegawaiChange = (index: number, pegawaiId: string) => {
@@ -499,29 +513,33 @@ export function NotaDinasForm({
       onSubmit={handleSubmit((data) => {
         const rest = { ...data };
         delete rest.id;
-        const authoritativePenandatanganId = initialValues
-          ? initialValues.penandatanganId
-          : loginPenandatangan?.id;
+        const authoritativePenandatanganId =
+          data.penandatanganId ||
+          initialValues?.penandatanganId ||
+          loginPenandatangan?.id ||
+          kasubbagSigners[0]?.id;
 
         if (!authoritativePenandatanganId) {
           setError("penandatanganId", {
             type: "manual",
             message:
-              "Akun login belum terhubung dengan Pejabat Penandatangan Nota Dinas.",
-          });
-          return;
-        }
-
-        if (!initialValues && !loginPenandatanganAvailable) {
-          setError("penandatanganId", {
-            type: "manual",
-            message:
-              "Pejabat penandatangan akun login tidak aktif atau berada di luar periode berlaku.",
+              "Belum ada data Pejabat Kasubbag di Master Penandatangan.",
           });
           return;
         }
 
         rest.penandatanganId = authoritativePenandatanganId;
+        const chosenSigner = penandatangans.find((p) => p.id === authoritativePenandatanganId);
+        rest.penandatanganSnapshot =
+          initialValues?.penandatanganSnapshot ??
+          (chosenSigner
+            ? createPenandatanganSnapshot(
+                chosenSigner,
+                "Nota Dinas",
+                rest.tanggal,
+                true,
+              )
+            : null);
         const detectedConflicts = Array.from(
           new Map(
             (rest.lampiran || [])
@@ -800,27 +818,31 @@ export function NotaDinasForm({
 
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Pejabat Penandatangan (Terkunci)
+              Pejabat Penandatangan (Kasubbag) <span className="text-danger">*</span>
             </label>
-            <input type="hidden" {...register("penandatanganId")} />
-            <Input value={lockedPenandatanganLabel} readOnly />
-            {!initialValues && !loginPenandatangan && (
-              <p className="text-[10px] text-warning font-bold mt-1">
-                Hubungkan akun login ke Master Pegawai dan Master Pejabat
-                Penandatangan sebelum membuat Nota Dinas.
-              </p>
+            {kasubbagSigners.length > 0 ? (
+              <Select
+                {...register("penandatanganId")}
+                error={!!errors.penandatanganId}
+                disabled={Boolean(initialValues)}
+              >
+                {kasubbagSigners.map((p: Penandatangan) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nama} — {p.jabatanPenandatangan}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Input
+                value="Belum ada data Pejabat Kasubbag aktif di Master Penandatangan"
+                readOnly
+              />
             )}
-            {!initialValues && loginPenandatangan && (
-              <p className="text-[10px] text-muted-foreground font-medium mt-1">
-                Otomatis mengikuti pejabat yang terhubung dengan akun login dan
-                tidak dapat diganti dari form ini.
-              </p>
-            )}
-            {initialValues && (
-              <p className="text-[10px] text-muted-foreground font-medium mt-1">
-                Penandatangan dokumen tersimpan dipertahankan saat diedit.
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground font-medium mt-1">
+              {initialValues
+                ? "Penandatangan dokumen tersimpan dipertahankan saat diedit."
+                : "Pilih Kepala Subbagian yang berwenang menandatangani usulan Nota Dinas ini."}
+            </p>
             {errors.penandatanganId && (
               <p className="text-[10px] text-danger font-bold mt-1">
                 {errors.penandatanganId.message}

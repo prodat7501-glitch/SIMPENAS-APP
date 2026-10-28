@@ -127,36 +127,68 @@ export default function ApprovalPage() {
           <Timeline
             events={approval.history.map((item) => {
               const docNum =
-                item.nomorDokumen && item.nomorDokumen !== "-"
+                item.nomorDokumen &&
+                item.nomorDokumen !== "-" &&
+                item.nomorDokumen !== "undefined" &&
+                item.nomorDokumen !== "null"
                   ? item.nomorDokumen
                   : "Tanpa Nomor";
-              const validDate =
-                item.tanggal && !isNaN(new Date(item.tanggal).getTime())
-                  ? new Date(item.tanggal).toLocaleString("id-ID", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })
-                  : new Date().toLocaleString("id-ID", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    });
+              const validDate = (() => {
+                if (
+                  !item.tanggal ||
+                  item.tanggal === "undefined" ||
+                  item.tanggal === "Invalid Date"
+                ) {
+                  return new Date().toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                }
+                const parsed = new Date(item.tanggal);
+                if (isNaN(parsed.getTime())) {
+                  return new Date().toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                }
+                return parsed.toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              })();
               const approverName =
-                item.approver && item.approver !== "undefined"
+                item.approver &&
+                item.approver !== "undefined" &&
+                item.approver !== "null"
                   ? item.approver
                   : "Sekretaris KPU";
-              const desc = item.catatan
-                ? item.catatan
-                : `Diproses oleh ${approverName}`;
-              const title = `${item.documentType || "Dokumen"} ${docNum} — ${
-                item.status || "Disetujui"
-              }`;
+              const statusName =
+                item.status &&
+                String(item.status) !== "undefined" &&
+                String(item.status) !== "null"
+                  ? item.status
+                  : "Disetujui";
+              const desc =
+                item.catatan && item.catatan !== "undefined" && item.catatan !== "-"
+                  ? item.catatan
+                  : `Diproses oleh ${approverName}`;
+              const title = `${item.documentType || "Nota Dinas"} ${docNum} — ${statusName}`;
 
               return {
                 id: item.id,
                 title,
                 description: desc,
                 time: validDate,
-                status: item.status === "Disetujui" ? "success" : "danger",
+                status: statusName === "Disetujui" ? "success" : "danger",
               };
             })}
           />

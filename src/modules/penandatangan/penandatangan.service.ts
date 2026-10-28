@@ -29,6 +29,31 @@ export const isKasubbagSigner = (value: string | undefined | null): boolean => {
   );
 };
 
+export const isKetuaKpuSigner = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+  const text = value.toLowerCase().replace(/[\._\-]/g, " ");
+  return (
+    text.includes("ketua kpu") ||
+    text.includes("ketua komisi pemilihan umum") ||
+    (text.includes("ketua") &&
+      !text.includes("kasubbag") &&
+      !text.includes("subbag") &&
+      !text.includes("sub bagian") &&
+      !text.includes("kelompok kerja"))
+  );
+};
+
+export const isSekretarisSigner = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+  const text = value.toLowerCase().replace(/[\._\-]/g, " ");
+  return (
+    text.includes("sekretaris") ||
+    text.includes("plt sekretaris") ||
+    text.includes("plh sekretaris") ||
+    text.includes("kepala sekretariat")
+  );
+};
+
 const inferDocumentTypes = (
   item: Pick<Penandatangan, "jabatanPenandatangan" | "peran">,
 ): JenisDokumenPenandatangan[] => {
@@ -135,17 +160,26 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
             }
           }
         } catch {}
-      } else if (str.includes(",") && !str.includes("T") && !str.includes(":")) {
-        const parts = str
-          .split(",")
-          .map((s) => s.trim())
-          .filter((v): v is JenisDokumenPenandatangan =>
-            JENIS_DOKUMEN_PENANDATANGAN.includes(
-              v as JenisDokumenPenandatangan,
-            ),
-          );
-        if (parts.length > 0) {
-          parsedJenis = parts;
+      } else if (!str.includes("T") && !str.includes(":") && str.length > 0) {
+        if (str.includes(",")) {
+          const parts = str
+            .split(",")
+            .map((s) => s.trim())
+            .filter((v): v is JenisDokumenPenandatangan =>
+              JENIS_DOKUMEN_PENANDATANGAN.includes(
+                v as JenisDokumenPenandatangan,
+              ),
+            );
+          if (parts.length > 0) {
+            parsedJenis = parts;
+            break;
+          }
+        } else if (
+          JENIS_DOKUMEN_PENANDATANGAN.includes(
+            str as JenisDokumenPenandatangan,
+          )
+        ) {
+          parsedJenis = [str as JenisDokumenPenandatangan];
           break;
         }
       }
