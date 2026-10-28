@@ -100,6 +100,8 @@ var SHEET_MAP = {
   "dipa": "dipa",
   "sbm": "sbm",
   "penandatangan": "penandatangan",
+  "pejabat-penandatangan": "penandatangan",
+  "pejabat_penandatangan": "penandatangan",
   "pengaturan-penomoran": "pengaturan_penomoran",
   "pengaturan_penomoran": "pengaturan_penomoran",
   "riwayat-penomoran": "riwayat_penomoran",

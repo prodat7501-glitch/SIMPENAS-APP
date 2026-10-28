@@ -42,15 +42,87 @@ const inferDocumentTypes = (
   return result.size ? [...result] : [...FINANCIAL_DOCUMENT_TYPES];
 };
 
-const normalizePenandatangan = (item: Penandatangan): Penandatangan => ({
-  ...item,
-  berlakuMulai: item.berlakuMulai ?? "",
-  berlakuSampai: item.berlakuSampai ?? "",
-  jenisDokumen:
-    item.jenisDokumen?.length > 0
-      ? item.jenisDokumen
-      : inferDocumentTypes(item),
-});
+export const normalizePenandatangan = (raw: unknown): Penandatangan => {
+  if (!raw || typeof raw !== "object") {
+    return {
+      id: "",
+      nama: "-",
+      nip: "-",
+      jabatanPenandatangan: "-",
+      peran: "-",
+      berlakuMulai: "",
+      berlakuSampai: "",
+      status: "Nonaktif",
+      jenisDokumen: ["Nota Dinas"],
+    };
+  }
+  const item = raw as Record<string, unknown>;
+  const id = String(item.id || "");
+  const nama = String(
+    item.nama || item.nama_pejabat || item.namaPejabat || "",
+  ).trim();
+  const nip = String(item.nip || "").trim();
+  const jabatanPenandatangan = String(
+    item.jabatanPenandatangan ||
+      item.jabatan ||
+      item.jabatan_pejabat ||
+      item.jabatanPejabat ||
+      "",
+  ).trim();
+  const peran = String(
+    item.peran ||
+      item.role_pejabat ||
+      item.rolePejabat ||
+      item.kategori ||
+      "",
+  ).trim();
+
+  const statusRaw = item.status ?? item.status_aktif ?? item.statusAktif;
+  const status: "Aktif" | "Nonaktif" =
+    statusRaw === true ||
+    statusRaw === "TRUE" ||
+    statusRaw === "true" ||
+    statusRaw === 1 ||
+    statusRaw === "1" ||
+    statusRaw === "Aktif"
+      ? "Aktif"
+      : "Nonaktif";
+
+  const rawJenis = item.jenisDokumen || item.jenis_dokumen;
+  const parsedJenis = Array.isArray(rawJenis)
+    ? (rawJenis as JenisDokumenPenandatangan[])
+    : typeof rawJenis === "string"
+      ? (() => {
+          try {
+            const p = JSON.parse(rawJenis);
+            return Array.isArray(p)
+              ? (p as JenisDokumenPenandatangan[])
+              : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+
+  const partial = {
+    id,
+    nama,
+    nip,
+    jabatanPenandatangan,
+    peran,
+    berlakuMulai: String(item.berlakuMulai || item.berlaku_mulai || ""),
+    berlakuSampai: String(item.berlakuSampai || item.berlaku_sampai || ""),
+    status,
+  };
+
+  const jenisDokumen =
+    parsedJenis.length > 0 ? parsedJenis : inferDocumentTypes(partial);
+
+  return {
+    ...partial,
+    jenisDokumen,
+  };
+};
 
 export const penandatanganService = {
   getAll: (): Penandatangan[] => {
@@ -72,7 +144,7 @@ export const penandatanganService = {
     }
   },
 
-  // REST API Integration (/api/v1/pejabat-penandatangan)
+  // REST API Integration (/api/v1/penandatangan)
   apiGetAll: async (params?: {
     page?: number;
     limit?: number;
@@ -85,9 +157,13 @@ export const penandatanganService = {
         const queryParams = { limit: 100, ...params };
         const res = await apiClient.get<
           Penandatangan[] | { data?: Penandatangan[]; items?: Penandatangan[] }
-        >("/api/v1/pejabat-penandatangan", queryParams);
+        >("/api/v1/penandatangan", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map(normalizePenandatangan);
+        const normalized = list.map(normalizePenandatangan);
+        if (normalized.length > 0) {
+          penandatanganService.saveAll(normalized);
+        }
+        return normalized;
       },
       () => penandatanganService.getAll(),
     );
@@ -98,7 +174,7 @@ export const penandatanganService = {
       async () => {
         const res = await apiClient.get<
           Penandatangan | { data?: Penandatangan }
-        >(`/api/v1/pejabat-penandatangan/${id}`);
+        >(`/api/v1/penandatangan/${id}`);
         const unwrapped =
           (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return unwrapped ? normalizePenandatangan(unwrapped) : null;
@@ -113,7 +189,7 @@ export const penandatanganService = {
         const payload = { id: data.id || `pe-${Date.now()}`, ...data };
         const res = await apiClient.post<
           Penandatangan | { data?: Penandatangan }
-        >("/api/v1/pejabat-penandatangan", payload);
+        >("/api/v1/penandatangan", payload);
         const unwrapped =
           (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
@@ -138,7 +214,7 @@ export const penandatanganService = {
       async () => {
         const res = await apiClient.put<
           Penandatangan | { data?: Penandatangan }
-        >(`/api/v1/pejabat-penandatangan/${id}`, data);
+        >(`/api/v1/penandatangan/${id}`, data);
         const unwrapped =
           (res as { data?: Penandatangan }).data || (res as Penandatangan);
         return normalizePenandatangan(unwrapped);
@@ -157,7 +233,7 @@ export const penandatanganService = {
   apiDelete: async (id: string): Promise<boolean> => {
     return withApiFallback(
       async () => {
-        await apiClient.delete(`/api/v1/pejabat-penandatangan/${id}`);
+        await apiClient.delete(`/api/v1/penandatangan/${id}`);
         return true;
       },
       async () => {
@@ -175,7 +251,7 @@ export const penandatanganService = {
       async () => {
         const res = await apiClient.bulkPost<
           Penandatangan[] | { data?: Penandatangan[] }
-        >("/api/v1/pejabat-penandatangan", data);
+        >("/api/v1/penandatangan", data);
         const list = Array.isArray(res) ? res : res.data || [];
         return list.map(normalizePenandatangan);
       },

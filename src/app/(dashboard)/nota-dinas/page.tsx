@@ -114,9 +114,6 @@ export default function NotaDinasPage() {
         Boolean(normalizedUserName) &&
         normalizeName(pegawai.nama) === normalizedUserName,
     );
-  const defaultPengirimJabatan =
-    jabatans.find((jabatan) => jabatan.id === currentPegawai?.jabatanId)
-      ?.nama ?? "";
   const currentPegawaiNip = normalizeNip(currentPegawai?.nip ?? "");
   const currentNotaDinasPenandatangan =
     penandatangans.find((item) => {
@@ -134,7 +131,19 @@ export default function NotaDinasPage() {
         isPenandatanganAvailable(item, "Nota Dinas") &&
         (sameNip || sameName)
       );
-    }) ?? null;
+    }) ??
+    (user?.role === "Administrator"
+      ? penandatangans.find(
+          (item) =>
+            isKasubbagSigner(`${item.jabatanPenandatangan} ${item.peran}`) &&
+            isPenandatanganAvailable(item, "Nota Dinas"),
+        ) ?? null
+      : null);
+
+  const defaultPengirimJabatan =
+    jabatans.find((jabatan) => jabatan.id === currentPegawai?.jabatanId)
+      ?.nama ??
+    (currentNotaDinasPenandatangan?.jabatanPenandatangan || "");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NotaDinas | null>(null);
