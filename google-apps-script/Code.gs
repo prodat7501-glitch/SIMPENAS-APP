@@ -98,6 +98,8 @@ var SHEET_MAP = {
   "unit-kerja": "unit_kerja",
   "unit_kerja": "unit_kerja",
   "dipa": "dipa",
+  "anggaran-dipa": "dipa",
+  "anggaran_dipa": "dipa",
   "sbm": "sbm",
   "penandatangan": "penandatangan",
   "pejabat-penandatangan": "penandatangan",
@@ -947,6 +949,21 @@ function handleBulkInsertOrUpdate(sheet, items) {
         var uIdx = headers.indexOf("username");
         var uname = isRow ? String((uIdx !== -1 ? objOrRow[uIdx] : "") || "").trim().toLowerCase() : String(objOrRow.username || "").trim().toLowerCase();
         if (uname) return "user:" + uname;
+      } else if (sName === "dipa") {
+        var dNomorIdx = headers.indexOf("nomor_dipa");
+        var dKroIdx = headers.indexOf("kode_kro");
+        var dAkunIdx = headers.indexOf("kode_akun");
+        var dNomor = isRow
+          ? String((dNomorIdx !== -1 ? objOrRow[dNomorIdx] : "") || "").trim().toLowerCase()
+          : String(objOrRow.kode_dipa || objOrRow.nomor_dipa || objOrRow.kodeDipa || "").trim().toLowerCase();
+        var dKro = isRow
+          ? String((dKroIdx !== -1 ? objOrRow[dKroIdx] : "") || "").trim()
+          : String(objOrRow.kode_kro || objOrRow.kodeKro || "").trim();
+        var dAkun = isRow
+          ? String((dAkunIdx !== -1 ? objOrRow[dAkunIdx] : "") || "").trim()
+          : String(objOrRow.kode_akun || objOrRow.kodeAkun || "").trim();
+        if (dNomor) return "dipa:" + dNomor;
+        if (dKro && dAkun) return "dipa:" + dKro + "." + dAkun;
       }
       return "id:" + id;
     };
@@ -1007,6 +1024,84 @@ function handleBulkInsertOrUpdate(sheet, items) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Pembersih duplikat pada baris Spreadsheet secara otomatis
+ */
+function deduplicateSheetRows(sheet) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow <= 2 || lastCol === 0) return 0;
+  
+  var headers = getHeaders(sheet);
+  var idColIdx = headers.indexOf("id");
+  if (idColIdx === -1) idColIdx = 0;
+  var sName = sheet.getName();
+  
+  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var seenKeys = {};
+  var rowsToDelete = [];
+  
+  for (var i = 0; i < values.length; i++) {
+    var rowValues = values[i];
+    var rowIndex = i + 2;
+    var rowId = String(rowValues[idColIdx] || "").trim();
+    if (!rowId) {
+      rowsToDelete.push(rowIndex);
+      continue;
+    }
+    
+    var obj = rowValuesToObject(rowValues, headers);
+    if (isDummyRecord(sName, obj)) {
+      rowsToDelete.push(rowIndex);
+      continue;
+    }
+    
+    var key = "id:" + rowId;
+    if (sName === "pegawai") {
+      var nipIdx = headers.indexOf("nip");
+      var namaIdx = headers.indexOf("nama");
+      var nip = String((nipIdx !== -1 ? rowValues[nipIdx] : "") || "").replace(/\s+/g, "");
+      var nama = String((namaIdx !== -1 ? rowValues[namaIdx] : "") || "").trim().toLowerCase();
+      if (nip && nip !== "-" && nip !== "0") key = "nip:" + nip;
+      else if (nama) key = "nama:" + nama;
+    } else if (sName === "user_accounts") {
+      var uIdx = headers.indexOf("username");
+      var uname = String((uIdx !== -1 ? rowValues[uIdx] : "") || "").trim().toLowerCase();
+      if (uname) key = "user:" + uname;
+    } else if (sName === "dipa") {
+      var dNomorIdx = headers.indexOf("nomor_dipa");
+      var dKroIdx = headers.indexOf("kode_kro");
+      var dAkunIdx = headers.indexOf("kode_akun");
+      var dNomor = String((dNomorIdx !== -1 ? rowValues[dNomorIdx] : "") || "").trim().toLowerCase();
+      var dKro = String((dKroIdx !== -1 ? rowValues[dKroIdx] : "") || "").trim();
+      var dAkun = String((dAkunIdx !== -1 ? rowValues[dAkunIdx] : "") || "").trim();
+      if (dNomor) key = "dipa:" + dNomor;
+      else if (dKro && dAkun) key = "dipa:" + dKro + "." + dAkun;
+    } else if (sName === "jabatan") {
+      var jNamaIdx = headers.indexOf("nama");
+      var jNama = String((jNamaIdx !== -1 ? rowValues[jNamaIdx] : "") || "").trim().toLowerCase();
+      if (jNama) key = "jabatan:" + jNama;
+    } else if (sName === "unit_kerja") {
+      var ukNamaIdx = headers.indexOf("nama");
+      var ukNama = String((ukNamaIdx !== -1 ? rowValues[ukNamaIdx] : "") || "").trim().toLowerCase();
+      if (ukNama) key = "unit:" + ukNama;
+    }
+    
+    if (seenKeys[key]) {
+      rowsToDelete.push(rowIndex);
+    } else {
+      seenKeys[key] = true;
+    }
+  }
+  
+  // Hapus baris dari bawah ke atas agar indeks baris tidak berubah
+  var count = rowsToDelete.length;
+  for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+    sheet.deleteRow(rowsToDelete[d]);
+  }
+  return count;
 }
 
 /**
@@ -1122,6 +1217,14 @@ function getItems(sheet, filterParams) {
       var ukKey = String(obj.nama || obj.nama_unit || "").trim().toLowerCase();
       if (ukKey && seenUniqueKeys[ukKey]) continue;
       if (ukKey) seenUniqueKeys[ukKey] = true;
+    } else if (sName === "dipa") {
+      var dipaKode = String(obj.kode_dipa || obj.nomor_dipa || obj.kodeDipa || "").trim().toLowerCase();
+      var dipaKro = String(obj.kode_kro || obj.kodeKro || "").trim();
+      var dipaAkun = String(obj.kode_akun || obj.kodeAkun || "").trim();
+      var dipaTahun = String(obj.tahun || obj.tahun_anggaran || obj.tahunAnggaran || "").trim();
+      var dipaKey = dipaKode ? (dipaTahun + "::" + dipaKode) : (dipaTahun + "::" + dipaKro + "." + dipaAkun);
+      if (dipaKey && seenUniqueKeys[dipaKey]) continue;
+      if (dipaKey) seenUniqueKeys[dipaKey] = true;
     }
     
     seenIds[idKey] = true;
@@ -1193,6 +1296,15 @@ function rowValuesToObject(rowValues, headers) {
     if (!obj.jenisBiaya && !obj.jenis_biaya) obj.jenisBiaya = "Uang Harian (" + (obj.provinsi || "Standar") + ")";
     if (!obj.satuan) obj.satuan = "OH";
   }
+
+  // Kompatibilitas cerdas untuk tabel dipa
+  if (obj.nomor_dipa !== undefined && !obj.kodeDipa) obj.kodeDipa = obj.nomor_dipa;
+  if (obj.kode_kro !== undefined && !obj.kodeKro) obj.kodeKro = obj.kode_kro;
+  if (obj.kode_akun !== undefined && !obj.kodeAkun) obj.kodeAkun = obj.kode_akun;
+  if (obj.uraian !== undefined && !obj.akunPerjalananDinas) obj.akunPerjalananDinas = obj.uraian;
+  if (obj.uraian !== undefined && !obj.klasifikasiRincianOutput) obj.klasifikasiRincianOutput = obj.uraian;
+  if (obj.pagu_awal !== undefined && obj.pagu === undefined) obj.pagu = obj.pagu_awal;
+  if (obj.tahun !== undefined && !obj.tahunAnggaran) obj.tahunAnggaran = String(obj.tahun);
   
   return obj;
 }
@@ -1201,6 +1313,16 @@ function objectToRowValues(obj, headers) {
   // Mapping fallback jika input SBM dari frontend menggunakan format standar (wilayah, tarif)
   if (obj.wilayah && !obj.provinsi) obj.provinsi = obj.wilayah;
   if (obj.tarif && !obj.uang_harian) obj.uang_harian = obj.tarif;
+
+  // Mapping fallback jika input DIPA dari frontend
+  if (obj.kodeDipa && !obj.nomor_dipa) obj.nomor_dipa = obj.kodeDipa;
+  if (obj.kodeKro && !obj.kode_kro) obj.kode_kro = obj.kodeKro;
+  if (obj.kodeAkun && !obj.kode_akun) obj.kode_akun = obj.kodeAkun;
+  if (obj.akunPerjalananDinas && !obj.uraian) obj.uraian = obj.akunPerjalananDinas;
+  else if (obj.klasifikasiRincianOutput && !obj.uraian) obj.uraian = obj.klasifikasiRincianOutput;
+  else if (obj.program && !obj.uraian) obj.uraian = obj.program;
+  if (obj.pagu !== undefined && obj.pagu_awal === undefined) obj.pagu_awal = obj.pagu;
+  if (obj.tahunAnggaran && !obj.tahun) obj.tahun = obj.tahunAnggaran;
 
   var row = [];
   for (var i = 0; i < headers.length; i++) {

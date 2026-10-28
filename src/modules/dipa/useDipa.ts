@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useActivityStore } from "@/stores/activity.store";
 import { keuanganService } from "@/modules/keuangan/keuangan.service";
+import { deduplicateDipa } from "./dipa.service";
 import { useDipaStore } from "./dipa.store";
 
 export function useDipa() {
@@ -16,7 +17,7 @@ export function useDipa() {
   }, [load]);
 
   const realization = keuanganService.getCompletedPaymentTotalsByDipa();
-  const derivedItems = items.map((item) => ({
+  const derivedItems = deduplicateDipa(items).map((item) => ({
     ...item,
     realisasi:
       (realization.byId[item.id] ?? 0) +

@@ -9,33 +9,6 @@ import { apiClient, withApiFallback } from "@/services/api";
 const STORAGE_KEY = "simpenas_dipa";
 const LEGACY_PLACEHOLDER = "Belum diisi";
 
-const legacyDefaults = [
-  {
-    id: "d1",
-    kodeDipa: "015.01.2.654321",
-    program: "Dukungan Manajemen Pelaksanaan Pemilu Gorontalo",
-    pagu: 1_500_000_000,
-    realisasi: 420_000_000,
-    tahunAnggaran: "2026",
-  },
-  {
-    id: "d2",
-    kodeDipa: "015.01.2.654322",
-    program: "Penyelenggaraan Pemilu Serentak Kabupaten",
-    pagu: 850_000_000,
-    realisasi: 310_000_000,
-    tahunAnggaran: "2026",
-  },
-  {
-    id: "d3",
-    kodeDipa: "015.01.2.654323",
-    program: "Pengawasan Internal & Penegakan Hukum Pemilu",
-    pagu: 450_000_000,
-    realisasi: 98_000_000,
-    tahunAnggaran: "2026",
-  },
-];
-
 const readText = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value.trim() : fallback;
 
@@ -57,63 +30,115 @@ const readFirstMeaningfulText = (
 const readAmount = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
 
-const normalizeDipa = (value: unknown, index: number): DIPA => {
+export const normalizeDipa = (value: unknown, index: number): DIPA => {
   const item =
     typeof value === "object" && value !== null
       ? (value as Record<string, unknown>)
       : {};
   const currentYear = new Date().getFullYear().toString();
-  const legacyCode = readText(item.kodeDipa, `DIPA-${index + 1}`);
+  const legacyCode = readText(
+    item.kodeDipa || item.nomor_dipa || item.nomorDipa,
+    `DIPA-${index + 1}`,
+  );
   const legacyCodeParts = legacyCode.split(".").filter(Boolean);
   const fallbackKodeAkun = legacyCodeParts.pop() ?? legacyCode;
   const fallbackKodeKro = legacyCodeParts.join(".") || legacyCode;
-  const rawYear = readText(item.tahunAnggaran, currentYear);
+  const rawYear = readText(
+    item.tahunAnggaran || item.tahun || item.tahun_anggaran,
+    currentYear,
+  );
   const formData: DipaFormData = {
     kodeKro: readFirstMeaningfulText(
       item,
-      ["kodeKro", "kodeKlasifikasiRincianOutput"],
+      ["kodeKro", "kode_kro", "kodeKlasifikasiRincianOutput"],
       fallbackKodeKro,
     ),
     klasifikasiRincianOutput: readFirstMeaningfulText(
       item,
-      ["klasifikasiRincianOutput", "kro", "KlasifikasiRincianOutput"],
+      ["klasifikasiRincianOutput", "kro", "KlasifikasiRincianOutput", "uraian"],
       legacyCode,
     ),
-    kodeAkun: readFirstMeaningfulText(item, ["kodeAkun"], fallbackKodeAkun),
+    kodeAkun: readFirstMeaningfulText(
+      item,
+      ["kodeAkun", "kode_akun"],
+      fallbackKodeAkun,
+    ),
     akunPerjalananDinas: readFirstMeaningfulText(
       item,
-      ["akunPerjalananDinas", "akun", "Akun", "detil", "program"],
+      ["akunPerjalananDinas", "akun", "Akun", "detil", "program", "uraian"],
       legacyCode,
     ),
-    pagu: readAmount(item.pagu),
+    pagu: readAmount(item.pagu ?? item.pagu_awal ?? item.paguAwal),
     tahunAnggaran: /^\d{4}$/.test(rawYear) ? rawYear : currentYear,
   };
 
-  return createDipaRecord(
+  const record = createDipaRecord(
     dipaFormSchema.parse(formData),
     readText(item.id, `dipa-migrated-${index + 1}`),
   );
+
+  if (typeof item.realisasi === "number" && item.realisasi >= 0) {
+    record.realisasi = item.realisasi;
+  }
+
+  return record;
 };
 
-const defaultDipa = legacyDefaults.map(normalizeDipa);
+/**
+ * Deduplikasi daftar DIPA berdasarkan ID unik, kode DIPA, atau kombinasi Tahun + KRO + Akun
+ */
+export const deduplicateDipa = (items: DIPA[]): DIPA[] => {
+  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
+  const unique: DIPA[] = [];
+
+  for (const item of items) {
+    if (!item) continue;
+    const cleanId = (item.id || "").trim();
+    if (cleanId && seenIds.has(cleanId)) continue;
+
+    const tahun = (item.tahunAnggaran || "").trim();
+    const kode = (item.kodeDipa || "").trim().toLowerCase();
+    const kro = (item.kodeKro || "").trim().toLowerCase();
+    const akun = (item.kodeAkun || "").trim().toLowerCase();
+    const program = (item.program || item.akunPerjalananDinas || "").trim().toLowerCase();
+
+    // Kunci unik: tahun + kode, atau tahun + KRO + akun, atau tahun + program
+    const key = kode
+      ? `${tahun}::${kode}`
+      : kro && akun
+      ? `${tahun}::${kro}.${akun}`
+      : `${tahun}::${program}`;
+
+    if (key && seenKeys.has(key)) continue;
+    if (key) seenKeys.add(key);
+    if (cleanId) seenIds.add(cleanId);
+
+    unique.push(item);
+  }
+
+  return unique;
+};
+
+const defaultDipa: DIPA[] = [];
 
 export const dipaService = {
   getAll: (): DIPA[] => {
     if (typeof window === "undefined") return defaultDipa;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultDipa));
       return defaultDipa;
     }
 
     try {
       const parsed = JSON.parse(stored) as unknown;
-      if (!Array.isArray(parsed))
-        throw new Error("Format data DIPA tidak valid");
+      if (!Array.isArray(parsed)) return defaultDipa;
       const normalized = parsed.map(normalizeDipa);
-      const serialized = JSON.stringify(normalized);
-      if (serialized !== stored) localStorage.setItem(STORAGE_KEY, serialized);
-      return normalized;
+      const unique = deduplicateDipa(normalized);
+      if (unique.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
+      }
+      return unique;
     } catch {
       return defaultDipa;
     }
@@ -121,8 +146,8 @@ export const dipaService = {
 
   saveAll: (data: DIPA[]) => {
     if (typeof window !== "undefined") {
-      const normalized = data.map(normalizeDipa);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      const unique = deduplicateDipa(data.map(normalizeDipa));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
     }
   },
 
@@ -141,9 +166,14 @@ export const dipaService = {
           DIPA[] | { data?: DIPA[]; items?: DIPA[] }
         >("/api/v1/anggaran-dipa", queryParams);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map((item: unknown, idx: number) =>
+        const normalized = list.map((item: unknown, idx: number) =>
           normalizeDipa(item as Partial<DIPA>, idx),
         );
+        const unique = deduplicateDipa(normalized);
+        if (unique.length > 0) {
+          dipaService.saveAll(unique);
+        }
+        return unique;
       },
       () => dipaService.getAll(),
     );
@@ -171,7 +201,10 @@ export const dipaService = {
           payload,
         );
         const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
-        return normalizeDipa(unwrapped, 0);
+        const record = normalizeDipa(unwrapped, 0);
+        const current = dipaService.getAll();
+        dipaService.saveAll([...current, record]);
+        return record;
       },
       async () => {
         const items = dipaService.getAll();
@@ -193,7 +226,11 @@ export const dipaService = {
           data,
         );
         const unwrapped = (res as { data?: DIPA }).data || (res as DIPA);
-        return normalizeDipa(unwrapped, 0);
+        const record = normalizeDipa(unwrapped, 0);
+        const items = dipaService.getAll();
+        const updated = items.map((item) => (item.id === id ? record : item));
+        dipaService.saveAll(updated);
+        return record;
       },
       async () => {
         const items = dipaService.getAll();
@@ -210,6 +247,8 @@ export const dipaService = {
     return withApiFallback(
       async () => {
         await apiClient.delete(`/api/v1/anggaran-dipa/${id}`);
+        const items = dipaService.getAll();
+        dipaService.saveAll(items.filter((item) => item.id !== id));
         return true;
       },
       async () => {
@@ -223,25 +262,29 @@ export const dipaService = {
   apiBulkCreate: async (data: Partial<DIPA>[]): Promise<DIPA[]> => {
     return withApiFallback(
       async () => {
+        const uniquePayload = deduplicateDipa(
+          data.map((d, idx) => normalizeDipa(d, idx)),
+        );
         const res = await apiClient.bulkPost<DIPA[] | { data?: DIPA[] }>(
           "/api/v1/anggaran-dipa",
-          data,
+          uniquePayload,
         );
         const list = Array.isArray(res) ? res : res.data || [];
-        return list.map((item: unknown, idx: number) =>
+        const normalized = list.map((item: unknown, idx: number) =>
           normalizeDipa(item as Partial<DIPA>, idx),
         );
+        const unique = deduplicateDipa(normalized);
+        if (unique.length > 0) {
+          dipaService.saveAll(unique);
+        }
+        return unique;
       },
       async () => {
         const items = dipaService.getAll();
         const normalized = data.map((d, idx) =>
           normalizeDipa(d, items.length + idx),
         );
-        const map = new Map(items.map((i) => [i.id || i.kodeDipa, i]));
-        normalized.forEach((item) => {
-          if (item) map.set(item.id || item.kodeDipa, item);
-        });
-        const merged = Array.from(map.values());
+        const merged = deduplicateDipa([...items, ...normalized]);
         dipaService.saveAll(merged);
         return merged;
       },

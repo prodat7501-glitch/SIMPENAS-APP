@@ -4,7 +4,7 @@ import {
   type DIPA,
   type DipaFormData,
 } from "./dipa.schema";
-import { dipaService } from "./dipa.service";
+import { deduplicateDipa, dipaService } from "./dipa.service";
 
 interface DipaState {
   items: DIPA[];
@@ -22,25 +22,25 @@ export const useDipaStore = create<DipaState>((set) => ({
     set({ isLoading: true });
     try {
       const items = await dipaService.apiGetAll();
-      set({ items, isLoading: false });
+      set({ items: deduplicateDipa(items), isLoading: false });
     } catch {
-      set({ items: dipaService.getAll(), isLoading: false });
+      set({ items: deduplicateDipa(dipaService.getAll()), isLoading: false });
     }
   },
   add: async (newItem) => {
     try {
       const created = await dipaService.apiCreate(newItem);
       set((state) => {
-        const updated = [...state.items, created];
+        const updated = deduplicateDipa([...state.items, created]);
         dipaService.saveAll(updated);
         return { items: updated };
       });
     } catch {
       set((state) => {
-        const updated = [
+        const updated = deduplicateDipa([
           ...state.items,
           createDipaRecord(newItem, `d-${Date.now()}`),
-        ];
+        ]);
         dipaService.saveAll(updated);
         return { items: updated };
       });
@@ -50,16 +50,20 @@ export const useDipaStore = create<DipaState>((set) => ({
     try {
       const updatedData = await dipaService.apiUpdate(id, updatedItem);
       set((state) => {
-        const updated = state.items.map((item) =>
-          item.id === id ? { ...item, ...updatedData } : item,
+        const updated = deduplicateDipa(
+          state.items.map((item) =>
+            item.id === id ? { ...item, ...updatedData } : item,
+          ),
         );
         dipaService.saveAll(updated);
         return { items: updated };
       });
     } catch {
       set((state) => {
-        const updated = state.items.map((item) =>
-          item.id === id ? createDipaRecord(updatedItem, id) : item,
+        const updated = deduplicateDipa(
+          state.items.map((item) =>
+            item.id === id ? createDipaRecord(updatedItem, id) : item,
+          ),
         );
         dipaService.saveAll(updated);
         return { items: updated };
