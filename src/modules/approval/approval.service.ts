@@ -141,13 +141,36 @@ const saveHistory = (items: ApprovalHistory[]) => {
 
 export const approvalService = {
   listPending: async (user: UserSession): Promise<ApprovalItem[]> => {
-    const notas = notaDinasService.getAll();
+    const [remoteNotas, remoteSpts] = await Promise.all([
+      notaDinasService.apiGetAll().catch(() => []),
+      sptService.apiGetAll().catch(() => []),
+    ]);
+
+    const localNotas = notaDinasService.getAll();
+    const notasMap = new Map<string, NotaDinas>();
+    localNotas.forEach((n) => {
+      if (n.id) notasMap.set(n.id, n);
+    });
+    remoteNotas.forEach((n) => {
+      if (n.id) notasMap.set(n.id, n);
+    });
+    const notas = Array.from(notasMap.values());
+
+    const localSpts = sptService.getAll();
+    const sptsMap = new Map<string, Spt>();
+    localSpts.forEach((s) => {
+      if (s.id) sptsMap.set(s.id, s);
+    });
+    remoteSpts.forEach((s) => {
+      if (s.id) sptsMap.set(s.id, s);
+    });
+    const spts = Array.from(sptsMap.values());
+
     const pending: ApprovalItem[] = [
       ...notas
         .filter((item) => item.status === "Menunggu Approval")
         .map((item) => ({ ...item, documentType: "Nota Dinas" as const })),
-      ...sptService
-        .getAll()
+      ...spts
         .filter((item) => item.status === "Menunggu Approval")
         .map((item) => ({ ...item, documentType: "SPT" as const })),
     ];
@@ -217,7 +240,7 @@ export const approvalService = {
     if (!canUserApproveDocument(user, approvalItem, notas)) {
       throw new Error(
         data.documentType === "SPT"
-          ? "Anda bukan Sekretaris/Ketua yang berwenang atau Kasubbag pembuat/penandatangan Nota Dinas sumber SPT ini."
+          ? "Approval SPT hanya dapat dilakukan oleh Kasubbag pembuat/penandatangan Nota Dinas sumber dokumen ini."
           : "Approval Nota Dinas hanya dapat dilakukan Sekretaris/PLH/PLT Sekretaris yang sedang berlaku.",
       );
     }
@@ -243,6 +266,7 @@ export const approvalService = {
       try {
         await sptService.apiUpdate(data.documentId, {
           status: data.decision,
+          catatanRevisi,
         });
       } catch (e) {
         console.warn("Gagal update status spt ke cloud:", e);

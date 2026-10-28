@@ -14,7 +14,7 @@ import {
   sortByPegawaiOrder,
 } from "@/modules/pegawai/pegawai-order";
 import { Penandatangan } from "@/modules/penandatangan/penandatangan.schema";
-import { Trash2, FileText, User, Hash, PlusCircle } from "lucide-react";
+import { Trash2, FileText, User, Hash, PlusCircle, FileCheck } from "lucide-react";
 import { z } from "zod";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
 import {
@@ -276,7 +276,18 @@ export function SptForm({
     if (!nota) {
       setValue("notaDinasId", "", { shouldValidate: true });
       setValue("personil", [], { shouldValidate: true });
+      if (!initialValues) {
+        setValue("nomor", "", { shouldValidate: true });
+        setValue("status", "Draft", { shouldValidate: true });
+        setNumberError("");
+      }
       return;
+    }
+
+    if (!initialValues) {
+      setValue("nomor", "", { shouldValidate: true });
+      setValue("status", "Draft", { shouldValidate: true });
+      setNumberError("");
     }
 
     const hasSekretariat =
@@ -340,6 +351,14 @@ export function SptForm({
       return;
     }
     setJenisPersonilSpt(jenis);
+
+    // Saat berpindah kelompok SPT baru, nomor wajib di-reset agar diambil bergantian
+    if (!initialValues) {
+      setValue("nomor", "", { shouldValidate: true });
+      setValue("status", "Draft", { shouldValidate: true });
+      setNumberError("");
+    }
+
     if (!selectedNotaDinas) return;
 
     setValue("personil", filterPersonilByJenis(selectedNotaDinas, jenis), {
@@ -410,6 +429,31 @@ export function SptForm({
           return;
         }
 
+        if (!rest.nomor || !rest.nomor.trim()) {
+          void showAlert({
+            title: "Nomor SPT Belum Diambil",
+            message: "Nomor SPT wajib diambil terlebih dahulu. Silakan klik tombol 'Ambil' di samping kolom Nomor SPT.",
+            variant: "warning",
+            confirmText: "Mengerti",
+          });
+          return;
+        }
+
+        const isDuplicateNomor = existingSpts.some(
+          (item) =>
+            item.id !== initialValues?.id &&
+            item.nomor.trim().toLowerCase() === rest.nomor.trim().toLowerCase(),
+        );
+        if (isDuplicateNomor) {
+          void showAlert({
+            title: "Nomor SPT Sudah Terpakai",
+            message: `Nomor SPT "${rest.nomor}" sudah digunakan pada dokumen lain. Pengambilan nomor SPT Komisioner dan SPT Sekretariat wajib dilakukan masing-masing secara bergantian (tidak boleh 1 nomor bersama). Silakan klik tombol Ambil untuk mendapatkan nomor baru.`,
+            variant: "warning",
+            confirmText: "Mengerti",
+          });
+          return;
+        }
+
         const chosenSigner = penandatangans.find(
           (p) => p.id === rest.penandatanganId,
         );
@@ -441,8 +485,19 @@ export function SptForm({
         if (submitAction === "saveAndNextKomisioner" && selectedNotaDinas) {
           handleJenisPersonilChange("Komisioner");
           setValue("nomor", "", { shouldValidate: true });
-          setValue("penandatanganId", "", { shouldValidate: true });
           setValue("status", "Draft", { shouldValidate: true });
+          const ketuaSigners = penandatangans.filter((item) => {
+            const signerText = `${item.jabatanPenandatangan} ${item.peran}`;
+            return (
+              isKetuaKpuSigner(signerText) &&
+              isPenandatanganAvailable(item, "SPT", rest.tanggalMulai)
+            );
+          });
+          if (ketuaSigners.length > 0) {
+            setValue("penandatanganId", ketuaSigners[0].id || "", {
+              shouldValidate: true,
+            });
+          }
           setSubmitAction("save");
         }
       })}
@@ -524,6 +579,15 @@ export function SptForm({
                 </span>
               </button>
             </div>
+            <div className="rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 p-2.5 text-[11px] text-blue-900 dark:text-blue-200 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-xs text-blue-950 dark:text-blue-100">
+                <FileCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                Pemisahan Dokumen & Pengambilan Nomor Mandiri
+              </p>
+              <p className="text-[10.5px] leading-relaxed text-blue-800 dark:text-blue-300">
+                SPT Komisioner dan SPT Sekretariat diproses terpisah. Pengambilan nomor <strong>wajib dilakukan masing-masing</strong> secara bergantian menggunakan tombol <strong>Ambil</strong> (tidak dapat menggunakan 1 nomor untuk kedua dokumen).
+              </p>
+            </div>
             {notaIsMixed && (
               <p className="text-[10px] text-amber-600 font-medium leading-tight">
                 Nota Dinas ini memuat Komisioner & Sekretariat. Sistem memisahkan SPT dan penandatangan sesuai regulasi (Ketua KPU untuk Komisioner, Sekretaris untuk Sekretariat).
@@ -554,6 +618,11 @@ export function SptForm({
                 <Hash className="w-3.5 h-3.5" /> Ambil
               </Button>
             </div>
+            {!watchNomor && (
+              <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+                Setiap SPT wajib memiliki nomor unik. Klik tombol <strong>Ambil</strong> untuk mendapatkan nomor berurutan.
+              </p>
+            )}
             {errors.nomor && (
               <p className="text-[10px] text-danger font-bold mt-1">
                 {errors.nomor.message}

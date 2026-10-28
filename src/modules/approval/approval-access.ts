@@ -5,6 +5,7 @@ import type { PenandatanganSnapshot } from "@/modules/penandatangan/penandatanga
 import { penandatanganService } from "@/modules/penandatangan/penandatangan.service";
 import type { Spt } from "@/modules/spt/spt.schema";
 import type { UserSession } from "@/stores/auth.store";
+import { userAccountService } from "@/modules/user-account/user-account.service";
 
 type OfficialIdentity = Pick<
   PenandatanganSnapshot,
@@ -182,43 +183,73 @@ export const canUserApproveSpt = (
   nota?: NotaDinas | null,
 ) => {
   if (user.role === "Administrator") return true;
-  if (user.role !== "Supervisor") return false;
+  // Approval SPT HANYA BISA dilakukan oleh Kasubbag pembuat/penandatangan Nota Dinas sumber; selain itu tidak boleh
+  if (!nota) return false;
 
-  const sptSigner = getDocumentSigner(
-    spt.penandatanganId,
-    spt.penandatanganSnapshot,
-  );
-  const signerText = getOfficialText(sptSigner);
-  const notaSigner = nota
-    ? getDocumentSigner(nota.penandatanganId, nota.penandatanganSnapshot)
-    : null;
-  const notaSignerText = getOfficialText(notaSigner);
   const actorPegawai = resolveActorPegawai(user);
-  const matchesSourceKasubbagSigner =
-    (notaSignerText.includes("kasubbag") ||
-      notaSignerText.includes("kepala sub bagian") ||
-      notaSignerText.includes("kepala subbagian")) &&
-    actorMatchesOfficial(user, notaSigner);
-  const isSourceKasubbagCreator = Boolean(
-    nota &&
-      actorPegawai?.id &&
-      isActorKasubbag(user) &&
-      getNotaDinasCreatorPegawaiId(nota) === actorPegawai.id,
+  const notaSigner = getDocumentSigner(
+    nota.penandatanganId,
+    nota.penandatanganSnapshot,
   );
-  const isSourceKasubbag =
-    matchesSourceKasubbagSigner || isSourceKasubbagCreator;
 
-  if (signerText.includes("ketua kpu")) {
-    const isAuthorizedChair =
-      actorMatchesOfficial(user, sptSigner) || isActorKetuaKpu(user);
-    return isAuthorizedChair || isSourceKasubbag;
+  // 1. Cek apakah identitas aktor cocok dengan pejabat penandatangan Nota Dinas (Kasubbag)
+  const matchesNotaSigner = actorMatchesOfficial(user, notaSigner);
+
+  // 2. Cek apakah ID pegawai aktor cocok dengan pembuat Nota Dinas
+  const notaCreatorPegawaiId =
+    nota.createdByPegawaiId || getNotaDinasCreatorPegawaiId(nota);
+  const isNotaCreator = Boolean(
+    actorPegawai?.id &&
+      notaCreatorPegawaiId &&
+      actorPegawai.id === notaCreatorPegawaiId,
+  );
+
+  // 3. Cek apakah ID pegawai aktor cocok dengan pegawai penandatangan Nota Dinas
+  const signerPegawaiId = findPegawaiIdForOfficial(notaSigner);
+  const matchesSignerPegawaiId = Boolean(
+    actorPegawai?.id &&
+      signerPegawaiId &&
+      actorPegawai.id === signerPegawaiId,
+  );
+
+  // 4. Cek kecocokan nama bersih aktor dengan nama penandatangan Nota Dinas
+  const actorNameClean = normalizeText(user.name || "");
+  const signerNameClean = normalizeText(
+    nota.penandatanganSnapshot?.nama || notaSigner?.nama || "",
+  );
+  const matchesSignerName = Boolean(
+    actorNameClean && signerNameClean && actorNameClean === signerNameClean,
+  );
+
+  // 5. Cek akun pengguna tertaut melalui Master Akun Pengguna
+  let matchesLinkedAccount = false;
+  try {
+    const userAccounts = userAccountService.getAll();
+    const linkedAccount = userAccounts.find(
+      (acc) =>
+        acc.id === user.id ||
+        (user.username &&
+          acc.username.toLowerCase() === user.username.toLowerCase()),
+    );
+    const effectiveUserPegawaiId =
+      user.pegawaiId || linkedAccount?.pegawaiId || actorPegawai?.id;
+    matchesLinkedAccount = Boolean(
+      effectiveUserPegawaiId &&
+        ((notaCreatorPegawaiId &&
+          effectiveUserPegawaiId === notaCreatorPegawaiId) ||
+          (signerPegawaiId && effectiveUserPegawaiId === signerPegawaiId)),
+    );
+  } catch {
+    // fallback jika userAccountService gagal
   }
 
-  if (!signerText.includes("sekretaris")) return false;
-
-  const isAuthorizedSecretary = actorMatchesOfficial(user, sptSigner);
-
-  return isAuthorizedSecretary || isSourceKasubbag;
+  return (
+    matchesNotaSigner ||
+    isNotaCreator ||
+    matchesSignerPegawaiId ||
+    matchesSignerName ||
+    matchesLinkedAccount
+  );
 };
 
 export const canUserApproveDocument = (

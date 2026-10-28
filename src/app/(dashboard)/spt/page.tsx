@@ -283,6 +283,19 @@ export default function SptPage() {
       );
       return;
     }
+    if (
+      items.some(
+        (item) =>
+          item.id !== editingItem?.id &&
+          item.nomor.trim().toLowerCase() === data.nomor.trim().toLowerCase(),
+      )
+    ) {
+      addToast(
+        `Nomor SPT "${data.nomor}" sudah digunakan pada dokumen lain. Setiap SPT wajib mengambil nomor dokumen masing-masing.`,
+        "error",
+      );
+      return;
+    }
     const securedData: Omit<Spt, "id"> = {
       ...data,
       createdByPegawaiId:
@@ -299,7 +312,7 @@ export default function SptPage() {
     if (securedData.status === "Menunggu Approval") {
       addNotification(
         "SPT Menunggu Approval",
-        `${securedData.nomor} telah diajukan kepada pejabat berwenang.`,
+        `${securedData.nomor} telah diajukan kepada Kasubbag pembuat Nota Dinas untuk approval.`,
         "info",
       );
       addActivity({

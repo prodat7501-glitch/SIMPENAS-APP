@@ -29,7 +29,7 @@ export default function ApprovalPage() {
   if (!hasPermission("Approval", "R"))
     return (
       <Alert variant="error" title="Akses Ditolak">
-        Halaman Approval hanya dapat diakses oleh Supervisor.
+        Halaman Approval hanya dapat diakses oleh Kasubbag pembuat Nota Dinas, Supervisor, atau Administrator.
       </Alert>
     );
   const decide = async (data: ApprovalDecision) => {

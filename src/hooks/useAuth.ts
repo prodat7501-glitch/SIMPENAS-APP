@@ -8,6 +8,9 @@ import { AuthService } from "@/services/auth.service";
 import { verifyTotpToken } from "@/lib/totp";
 import { userAccountService } from "@/modules/user-account/user-account.service";
 import { isKasubbagSigner } from "@/modules/penandatangan/penandatangan.service";
+import { pegawaiService } from "@/modules/pegawai/pegawai.service";
+import { jabatanService } from "@/modules/jabatan/jabatan.service";
+import { notaDinasService } from "@/modules/nota-dinas/nota-dinas.service";
 
 const ADMIN_ONLY_DOCUMENT_DELETE = new Set([
   "Nota Dinas",
@@ -196,15 +199,79 @@ export function useAuth() {
       return true;
     }
 
-    // Kasubbag (or Sub Bagian Keuangan) authoritative access to Nota Dinas
-    const isKasubbagUser =
-      role === "Sub Bagian Keuangan" ||
-      isKasubbagSigner(role) ||
-      isKasubbagSigner(user.username) ||
-      isKasubbagSigner(user.name);
+    // Kasubbag (or Sub Bagian Keuangan) authoritative access to Nota Dinas & Approval
+    const checkIsKasubbag = () => {
+      if (role === "Sub Bagian Keuangan") return true;
+      if (
+        isKasubbagSigner(role) ||
+        isKasubbagSigner(user.username) ||
+        isKasubbagSigner(user.name)
+      ) {
+        return true;
+      }
+      try {
+        const pegawais = pegawaiService.getAll();
+        const actorPegawai =
+          pegawais.find((p) => p.id === user.pegawaiId) ??
+          pegawais.find(
+            (p) =>
+              p.nama.toLowerCase().trim() === user.name.toLowerCase().trim(),
+          );
+        if (actorPegawai) {
+          const jabatans = jabatanService.getAll();
+          const jab = jabatans.find((j) => j.id === actorPegawai.jabatanId);
+          if (jab && isKasubbagSigner(jab.nama)) return true;
+          if (isKasubbagSigner(actorPegawai.kategoriPegawai)) return true;
+        }
+      } catch {
+        // ignore
+      }
+      return false;
+    };
+
+    const hasCreatedOrSignedNota = () => {
+      try {
+        const notas = notaDinasService.getAll();
+        const pegawais = pegawaiService.getAll();
+        const actorPegawai =
+          pegawais.find((p) => p.id === user.pegawaiId) ??
+          pegawais.find(
+            (p) =>
+              p.nama.toLowerCase().trim() === user.name.toLowerCase().trim(),
+          );
+        const actorId = actorPegawai?.id || user.pegawaiId;
+        return notas.some((n) => {
+          if (actorId && n.createdByPegawaiId === actorId) return true;
+          const signer = n.penandatanganSnapshot;
+          if (signer && actorPegawai) {
+            if (
+              signer.nip &&
+              actorPegawai.nip &&
+              signer.nip === actorPegawai.nip
+            )
+              return true;
+            if (
+              signer.nama.toLowerCase().trim() ===
+              actorPegawai.nama.toLowerCase().trim()
+            )
+              return true;
+          }
+          return false;
+        });
+      } catch {
+        return false;
+      }
+    };
+
+    const isKasubbagUser = checkIsKasubbag();
+    const canAccessApproval = isKasubbagUser || hasCreatedOrSignedNota();
 
     if (isKasubbagUser && moduleName === "Nota Dinas") {
       return ["C", "R", "U", "G", "P", "N"].includes(action);
+    }
+
+    if (canAccessApproval && moduleName === "Approval") {
+      return ["R", "A"].includes(action);
     }
 
     // Role Supervisor permissions mapping

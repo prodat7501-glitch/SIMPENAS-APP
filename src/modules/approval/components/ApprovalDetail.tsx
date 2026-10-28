@@ -79,7 +79,14 @@ export function ApprovalDetail({
           <Info label="Jenis Dokumen" value={item.documentType} />
           <Info label="Nomor Dokumen" value={item.nomor} />
           <Info label="Tanggal" value={getTanggalInfo(item)} />
-          <Info label="Penandatangan" value={item.penandatanganId} />
+          <Info
+            label="Penandatangan Dokumen"
+            value={
+              item.penandatanganSnapshot?.nama
+                ? `${item.penandatanganSnapshot.nama} (${item.penandatanganSnapshot.jabatanPenandatangan || item.penandatanganSnapshot.peran})`
+                : item.penandatanganId
+            }
+          />
           <Info
             label="Jumlah Personil"
             value={String(getPersonilCount(item))}
