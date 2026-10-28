@@ -716,6 +716,9 @@ export function SptForm({
                 <option value="Disetujui">Disetujui</option>
               )}
             </Select>
+            <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+              Approval SPT (baik Komisioner maupun Sekretariat) diproses oleh Kasubbag pembuat Nota Dinas.
+            </p>
           </div>
         </div>
 
@@ -947,8 +950,8 @@ export function SptForm({
               <div className="rounded-xl border border-info/30 bg-info/10 p-3 text-[11px] font-semibold text-info">
                 Jenis SPT:{" "}
                 {isKomisionerSpt
-                  ? "SPT Komisioner — ditandatangani Ketua KPU."
-                  : "SPT Sekretariat — ditandatangani Sekretaris/PLT/PLH Sekretaris."}
+                  ? "SPT Komisioner — ditandatangani Ketua KPU (Approval di sistem oleh Kasubbag pembuat Nota Dinas)."
+                  : "SPT Sekretariat — ditandatangani Sekretaris/PLT/PLH Sekretaris (Approval di sistem oleh Kasubbag pembuat Nota Dinas)."}
               </div>
             )}
             <div className="space-y-2">
