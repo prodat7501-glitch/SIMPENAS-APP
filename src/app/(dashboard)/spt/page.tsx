@@ -182,6 +182,11 @@ export default function SptPage() {
   const canCreateFromAccessibleNota =
     canCreate && creatableNotaDinasItems.length > 0;
   const canManageSpt = (item: Spt) => {
+    // Dokumen SPT yang telah disetujui atau selesai dikunci dari perubahan oleh pembuat (hanya Administrator yang dapat mengelola jika diperlukan)
+    if (item.status === "Disetujui" || item.status === "Selesai") {
+      return user?.role === "Administrator";
+    }
+
     if (isPrivilegedUser) return true;
 
     const effectiveUserPegawaiId = currentPegawaiId || user?.pegawaiId;
@@ -214,24 +219,20 @@ export default function SptPage() {
 
     // 3. Khusus SPT yang belum dilakukan Approval (Draft, Nomor Diambil, Menunggu Approval, Perlu Revisi):
     // Personil pembuat atau personil yang tercantum dalam SPT / Nota Dinas tetap berhak mengedit!
-    const isNotApprovedYet =
-      item.status !== "Disetujui" && item.status !== "Selesai";
-    if (isNotApprovedYet) {
-      if (!item.createdByPegawaiId) return true;
+    if (!item.createdByPegawaiId) return true;
 
-      const isPersonilInSpt = (item.personil || []).some(
-        (p) =>
-          Boolean(effectiveUserPegawaiId) &&
-          p.pegawaiId === effectiveUserPegawaiId,
-      );
-      const isPersonilInNota = isPegawaiInNotaDinas(
-        effectiveUserPegawaiId,
-        sourceNota,
-      );
+    const isPersonilInSpt = (item.personil || []).some(
+      (p) =>
+        Boolean(effectiveUserPegawaiId) &&
+        p.pegawaiId === effectiveUserPegawaiId,
+    );
+    const isPersonilInNota = isPegawaiInNotaDinas(
+      effectiveUserPegawaiId,
+      sourceNota,
+    );
 
-      if (isPersonilInSpt || isPersonilInNota) {
-        return true;
-      }
+    if (isPersonilInSpt || isPersonilInNota) {
+      return true;
     }
 
     return false;
@@ -262,6 +263,16 @@ export default function SptPage() {
   };
 
   const handleEdit = (item: Spt) => {
+    if (
+      (item.status === "Disetujui" || item.status === "Selesai") &&
+      user?.role !== "Administrator"
+    ) {
+      addToast(
+        "SPT yang telah disetujui tidak dapat diubah kembali. Dokumen telah resmi disahkan.",
+        "warning",
+      );
+      return;
+    }
     if (!canManageSpt(item)) {
       addToast(
         "SPT ini dikelola oleh pegawai pembuatnya. Anda hanya dapat melihat status dan pratinjau.",
@@ -349,6 +360,17 @@ export default function SptPage() {
     ) {
       addToast(
         `Nomor SPT "${data.nomor}" sudah digunakan pada dokumen lain. Setiap SPT wajib mengambil nomor dokumen masing-masing.`,
+        "error",
+      );
+      return;
+    }
+    if (
+      editingItem &&
+      (editingItem.status === "Disetujui" || editingItem.status === "Selesai") &&
+      user?.role !== "Administrator"
+    ) {
+      addToast(
+        "SPT yang telah disetujui tidak dapat diubah kembali.",
         "error",
       );
       return;
