@@ -161,6 +161,10 @@ interface RawUserAccountApi {
   isActive?: number | boolean | string;
   password_hash?: string;
   passwordHash?: string;
+  totp_secret?: string;
+  totpSecret?: string;
+  is_totp_active?: number | boolean | string;
+  isTotpActive?: number | boolean | string;
   created_at?: string;
   createdAt?: string;
   updated_at?: string;
@@ -177,6 +181,13 @@ const normalizeUserAccountFromApi = (raw: RawUserAccountApi): UserAccount => {
         activeRaw === "1" ||
         activeRaw === "true";
 
+  const totpRaw = raw.isTotpActive ?? raw.is_totp_active;
+  const isTotpActive =
+    totpRaw === 1 ||
+    totpRaw === true ||
+    totpRaw === "1" ||
+    totpRaw === "true";
+
   return {
     id: raw.id || `user-${Date.now()}`,
     username: raw.username || "",
@@ -185,6 +196,8 @@ const normalizeUserAccountFromApi = (raw: RawUserAccountApi): UserAccount => {
     role: (raw.role as UserAccount["role"]) || "Pegawai",
     pegawaiId: raw.pegawai_id ?? raw.pegawaiId ?? undefined,
     isActive,
+    totpSecret: raw.totp_secret ?? raw.totpSecret ?? undefined,
+    isTotpActive,
     passwordHash:
       raw.password_hash ?? raw.passwordHash ?? DEFAULT_MOCK_PASSWORD_HASH,
     createdAt: raw.created_at ?? raw.createdAt ?? nowIso(),
@@ -424,6 +437,9 @@ export const userAccountService = {
     if (data.role) payload.role = data.role;
     if (data.pegawaiId !== undefined) payload.pegawai_id = data.pegawaiId;
     if (data.isActive !== undefined) payload.is_active = data.isActive ? 1 : 0;
+    if (data.totpSecret !== undefined) payload.totp_secret = data.totpSecret;
+    if (data.isTotpActive !== undefined)
+      payload.is_totp_active = data.isTotpActive ? 1 : 0;
     if (passwordHash) payload.password_hash = passwordHash;
 
     return withApiFallback(
@@ -504,5 +520,19 @@ export const userAccountService = {
         return data as UserAccount[];
       },
     );
+  },
+
+  reset2FA: async (id: string): Promise<UserAccount> => {
+    return userAccountService.apiUpdate(id, {
+      totpSecret: "",
+      isTotpActive: false,
+    });
+  },
+
+  activate2FA: async (id: string, secret: string): Promise<UserAccount> => {
+    return userAccountService.apiUpdate(id, {
+      totpSecret: secret,
+      isTotpActive: true,
+    });
   },
 };

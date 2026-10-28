@@ -6,6 +6,12 @@ import {
 import type { UserAccount } from "@/modules/user-account/user-account.types";
 import { apiClient, withApiFallback } from "@/services/api";
 
+export interface CredentialCheckResult {
+  status: "INVALID" | "NEED_SETUP_2FA" | "NEED_VERIFY_2FA";
+  session?: UserSession;
+  message?: string;
+}
+
 const accountToSession = (account: UserAccount): UserSession => ({
   id: account.id,
   username: account.username,
@@ -13,6 +19,8 @@ const accountToSession = (account: UserAccount): UserSession => ({
   role: account.role as UserRole,
   email: account.email,
   pegawaiId: account.pegawaiId,
+  totpSecret: account.totpSecret,
+  isTotpActive: account.isTotpActive,
 });
 
 export class AuthService {
@@ -26,6 +34,40 @@ export class AuthService {
 
     if (!userAccountService.canLogin(account)) return null;
     return accountToSession(account);
+  }
+
+  static async checkCredentials(
+    username: string,
+    password: string,
+  ): Promise<CredentialCheckResult> {
+    const session = await AuthService.login(username, password);
+    if (!session) {
+      return {
+        status: "INVALID",
+        message:
+          "Username atau kata sandi tidak valid, atau akun telah dinonaktifkan.",
+      };
+    }
+
+    const localAcc =
+      userAccountService.findById(session.id) ??
+      userAccountService.findByUsername(session.username);
+
+    const isTotpActive =
+      Boolean(session.isTotpActive) || Boolean(localAcc?.isTotpActive);
+    const totpSecret = session.totpSecret || localAcc?.totpSecret;
+
+    if (isTotpActive && totpSecret) {
+      return {
+        status: "NEED_VERIFY_2FA",
+        session: { ...session, totpSecret, isTotpActive: true },
+      };
+    }
+
+    return {
+      status: "NEED_SETUP_2FA",
+      session: { ...session, totpSecret: "", isTotpActive: false },
+    };
   }
 
   static async login(
@@ -49,6 +91,8 @@ export class AuthService {
             role: (userObj.role as UserRole) || (username.toLowerCase() === "admin" ? "Administrator" : "Pegawai"),
             email: String(userObj.email || ""),
             pegawaiId: userObj.pegawaiId || userObj.pegawai_id ? String(userObj.pegawaiId || userObj.pegawai_id) : undefined,
+            totpSecret: userObj.totpSecret || userObj.totp_secret ? String(userObj.totpSecret || userObj.totp_secret) : undefined,
+            isTotpActive: userObj.isTotpActive === true || userObj.is_totp_active === 1 || userObj.is_totp_active === "true",
           };
 
           if (typeof window !== "undefined") {

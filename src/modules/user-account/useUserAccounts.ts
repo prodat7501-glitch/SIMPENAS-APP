@@ -7,6 +7,7 @@ export function useUserAccounts() {
   const items = useUserAccountStore((state) => state.items);
   const load = useUserAccountStore((state) => state.load);
   const updateAccount = useUserAccountStore((state) => state.update);
+  const reset2FAAccount = useUserAccountStore((state) => state.reset2FA);
   const removeAccount = useUserAccountStore((state) => state.remove);
   const activeUserName = useAuthStore((state) => state.user?.name);
   const log = useActivityStore((state) => state.add);
@@ -23,6 +24,15 @@ export function useUserAccounts() {
         action: "Update",
         module: "Master Akun Pengguna",
         description: "Memperbarui akun pengguna atau kata sandi mock",
+        user: activeUserName ?? "Administrator",
+      });
+    },
+    reset2FA: async (id: string, accountName?: string) => {
+      await reset2FAAccount(id);
+      log({
+        action: "Update",
+        module: "Master Akun Pengguna",
+        description: `Reset 2FA Google Authenticator untuk akun ${accountName ? `(${accountName})` : ""}`,
         user: activeUserName ?? "Administrator",
       });
     },

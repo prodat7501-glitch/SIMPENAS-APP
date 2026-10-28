@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore, type UserRole } from "@/stores/auth.store";
+import { useAuthStore, type UserRole, type UserSession } from "@/stores/auth.store";
 import type { LoginInput } from "@/schemas/auth.schema";
+import { AuthService } from "@/services/auth.service";
+import { verifyTotpToken } from "@/lib/totp";
+import { userAccountService } from "@/modules/user-account/user-account.service";
 
 const ADMIN_ONLY_DOCUMENT_DELETE = new Set([
   "Nota Dinas",
@@ -23,6 +26,7 @@ export function useAuth() {
     isAuthenticated,
     hasHydrated,
     login: storeLogin,
+    setSession,
     logout: storeLogout,
     refreshUserFromMaster,
   } = useAuthStore();
@@ -34,6 +38,105 @@ export function useAuth() {
       refreshUserFromMaster();
     }
   }, [hasHydrated, user, refreshUserFromMaster]);
+
+  const checkCredentials = async (input: LoginInput) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await AuthService.checkCredentials(
+        input.username,
+        input.password,
+      );
+      if (res.status === "INVALID") {
+        setError(res.message || "Username atau kata sandi tidak valid.");
+      }
+      return res;
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Terjadi kesalahan sistem.";
+      setError(msg);
+      return { status: "INVALID" as const, message: msg };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyTotpAndLogin = async (
+    session: UserSession,
+    totpCode: string,
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (!session.totpSecret) {
+        setError("Kunci 2FA tidak ditemukan pada akun ini.");
+        return false;
+      }
+      const isValid = await verifyTotpToken(session.totpSecret, totpCode);
+      if (!isValid) {
+        setError(
+          "Kode 6 digit Google Authenticator tidak valid atau sudah kedaluwarsa.",
+        );
+        return false;
+      }
+
+      setSession(session);
+      router.push("/dashboard");
+      return true;
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Gagal memverifikasi kode Authenticator.";
+      setError(msg);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const setupTotpAndLogin = async (
+    session: UserSession,
+    secret: string,
+    totpCode: string,
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const isValid = await verifyTotpToken(secret, totpCode);
+      if (!isValid) {
+        setError(
+          "Kode 6 digit konfirmasi tidak cocok. Pastikan Anda telah memindai QR Code di aplikasi Google Authenticator.",
+        );
+        return false;
+      }
+
+      try {
+        await userAccountService.activate2FA(session.id, secret);
+      } catch (err) {
+        console.warn("Gagal sinkron aktivasi 2FA ke cloud:", err);
+      }
+
+      const updatedSession: UserSession = {
+        ...session,
+        totpSecret: secret,
+        isTotpActive: true,
+      };
+
+      setSession(updatedSession);
+      router.push("/dashboard");
+      return true;
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Gagal mengaktifkan Google Authenticator.";
+      setError(msg);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (input: LoginInput): Promise<boolean> => {
     setIsLoading(true);
@@ -172,6 +275,9 @@ export function useAuth() {
     error,
     login,
     logout,
+    checkCredentials,
+    verifyTotpAndLogin,
+    setupTotpAndLogin,
     hasRole,
     hasPermission,
   };

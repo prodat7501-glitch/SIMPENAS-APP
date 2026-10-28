@@ -9,6 +9,8 @@ export interface UserAccount {
   role: UserRole;
   passwordHash: string;
   isActive: boolean;
+  totpSecret?: string;
+  isTotpActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -11,7 +11,7 @@
 // Konfigurasi Header Kolom untuk Setiap Lembar Kerja (Sheet)
 var SCHEMA_DEFINITIONS = {
   user_accounts: [
-    "id", "username", "name", "email", "role", "password_hash", "is_active", "pegawai_id", "created_at", "updated_at"
+    "id", "username", "name", "email", "role", "password_hash", "is_active", "pegawai_id", "totp_secret", "is_totp_active", "created_at", "updated_at"
   ],
   pegawai: [
     "id", "nip", "nama", "jabatan_id", "unit_kerja_id", "pangkat_id", "kategori_pegawai", "role_aplikasi", "status", "created_at", "updated_at"
@@ -539,7 +539,9 @@ function handleLogin(credentials) {
         name: user.name,
         email: user.email,
         role: user.role,
-        pegawaiId: user.pegawai_id
+        pegawaiId: user.pegawai_id,
+        totpSecret: user.totp_secret || "",
+        isTotpActive: (user.is_totp_active === true || user.is_totp_active === 1 || user.is_totp_active === "true")
       }
     }
   };

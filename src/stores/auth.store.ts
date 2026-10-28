@@ -13,6 +13,8 @@ export interface UserSession {
   role: UserRole;
   email: string;
   pegawaiId?: string;
+  totpSecret?: string;
+  isTotpActive?: boolean;
 }
 
 interface AuthState {
@@ -21,6 +23,7 @@ interface AuthState {
   hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
   login: (username: string, password: string) => Promise<boolean>;
+  setSession: (session: UserSession) => void;
   logout: () => void;
   updateProfile: (name: string, email: string) => void;
   refreshUserFromMaster: () => void;
@@ -33,6 +36,19 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       hasHydrated: false,
       setHasHydrated: (hasHydrated: boolean) => set({ hasHydrated }),
+      setSession: (userSession: UserSession) => {
+        set({ user: userSession, isAuthenticated: true, hasHydrated: true });
+        useActivityStore.getState().add({
+          action: "Login",
+          module: "Autentikasi",
+          description: "Pengguna masuk ke SIMPENAS dengan Google Authenticator",
+          user: userSession.name,
+        });
+        if (typeof document !== "undefined") {
+          document.cookie =
+            "simpenas_session=true; path=/; max-age=86400; SameSite=Lax";
+        }
+      },
       login: async (username: string, password: string) => {
         const userSession = await AuthService.login(username, password);
         if (userSession) {
