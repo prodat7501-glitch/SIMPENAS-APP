@@ -14,18 +14,28 @@ const FINANCIAL_DOCUMENT_TYPES: JenisDokumenPenandatangan[] = [
   "Kuitansi",
 ];
 
+export const isKasubbagSigner = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+  const text = value.toLowerCase().replace(/[\._\-]/g, " ");
+  return (
+    text.includes("kasubbag") ||
+    text.includes("kasubag") ||
+    text.includes("subbag") ||
+    text.includes("sub bagian") ||
+    text.includes("subbagian") ||
+    text.includes("kepala sub") ||
+    text.includes("pembuat nota dinas")
+  );
+};
+
 const inferDocumentTypes = (
   item: Pick<Penandatangan, "jabatanPenandatangan" | "peran">,
 ): JenisDokumenPenandatangan[] => {
   const text = `${item.jabatanPenandatangan} ${item.peran}`.toLowerCase();
   const result = new Set<JenisDokumenPenandatangan>();
-  if (
-    text.includes("kasubbag") ||
-    text.includes("kasubag") ||
-    text.includes("kepala sub bagian") ||
-    text.includes("kepala subbagian")
-  )
+  if (isKasubbagSigner(text)) {
     result.add("Nota Dinas");
+  }
   if (text.includes("sekretaris") || text.includes("ketua kpu"))
     result.add("SPT");
   if (text.includes("ppk") || text.includes("pejabat pembuat komitmen")) {
@@ -120,8 +130,13 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
     status,
   };
 
-  const jenisDokumen =
+  const isKasubbag = isKasubbagSigner(`${jabatanPenandatangan} ${peran}`);
+  const baseJenis =
     parsedJenis.length > 0 ? parsedJenis : inferDocumentTypes(partial);
+  const jenisDokumen =
+    isKasubbag && !baseJenis.includes("Nota Dinas")
+      ? (["Nota Dinas", ...baseJenis] as JenisDokumenPenandatangan[])
+      : baseJenis;
 
   return {
     ...partial,
@@ -300,8 +315,22 @@ export const isPenandatanganAvailable = (
   jenisDokumen: JenisDokumenPenandatangan,
   tanggalDokumen?: string,
 ) => {
-  if (item.status !== "Aktif" || !item.jenisDokumen.includes(jenisDokumen))
-    return false;
+  const isKasubbag = isKasubbagSigner(
+    `${item.jabatanPenandatangan} ${item.peran}`,
+  );
+  const docs = item.jenisDokumen || [];
+  const hasDocument =
+    docs.includes(jenisDokumen) ||
+    (jenisDokumen === "Nota Dinas" && isKasubbag);
+
+  const statusStr = String(item.status || "").toLowerCase().trim();
+  const isAktif =
+    statusStr === "aktif" ||
+    statusStr === "true" ||
+    item.status === "Aktif" ||
+    !item.status;
+
+  if (!isAktif || !hasDocument) return false;
   if (!tanggalDokumen) return true;
   if (item.berlakuMulai && tanggalDokumen < item.berlakuMulai) return false;
   if (item.berlakuSampai && tanggalDokumen > item.berlakuSampai) return false;

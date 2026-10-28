@@ -252,6 +252,8 @@ export function useAuth() {
         return ["R", "V", "P", "E"].includes(action);
       if (["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName))
         return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
+      if (moduleName === "Nota Dinas")
+        return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "SPBY")
         return ["C", "R", "U", "A", "G", "P"].includes(action);
       if (moduleName === "Daftar Nominatif")

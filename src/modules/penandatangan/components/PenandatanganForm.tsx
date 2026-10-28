@@ -16,6 +16,7 @@ import {
   Penandatangan,
   penandatanganSchema,
 } from "../penandatangan.schema";
+import { isKasubbagSigner } from "../penandatangan.service";
 
 const ROLE_STORAGE_KEY = "simpenas_penandatangan_roles";
 
@@ -49,10 +50,11 @@ export function PenandatanganForm({
     if (!initialValues) return "";
     const matched = pegawais.find(
       (p) =>
+        (initialValues.pegawaiId && p.id === initialValues.pegawaiId) ||
         (p.nip && p.nip === initialValues.nip) ||
         p.nama.toLowerCase() === initialValues.nama.toLowerCase(),
     );
-    return matched?.id || "";
+    return matched?.id || initialValues.pegawaiId || "";
   });
 
   const [customRoles, setCustomRoles] = useState<string[]>(readCustomRoles);
@@ -62,17 +64,20 @@ export function PenandatanganForm({
     register,
     handleSubmit,
     setValue,
+    getValues,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof penandatanganSchema>>({
     resolver: zodResolver(penandatanganSchema),
     defaultValues: {
+      pegawaiId: "",
       nip: "",
       nama: "",
       jabatanPenandatangan: "",
-      peran: "KPA",
+      peran: "Kasubbag",
       berlakuMulai: "",
       berlakuSampai: "",
-      jenisDokumen: ["SPBY", "Daftar Nominatif", "Tanda Terima", "Kuitansi"],
+      jenisDokumen: ["Nota Dinas", "SPBY", "Daftar Nominatif", "Tanda Terima", "Kuitansi"],
       status: "Aktif",
     },
   });
@@ -84,6 +89,7 @@ export function PenandatanganForm({
 
   useEffect(() => {
     if (initialValues) {
+      setValue("pegawaiId", initialValues.pegawaiId || "");
       setValue("nip", initialValues.nip);
       setValue("nama", initialValues.nama);
       setValue("jabatanPenandatangan", initialValues.jabatanPenandatangan);
@@ -95,8 +101,23 @@ export function PenandatanganForm({
     }
   }, [initialValues, setValue]);
 
+  const watchPeran = watch("peran");
+  const watchJabatan = watch("jabatanPenandatangan");
+  useEffect(() => {
+    const isKasubbag = isKasubbagSigner(
+      `${watchJabatan || ""} ${watchPeran || ""}`,
+    );
+    if (isKasubbag) {
+      const currentDocs = getValues("jenisDokumen") || [];
+      if (!currentDocs.includes("Nota Dinas")) {
+        setValue("jenisDokumen", ["Nota Dinas", ...currentDocs]);
+      }
+    }
+  }, [watchPeran, watchJabatan, getValues, setValue]);
+
   const handleSelectPegawai = (pegawaiId: string) => {
     setSelectedPegawaiId(pegawaiId);
+    setValue("pegawaiId", pegawaiId, { shouldValidate: true });
     if (!pegawaiId) return;
 
     const selected = pegawais.find((p) => p.id === pegawaiId);
@@ -109,6 +130,15 @@ export function PenandatanganForm({
         setValue("jabatanPenandatangan", currentJabatan.nama, {
           shouldValidate: true,
         });
+        if (isKasubbagSigner(currentJabatan.nama)) {
+          setValue("peran", "Kasubbag", { shouldValidate: true });
+          const currentDocs = getValues("jenisDokumen") || [];
+          if (!currentDocs.includes("Nota Dinas")) {
+            setValue("jenisDokumen", ["Nota Dinas", ...currentDocs], {
+              shouldValidate: true,
+            });
+          }
+        }
       }
     }
   };
@@ -129,8 +159,27 @@ export function PenandatanganForm({
       onSubmit={handleSubmit((data) => {
         const rest = { ...data };
         delete rest.id;
+        const resolvedPegawaiId =
+          selectedPegawaiId ||
+          rest.pegawaiId ||
+          initialValues?.pegawaiId ||
+          pegawais.find(
+            (p) =>
+              (p.nip && p.nip === rest.nip) ||
+              p.nama.toLowerCase() === rest.nama.toLowerCase(),
+          )?.id ||
+          "";
+
+        const signerText = `${rest.jabatanPenandatangan} ${rest.peran}`;
+        let docs = rest.jenisDokumen || [];
+        if (isKasubbagSigner(signerText) && !docs.includes("Nota Dinas")) {
+          docs = ["Nota Dinas", ...docs];
+        }
+
         onSubmit({
           ...rest,
+          pegawaiId: resolvedPegawaiId || undefined,
+          jenisDokumen: docs,
           berlakuMulai: rest.berlakuMulai || "",
           berlakuSampai: rest.berlakuSampai || "",
           status: rest.status || "Aktif",

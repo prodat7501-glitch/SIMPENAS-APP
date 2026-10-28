@@ -32,7 +32,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "tahun", "provinsi", "uang_harian", "penginapan", "uang_representasi", "sewa_kendaraan", "tiket_pesawat", "created_at", "updated_at"
   ],
   penandatangan: [
-    "id", "role_pejabat", "pegawai_id", "nama_pejabat", "nip", "jabatan", "status_aktif", "created_at", "updated_at"
+    "id", "role_pejabat", "pegawai_id", "nama_pejabat", "nip", "jabatan", "status_aktif", "jenis_dokumen", "berlaku_mulai", "berlaku_sampai", "data_json", "created_at", "updated_at"
   ],
   pengaturan_penomoran: [
     "id", "document_type", "format", "prefix", "suffix", "year", "running_number", "padding", "created_at", "updated_at"
@@ -1405,6 +1405,18 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.approver) obj.approver = obj.user_name || "Sekretaris";
   if (!obj.tanggal) obj.tanggal = obj.created_at || new Date().toISOString();
   if (obj.recipient_pegawai_id !== undefined && !obj.recipientPegawaiId) obj.recipientPegawaiId = obj.recipient_pegawai_id;
+
+  // Kompatibilitas cerdas untuk tabel penandatangan
+  if (obj.role_pejabat !== undefined && !obj.peran) obj.peran = obj.role_pejabat;
+  if (obj.pegawai_id !== undefined && !obj.pegawaiId) obj.pegawaiId = obj.pegawai_id;
+  if (obj.nama_pejabat !== undefined && !obj.nama) obj.nama = obj.nama_pejabat;
+  if (obj.jabatan !== undefined && !obj.jabatanPenandatangan) obj.jabatanPenandatangan = obj.jabatan;
+  if (obj.status_aktif !== undefined && !obj.status) {
+    obj.status = (obj.status_aktif === true || obj.status_aktif === "true" || obj.status_aktif === "Aktif" || obj.status_aktif === 1 || obj.status_aktif === "1") ? "Aktif" : "Nonaktif";
+  }
+  if (obj.jenis_dokumen !== undefined && !obj.jenisDokumen) obj.jenisDokumen = obj.jenis_dokumen;
+  if (obj.berlaku_mulai !== undefined && !obj.berlakuMulai) obj.berlakuMulai = obj.berlaku_mulai;
+  if (obj.berlaku_sampai !== undefined && !obj.berlakuSampai) obj.berlakuSampai = obj.berlaku_sampai;
   
   return obj;
 }
@@ -1490,6 +1502,16 @@ function objectToRowValues(obj, headers) {
   if (obj.approver && !obj.user_name) obj.user_name = obj.approver;
   if (obj.recipientPegawaiId && !obj.recipient_pegawai_id) obj.recipient_pegawai_id = obj.recipientPegawaiId;
   if (obj.tanggal && !obj.created_at) obj.created_at = obj.tanggal;
+
+  // Mapping fallback jika input penandatangan dari frontend
+  if (obj.peran && !obj.role_pejabat) obj.role_pejabat = obj.peran;
+  if (obj.pegawaiId && !obj.pegawai_id) obj.pegawai_id = obj.pegawaiId;
+  if (obj.nama && !obj.nama_pejabat) obj.nama_pejabat = obj.nama;
+  if (obj.jabatanPenandatangan && !obj.jabatan) obj.jabatan = obj.jabatanPenandatangan;
+  if (obj.status && !obj.status_aktif) obj.status_aktif = obj.status;
+  if (obj.jenisDokumen && !obj.jenis_dokumen) obj.jenis_dokumen = obj.jenisDokumen;
+  if (obj.berlakuMulai && !obj.berlaku_mulai) obj.berlaku_mulai = obj.berlakuMulai;
+  if (obj.berlakuSampai && !obj.berlaku_sampai) obj.berlaku_sampai = obj.berlakuSampai;
 
   // Simpan data_json lengkap jika kolom data_json ada di sheet
   if (headers.indexOf("data_json") !== -1 && !obj.data_json) {

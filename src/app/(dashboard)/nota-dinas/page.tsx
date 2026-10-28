@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { userAccountService } from "@/modules/user-account/user-account.service";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
 import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
@@ -38,6 +39,7 @@ import { useActivityStore } from "@/stores/activity.store";
 import { useNotificationStore } from "@/stores/notification.store";
 import {
   getNotaDinasApprovalDestination,
+  isKasubbagSigner,
   isPenandatanganAvailable,
   resolveNotaDinasApprover,
   snapshotToPenandatangan,
@@ -60,16 +62,6 @@ const normalizeName = (value: string) =>
   value.trim().toLocaleLowerCase("id-ID");
 
 const normalizeNip = (value: string) => value.replace(/\D/g, "");
-
-const isKasubbagSigner = (value: string) => {
-  const text = value.toLowerCase();
-  return (
-    text.includes("kasubbag") ||
-    text.includes("kasubag") ||
-    text.includes("kepala sub bagian") ||
-    text.includes("kepala subbagian")
-  );
-};
 
 const getPrintableCostColumns = (item: NotaDinas): LampiranCostLine[] => {
   const columns = new Map<LampiranCostLine["key"], LampiranCostLine>();
@@ -110,34 +102,169 @@ export default function NotaDinasPage() {
   const templateStyle = useTemplateDocumentStyle();
 
   const normalizedUserName = user?.name ? normalizeName(user.name) : "";
-  const currentPegawai =
-    pegawais.find((pegawai) => pegawai.id === user?.pegawaiId) ??
-    pegawais.find(
-      (pegawai) =>
-        Boolean(normalizedUserName) &&
-        normalizeName(pegawai.nama) === normalizedUserName,
-    );
-  const currentPegawaiNip = normalizeNip(currentPegawai?.nip ?? "");
-  const currentNotaDinasPenandatangan =
-    penandatangans.find((item) => {
-      const signerIdentity = `${item.jabatanPenandatangan} ${item.peran}`;
-      const signerNip = normalizeNip(item.nip);
-      const samePegawaiId = Boolean(
-        currentPegawai?.id && item.pegawaiId === currentPegawai.id,
-      );
-      const sameNip = Boolean(
-        currentPegawaiNip && signerNip === currentPegawaiNip,
-      );
-      const sameName = Boolean(
-        normalizedUserName && normalizeName(item.nama) === normalizedUserName,
-      );
+  const normalizedUserLoginName = user?.username
+    ? user.username.toLowerCase().trim()
+    : "";
 
+  // Ambil data akun pengguna tersimpan untuk menghubungkan session dengan Master Pegawai
+  const userAccounts = useMemo(() => userAccountService.getAll(), []);
+  const matchedUserAccount = useMemo(() => {
+    if (!user) return null;
+    return (
+      userAccounts.find((acc) => acc.id === user.id) ??
+      userAccounts.find(
+        (acc) =>
+          acc.username.toLowerCase().trim() ===
+          user.username.toLowerCase().trim(),
+      ) ??
+      null
+    );
+  }, [user, userAccounts]);
+
+  const effectivePegawaiId = user?.pegawaiId || matchedUserAccount?.pegawaiId;
+
+  // Cek apakah akun yang sedang login adalah Kasubbag / Sub Bagian Keuangan
+  const isUserKasubbagRole =
+    user?.role === "Sub Bagian Keuangan" ||
+    isKasubbagSigner(user?.role || "") ||
+    isKasubbagSigner(user?.username || "") ||
+    isKasubbagSigner(user?.name || "") ||
+    isKasubbagSigner(matchedUserAccount?.role || "") ||
+    isKasubbagSigner(matchedUserAccount?.name || "");
+
+  const currentPegawai = useMemo(() => {
+    if (effectivePegawaiId) {
+      const found = pegawais.find((p) => p.id === effectivePegawaiId);
+      if (found) return found;
+    }
+    if (normalizedUserName) {
+      const found = pegawais.find(
+        (p) => normalizeName(p.nama) === normalizedUserName,
+      );
+      if (found) return found;
+    }
+    if (normalizedUserLoginName) {
+      const found = pegawais.find((p) => {
+        const pNip = normalizeNip(p.nip);
+        const pNama = p.nama.toLowerCase();
+        return (
+          (pNip && pNip === normalizedUserLoginName) ||
+          pNama.includes(normalizedUserLoginName) ||
+          normalizedUserLoginName.includes(pNama)
+        );
+      });
+      if (found) return found;
+    }
+    // Jika login sebagai Kasubbag, cari pegawai yang memiliki jabatan Kasubbag
+    if (isUserKasubbagRole) {
+      const found = pegawais.find((p) => {
+        const jab = jabatans.find((j) => j.id === p.jabatanId)?.nama || "";
+        return isKasubbagSigner(jab);
+      });
+      if (found) return found;
+    }
+    return null;
+  }, [
+    effectivePegawaiId,
+    normalizedUserName,
+    normalizedUserLoginName,
+    isUserKasubbagRole,
+    pegawais,
+    jabatans,
+  ]);
+
+  const currentPegawaiNip = normalizeNip(currentPegawai?.nip ?? "");
+  const currentPegawaiJabatan = currentPegawai?.jabatanId
+    ? jabatans.find((j) => j.id === currentPegawai.jabatanId)?.nama || ""
+    : "";
+
+  const isUserKasubbag =
+    isUserKasubbagRole ||
+    isKasubbagSigner(currentPegawaiJabatan) ||
+    isKasubbagSigner(currentPegawai?.nama || "");
+
+  // Daftar seluruh pejabat penandatangan Kasubbag aktif
+  const kasubbagPenandatangans = useMemo(() => {
+    return penandatangans.filter((item) => {
+      const signerIdentity = `${item.jabatanPenandatangan} ${item.peran}`;
       return (
         isKasubbagSigner(signerIdentity) &&
-        isPenandatanganAvailable(item, "Nota Dinas") &&
-        (samePegawaiId || sameNip || sameName)
+        isPenandatanganAvailable(item, "Nota Dinas")
       );
-    }) ?? null;
+    });
+  }, [penandatangans]);
+
+  const currentNotaDinasPenandatangan = useMemo(() => {
+    if (kasubbagPenandatangans.length === 0) return null;
+
+    // 1. Cocokkan ID Pegawai secara tepat
+    const targetPegId = currentPegawai?.id || effectivePegawaiId;
+    if (targetPegId) {
+      const matched = kasubbagPenandatangans.find(
+        (item) => item.pegawaiId && item.pegawaiId === targetPegId,
+      );
+      if (matched) return matched;
+    }
+
+    // 2. Cocokkan NIP pejabat
+    if (currentPegawaiNip) {
+      const matched = kasubbagPenandatangans.find(
+        (item) => normalizeNip(item.nip) === currentPegawaiNip,
+      );
+      if (matched) return matched;
+    }
+
+    // 3. Cocokkan Nama pejabat
+    if (normalizedUserName) {
+      const matched = kasubbagPenandatangans.find((item) => {
+        const signName = normalizeName(item.nama);
+        return (
+          signName === normalizedUserName ||
+          signName.includes(normalizedUserName) ||
+          normalizedUserName.includes(signName)
+        );
+      });
+      if (matched) return matched;
+    }
+
+    if (currentPegawai?.nama) {
+      const pName = normalizeName(currentPegawai.nama);
+      const matched = kasubbagPenandatangans.find((item) => {
+        const signName = normalizeName(item.nama);
+        return (
+          signName === pName ||
+          signName.includes(pName) ||
+          pName.includes(signName)
+        );
+      });
+      if (matched) return matched;
+    }
+
+    // 4. Jika pengguna yang login adalah akun Kasubbag / Sub Bagian Keuangan / Administrator:
+    // Hubungkan secara otomatis ke Pejabat Penandatangan Kasubbag yang terdaftar
+    if (isUserKasubbag || user?.role === "Administrator") {
+      if (currentPegawaiJabatan) {
+        const matched = kasubbagPenandatangans.find((item) => {
+          const j1 = normalizeName(item.jabatanPenandatangan);
+          const j2 = normalizeName(currentPegawaiJabatan);
+          return j1.includes(j2) || j2.includes(j1);
+        });
+        if (matched) return matched;
+      }
+      return kasubbagPenandatangans[0];
+    }
+
+    return null;
+  }, [
+    kasubbagPenandatangans,
+    currentPegawai,
+    effectivePegawaiId,
+    currentPegawaiNip,
+    normalizedUserName,
+    isUserKasubbag,
+    user?.role,
+    currentPegawaiJabatan,
+  ]);
 
   const defaultPengirimJabatan =
     jabatans.find((jabatan) => jabatan.id === currentPegawai?.jabatanId)
@@ -174,6 +301,8 @@ export default function NotaDinasPage() {
     const isOwner =
       user?.role === "Administrator" ||
       (Boolean(currentPegawai?.id) && ownerPegawaiId === currentPegawai?.id) ||
+      (Boolean(effectivePegawaiId) && ownerPegawaiId === effectivePegawaiId) ||
+      item.penandatanganId === currentNotaDinasPenandatangan?.id ||
       (!ownerPegawaiId &&
         item.penandatanganId === currentNotaDinasPenandatangan?.id);
     if (!isOwner) {
@@ -218,7 +347,11 @@ export default function NotaDinasPage() {
     const securedData: Omit<NotaDinas, "id"> = {
       ...data,
       createdByPegawaiId:
-        editingItem?.createdByPegawaiId || currentPegawai?.id || "",
+        editingItem?.createdByPegawaiId ||
+        currentPegawai?.id ||
+        effectivePegawaiId ||
+        currentNotaDinasPenandatangan?.pegawaiId ||
+        "",
       catatanRevisi: editingItem?.catatanRevisi ?? data.catatanRevisi ?? "",
       penandatanganId: authoritativePenandatanganId,
       penandatanganSnapshot:
@@ -393,10 +526,17 @@ export default function NotaDinasPage() {
             <Button
               onClick={() => {
                 if (!currentNotaDinasPenandatangan) {
-                  addToast(
-                    "Hanya Kepala Subbagian (Kasubbag) yang terdaftar di Master Penandatangan yang berwenang membuat Nota Dinas.",
-                    "error",
-                  );
+                  if (kasubbagPenandatangans.length === 0) {
+                    addToast(
+                      "Belum ada data Pejabat Kasubbag aktif di Master Penandatangan. Silakan daftarkan pejabat Kasubbag terlebih dahulu di menu Master Penandatangan.",
+                      "error",
+                    );
+                  } else {
+                    addToast(
+                      "Hanya Kepala Subbagian (Kasubbag) yang terdaftar di Master Penandatangan yang berwenang membuat Nota Dinas.",
+                      "error",
+                    );
+                  }
                   return;
                 }
                 setEditingItem(null);
@@ -421,6 +561,8 @@ export default function NotaDinasPage() {
           canEditItem={(item) =>
             user?.role === "Administrator" ||
             item.createdByPegawaiId === currentPegawai?.id ||
+            item.createdByPegawaiId === effectivePegawaiId ||
+            item.penandatanganId === currentNotaDinasPenandatangan?.id ||
             (!item.createdByPegawaiId &&
               item.penandatanganId === currentNotaDinasPenandatangan?.id)
           }
