@@ -31,10 +31,10 @@ export function SBMForm({ initialValues, onSubmit, onCancel }: SBMFormProps) {
 
   useEffect(() => {
     if (initialValues) {
-      setValue("wilayah", initialValues.wilayah);
-      setValue("jenisBiaya", initialValues.jenisBiaya);
-      setValue("satuan", initialValues.satuan);
-      setValue("tarif", initialValues.tarif);
+      setValue("wilayah", initialValues.wilayah || "");
+      setValue("jenisBiaya", initialValues.jenisBiaya || "");
+      setValue("satuan", initialValues.satuan || "");
+      setValue("tarif", initialValues.tarif || 0);
     }
   }, [initialValues, setValue]);
 

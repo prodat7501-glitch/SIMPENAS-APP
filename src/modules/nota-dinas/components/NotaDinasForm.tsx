@@ -354,28 +354,28 @@ export function NotaDinasForm({
 
     if (watchJenis === "Dalam Kota") {
       const match = sbms.find((s) =>
-        s.jenisBiaya.toLowerCase().includes("dalam kota"),
+        (s.jenisBiaya || "").toLowerCase().includes("dalam kota"),
       );
       defaultHarian = match ? match.tarif : 150000;
     } else if (watchJenis === "Luar Kota") {
       const match = sbms.find((s) =>
-        s.jenisBiaya.toLowerCase().includes("luar kota"),
+        (s.jenisBiaya || "").toLowerCase().includes("luar kota"),
       );
       defaultHarian = match ? match.tarif : 370000;
       defaultTransport = 250000; // standard allowance
     } else if (watchJenis === "Luar Daerah") {
       const matchHarianFull = sbms.find(
         (s) =>
-          s.jenisBiaya.toLowerCase().includes("luar daerah") ||
-          s.jenisBiaya.toLowerCase().includes("dki jakarta"),
+          (s.jenisBiaya || "").toLowerCase().includes("luar daerah") ||
+          (s.jenisBiaya || "").toLowerCase().includes("dki jakarta"),
       );
       const matchHarianMeeting = sbms.find((s) =>
-        s.jenisBiaya.toLowerCase().includes("paket meeting"),
+        (s.jenisBiaya || "").toLowerCase().includes("paket meeting"),
       );
       const matchHotel = sbms.find(
         (s) =>
-          s.jenisBiaya.toLowerCase().includes("hotel") ||
-          s.jenisBiaya.toLowerCase().includes("akomodasi"),
+          (s.jenisBiaya || "").toLowerCase().includes("hotel") ||
+          (s.jenisBiaya || "").toLowerCase().includes("akomodasi"),
       );
       defaultHarian =
         matchHarianMeeting?.tarif ?? matchHarianFull?.tarif ?? 530000;

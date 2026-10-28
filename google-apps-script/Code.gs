@@ -935,11 +935,25 @@ function rowValuesToObject(rowValues, headers) {
       obj.golongan = String(obj.gol).trim() + ruangStr;
     }
   }
+
+  // Kompatibilitas cerdas untuk tabel sbm (provinsi, uang_harian -> wilayah, tarif)
+  if (obj.provinsi !== undefined && !obj.wilayah) {
+    obj.wilayah = obj.provinsi;
+  }
+  if (obj.uang_harian !== undefined && !obj.tarif) {
+    obj.tarif = obj.uang_harian;
+    if (!obj.jenisBiaya && !obj.jenis_biaya) obj.jenisBiaya = "Uang Harian (" + (obj.provinsi || "Standar") + ")";
+    if (!obj.satuan) obj.satuan = "OH";
+  }
   
   return obj;
 }
 
 function objectToRowValues(obj, headers) {
+  // Mapping fallback jika input SBM dari frontend menggunakan format standar (wilayah, tarif)
+  if (obj.wilayah && !obj.provinsi) obj.provinsi = obj.wilayah;
+  if (obj.tarif && !obj.uang_harian) obj.uang_harian = obj.tarif;
+
   var row = [];
   for (var i = 0; i < headers.length; i++) {
     var key = headers[i];

@@ -27,18 +27,19 @@ interface SBMTableProps {
 export function SBMTable({ items, onEdit, onDelete, canEdit }: SBMTableProps) {
   const [search, setSearch] = useState("");
 
-  const filtered = items.filter(
-    (item) =>
-      item.wilayah.toLowerCase().includes(search.toLowerCase()) ||
-      item.jenisBiaya.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = items.filter((item) => {
+    const w = (item.wilayah || "").toLowerCase();
+    const j = (item.jenisBiaya || "").toLowerCase();
+    const s = search.toLowerCase();
+    return w.includes(s) || j.includes(s);
+  });
 
-  const formatRupiah = (val: number) => {
+  const formatRupiah = (val?: number | null) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
-    }).format(val);
+    }).format(Number(val) || 0);
   };
 
   return (
@@ -82,10 +83,10 @@ export function SBMTable({ items, onEdit, onDelete, canEdit }: SBMTableProps) {
               {filtered.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-bold">{item.wilayah}</TableCell>
-                  <TableCell>{item.jenisBiaya}</TableCell>
+                  <TableCell className="font-bold">{item.wilayah || "-"}</TableCell>
+                  <TableCell>{item.jenisBiaya || "-"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{item.satuan}</Badge>
+                    <Badge variant="outline">{item.satuan || "OH"}</Badge>
                   </TableCell>
                   <TableCell className="text-primary font-bold">
                     {formatRupiah(item.tarif)}
