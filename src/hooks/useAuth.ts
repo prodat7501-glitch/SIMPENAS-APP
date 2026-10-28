@@ -266,7 +266,7 @@ export function useAuth() {
     const isKasubbagUser = checkIsKasubbag();
     const canAccessApproval = isKasubbagUser || hasCreatedOrSignedNota();
 
-    if (isKasubbagUser && moduleName === "Nota Dinas") {
+    if (isKasubbagUser && (moduleName === "Nota Dinas" || moduleName === "SPT")) {
       return ["C", "R", "U", "G", "P", "N"].includes(action);
     }
 
@@ -332,6 +332,8 @@ export function useAuth() {
       if (["Validasi SPJ", "Validasi SPJ dan Pembayaran"].includes(moduleName))
         return ["C", "R", "U", "D", "A", "G", "P"].includes(action);
       if (moduleName === "Nota Dinas")
+        return ["C", "R", "U", "G", "P", "N"].includes(action);
+      if (moduleName === "SPT")
         return ["C", "R", "U", "G", "P", "N"].includes(action);
       if (moduleName === "SPBY")
         return ["C", "R", "U", "A", "G", "P"].includes(action);

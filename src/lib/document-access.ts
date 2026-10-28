@@ -6,6 +6,7 @@ import type { Sppd } from "@/modules/sppd/sppd.schema";
 import type { Spt } from "@/modules/spt/spt.schema";
 import type { Spj } from "@/modules/keuangan/keuangan.schema";
 import type { UnitKerja } from "@/modules/unit-kerja/unit-kerja.schema";
+import { userAccountService } from "@/modules/user-account/user-account.service";
 
 const FINANCE_UNIT_KEYWORDS = ["keuangan"];
 
@@ -27,9 +28,38 @@ export const resolveCurrentPegawai = (
     if (byId) return byId;
   }
 
+  // Cek relasi dari Master Akun Pengguna jika sesi belum memiliki pegawaiId
+  try {
+    const userAccounts = userAccountService.getAll();
+    const account = userAccounts.find(
+      (acc) =>
+        acc.id === user.id ||
+        (user.username &&
+          acc.username.toLowerCase() === user.username.toLowerCase()),
+    );
+    if (account?.pegawaiId) {
+      const byAccountId = pegawais.find(
+        (item) => item.id === account.pegawaiId,
+      );
+      if (byAccountId) return byAccountId;
+    }
+  } catch {
+    // fallback
+  }
+
   const name = normalize(user.name);
   const byName = pegawais.find((item) => normalize(item.nama) === name);
   if (byName) return byName;
+
+  // Cek kecocokan nama parsial jika nama di profil mengandung gelar
+  const byPartialName = pegawais.find((item) => {
+    const pName = normalize(item.nama);
+    return (
+      (pName.length > 3 && name.includes(pName)) ||
+      (name.length > 3 && pName.includes(name))
+    );
+  });
+  if (byPartialName) return byPartialName;
 
   const candidates = pegawais.filter(
     (item) => item.status === "Aktif" && item.roleAplikasi === user.role,
@@ -136,8 +166,9 @@ export const canAccessSptByNotaDinas = (
   if (!spt) return false;
   const nota = (notas || []).find((item) => item?.id === spt.notaDinasId);
   return (
-    isPegawaiInNotaDinas(pegawaiId, nota) ||
-    (spt.personil || []).some((item) => item?.pegawaiId === pegawaiId)
+    isPegawaiRelatedToNotaDinas(pegawaiId, nota) ||
+    (spt.personil || []).some((item) => item?.pegawaiId === pegawaiId) ||
+    Boolean(pegawaiId && spt.createdByPegawaiId === pegawaiId)
   );
 };
 

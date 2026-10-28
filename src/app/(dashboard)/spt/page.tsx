@@ -31,6 +31,7 @@ import {
   isPegawaiInNotaDinas,
   isPegawaiRelatedToNotaDinas,
   resolveCurrentPegawai,
+  resolveNotaDinasChainManagerId,
 } from "@/lib/document-access";
 import {
   TemplateFooter,
@@ -150,26 +151,29 @@ export default function SptPage() {
     isKasubbagSigner(user?.username) ||
     isKasubbagSigner(user?.name);
 
+  const effectiveCurrentPegawaiId = currentPegawaiId || user?.pegawaiId;
+
   const accessibleNotaDinasItems = isPrivilegedUser
     ? notaDinasItems || []
     : (notaDinasItems || []).filter((item) =>
-        isPegawaiRelatedToNotaDinas(currentPegawaiId, item),
+        isPegawaiRelatedToNotaDinas(effectiveCurrentPegawaiId, item),
       );
   const visibleSpts = scopeToNotaDinas && !isPrivilegedUser
     ? items.filter((item) =>
-        canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems),
+        canAccessSptByNotaDinas(effectiveCurrentPegawaiId, item, notaDinasItems),
       )
     : items;
   const approvedAssignedNotaDinasItems = (notaDinasItems || []).filter(
     (item) =>
       item &&
       item.status === "Disetujui" &&
-      (isPrivilegedUser || isPegawaiRelatedToNotaDinas(currentPegawaiId, item)),
+      (isPrivilegedUser ||
+        isPegawaiRelatedToNotaDinas(effectiveCurrentPegawaiId, item)),
   );
   const creatableNotaDinasItems = approvedAssignedNotaDinasItems.filter(
     (item) =>
       canInitiateNotaDinasChain(
-        currentPegawaiId,
+        effectiveCurrentPegawaiId,
         item,
         items,
         isPrivilegedUser,
@@ -177,9 +181,61 @@ export default function SptPage() {
   );
   const canCreateFromAccessibleNota =
     canCreate && creatableNotaDinasItems.length > 0;
-  const canManageSpt = (item: Spt) =>
-    isPrivilegedUser ||
-    (Boolean(currentPegawaiId) && item.createdByPegawaiId === currentPegawaiId);
+  const canManageSpt = (item: Spt) => {
+    if (isPrivilegedUser) return true;
+
+    const effectiveUserPegawaiId = currentPegawaiId || user?.pegawaiId;
+    const sourceNota = (notaDinasItems || []).find(
+      (n) => n.id === item.notaDinasId,
+    );
+    const chainManagerId = resolveNotaDinasChainManagerId(
+      item.notaDinasId,
+      items,
+    );
+
+    // 1. Pembuat langsung dokumen SPT
+    const isDirectCreator =
+      Boolean(
+        effectiveUserPegawaiId &&
+          (item.createdByPegawaiId === effectiveUserPegawaiId ||
+            chainManagerId === effectiveUserPegawaiId),
+      ) ||
+      (Boolean(user?.id) && item.createdByPegawaiId === user?.id) ||
+      (Boolean(user?.username) && item.createdByPegawaiId === user?.username);
+
+    if (isDirectCreator) return true;
+
+    // 2. Pembuat Nota Dinas sumber
+    const isNotaCreator = Boolean(
+      effectiveUserPegawaiId &&
+        sourceNota?.createdByPegawaiId === effectiveUserPegawaiId,
+    );
+    if (isNotaCreator) return true;
+
+    // 3. Khusus SPT yang belum dilakukan Approval (Draft, Nomor Diambil, Menunggu Approval, Perlu Revisi):
+    // Personil pembuat atau personil yang tercantum dalam SPT / Nota Dinas tetap berhak mengedit!
+    const isNotApprovedYet =
+      item.status !== "Disetujui" && item.status !== "Selesai";
+    if (isNotApprovedYet) {
+      if (!item.createdByPegawaiId) return true;
+
+      const isPersonilInSpt = (item.personil || []).some(
+        (p) =>
+          Boolean(effectiveUserPegawaiId) &&
+          p.pegawaiId === effectiveUserPegawaiId,
+      );
+      const isPersonilInNota = isPegawaiInNotaDinas(
+        effectiveUserPegawaiId,
+        sourceNota,
+      );
+
+      if (isPersonilInSpt || isPersonilInNota) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   if (!canRead) {
     return (
@@ -213,9 +269,10 @@ export default function SptPage() {
       );
       return;
     }
+    const effectiveUserPegawaiId = currentPegawaiId || user?.pegawaiId;
     if (
       scopeToNotaDinas &&
-      !canAccessSptByNotaDinas(currentPegawaiId, item, notaDinasItems)
+      !canAccessSptByNotaDinas(effectiveUserPegawaiId, item, notaDinasItems)
     ) {
       addToast("Anda hanya dapat mengubah SPT dari Nota Dinas Anda", "error");
       return;
@@ -296,10 +353,12 @@ export default function SptPage() {
       );
       return;
     }
+    const effectiveUserPegawaiId =
+      currentPegawaiId || user?.pegawaiId || user?.id || "";
     const securedData: Omit<Spt, "id"> = {
       ...data,
       createdByPegawaiId:
-        editingItem?.createdByPegawaiId || currentPegawaiId || "",
+        editingItem?.createdByPegawaiId || effectiveUserPegawaiId,
       catatanRevisi: editingItem?.catatanRevisi ?? data.catatanRevisi ?? "",
     };
     if (editingItem) {

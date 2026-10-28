@@ -60,7 +60,7 @@ const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
   const normalized = {
     ...item,
     createdByPegawaiId:
-      item.createdByPegawaiId ?? item.personil?.[0]?.pegawaiId ?? "",
+      item.createdByPegawaiId || item.personil?.[0]?.pegawaiId || "",
     catatanRevisi: item.catatanRevisi ?? "",
     penandatanganSnapshot:
       item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
