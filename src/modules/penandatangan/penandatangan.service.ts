@@ -1,7 +1,8 @@
-import type {
-  JenisDokumenPenandatangan,
-  Penandatangan,
-  PenandatanganSnapshot,
+import {
+  JENIS_DOKUMEN_PENANDATANGAN,
+  type JenisDokumenPenandatangan,
+  type Penandatangan,
+  type PenandatanganSnapshot,
 } from "./penandatangan.schema";
 import { apiClient, withApiFallback } from "@/services/api";
 
@@ -102,21 +103,54 @@ export const normalizePenandatangan = (raw: unknown): Penandatangan => {
       ? "Aktif"
       : "Nonaktif";
 
-  const rawJenis = item.jenisDokumen || item.jenis_dokumen;
-  const parsedJenis = Array.isArray(rawJenis)
-    ? (rawJenis as JenisDokumenPenandatangan[])
-    : typeof rawJenis === "string"
-      ? (() => {
-          try {
-            const p = JSON.parse(rawJenis);
-            return Array.isArray(p)
-              ? (p as JenisDokumenPenandatangan[])
-              : [];
-          } catch {
-            return [];
+  let parsedJenis: JenisDokumenPenandatangan[] = [];
+  const candidates = [item.jenis_dokumen, item.jenisDokumen];
+  for (const cand of candidates) {
+    if (Array.isArray(cand)) {
+      const valid = cand.filter(
+        (v): v is JenisDokumenPenandatangan =>
+          typeof v === "string" &&
+          JENIS_DOKUMEN_PENANDATANGAN.includes(v as JenisDokumenPenandatangan),
+      );
+      if (valid.length > 0) {
+        parsedJenis = valid;
+        break;
+      }
+    } else if (typeof cand === "string") {
+      const str = cand.trim();
+      if (str.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter(
+              (v): v is JenisDokumenPenandatangan =>
+                typeof v === "string" &&
+                JENIS_DOKUMEN_PENANDATANGAN.includes(
+                  v as JenisDokumenPenandatangan,
+                ),
+            );
+            if (valid.length > 0) {
+              parsedJenis = valid;
+              break;
+            }
           }
-        })()
-      : [];
+        } catch {}
+      } else if (str.includes(",") && !str.includes("T") && !str.includes(":")) {
+        const parts = str
+          .split(",")
+          .map((s) => s.trim())
+          .filter((v): v is JenisDokumenPenandatangan =>
+            JENIS_DOKUMEN_PENANDATANGAN.includes(
+              v as JenisDokumenPenandatangan,
+            ),
+          );
+        if (parts.length > 0) {
+          parsedJenis = parts;
+          break;
+        }
+      }
+    }
+  }
 
   const partial: Omit<Penandatangan, "jenisDokumen"> = {
     id,
@@ -224,13 +258,22 @@ export const penandatanganService = {
   apiCreate: async (data: Partial<Penandatangan>): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
-        const payload = { id: data.id || `pe-${Date.now()}`, ...data };
+        const payload = {
+          id: data.id || `pe-${Date.now()}`,
+          ...data,
+          jenis_dokumen:
+            data.jenisDokumen ||
+            (data as Record<string, unknown>).jenis_dokumen,
+        };
         const res = await apiClient.post<
           Penandatangan | { data?: Penandatangan }
         >("/api/v1/penandatangan", payload);
         const unwrapped =
           (res as { data?: Penandatangan }).data || (res as Penandatangan);
-        return normalizePenandatangan(unwrapped);
+        const normalized = normalizePenandatangan(unwrapped);
+        const items = penandatanganService.getAll();
+        penandatanganService.saveAll([...items, normalized]);
+        return normalized;
       },
       async () => {
         const items = penandatanganService.getAll();
@@ -250,12 +293,24 @@ export const penandatanganService = {
   ): Promise<Penandatangan> => {
     return withApiFallback(
       async () => {
+        const payload = {
+          ...data,
+          jenis_dokumen:
+            data.jenisDokumen ||
+            (data as Record<string, unknown>).jenis_dokumen,
+        };
         const res = await apiClient.put<
           Penandatangan | { data?: Penandatangan }
-        >(`/api/v1/penandatangan/${id}`, data);
+        >(`/api/v1/penandatangan/${id}`, payload);
         const unwrapped =
           (res as { data?: Penandatangan }).data || (res as Penandatangan);
-        return normalizePenandatangan(unwrapped);
+        const normalized = normalizePenandatangan(unwrapped);
+        const items = penandatanganService.getAll();
+        const updated = items.map((item) =>
+          item.id === id ? normalized : item,
+        );
+        penandatanganService.saveAll(updated);
+        return normalized;
       },
       async () => {
         const items = penandatanganService.getAll();

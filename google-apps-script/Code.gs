@@ -881,6 +881,18 @@ function handleUpdate(sheet, id, data, userId) {
     existingObj.id = id;
     existingObj.updated_at = new Date().toISOString();
     
+    // Hapus data_json lama agar diserialisasi ulang secara segar
+    delete existingObj.data_json;
+
+    // Sinkronisasi khusus penandatangan
+    if (data.jenisDokumen !== undefined) {
+      existingObj.jenisDokumen = data.jenisDokumen;
+      existingObj.jenis_dokumen = data.jenisDokumen;
+    } else if (data.jenis_dokumen !== undefined) {
+      existingObj.jenisDokumen = data.jenis_dokumen;
+      existingObj.jenis_dokumen = data.jenis_dokumen;
+    }
+    
     var newRowValues = objectToRowValues(existingObj, headers);
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([newRowValues]);
     
@@ -1309,6 +1321,12 @@ function rowValuesToObject(rowValues, headers) {
     }
     if (typeof rawData === "object" && rawData !== null) {
       for (var k in rawData) {
+        // Jangan timpa jenisDokumen jika bertipe string tanggal ISO atau bukan array/json
+        if (k === "jenisDokumen" || k === "jenis_dokumen") {
+          if (typeof rawData[k] === "string" && (rawData[k].indexOf("T") !== -1 || rawData[k].indexOf(":") !== -1)) {
+            continue;
+          }
+        }
         if (obj[k] === undefined || obj[k] === "" || obj[k] === null) {
           obj[k] = rawData[k];
         }
@@ -1414,7 +1432,38 @@ function rowValuesToObject(rowValues, headers) {
   if (obj.status_aktif !== undefined && !obj.status) {
     obj.status = (obj.status_aktif === true || obj.status_aktif === "true" || obj.status_aktif === "Aktif" || obj.status_aktif === 1 || obj.status_aktif === "1") ? "Aktif" : "Nonaktif";
   }
-  if (obj.jenis_dokumen !== undefined && !obj.jenisDokumen) obj.jenisDokumen = obj.jenis_dokumen;
+  // Normalisasi jenis_dokumen & jenisDokumen (abaikan string timestamp ISO)
+  var cleanJenis = null;
+  var candList = [obj.jenis_dokumen, obj.jenisDokumen];
+  for (var c = 0; c < candList.length; c++) {
+    var cand = candList[c];
+    if (Array.isArray(cand) && cand.length > 0) {
+      cleanJenis = cand;
+      break;
+    } else if (typeof cand === "string") {
+      var s = cand.trim();
+      if (s.indexOf("[") === 0) {
+        try {
+          var parsed = JSON.parse(s);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            cleanJenis = parsed;
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+  }
+  if (cleanJenis) {
+    obj.jenis_dokumen = cleanJenis;
+    obj.jenisDokumen = cleanJenis;
+  } else {
+    if (typeof obj.jenis_dokumen === "string" && (obj.jenis_dokumen.indexOf("T") !== -1 || obj.jenis_dokumen.indexOf(":") !== -1)) {
+      obj.jenis_dokumen = [];
+    }
+    if (typeof obj.jenisDokumen === "string" && (obj.jenisDokumen.indexOf("T") !== -1 || obj.jenisDokumen.indexOf(":") !== -1)) {
+      obj.jenisDokumen = [];
+    }
+  }
   if (obj.berlaku_mulai !== undefined && !obj.berlakuMulai) obj.berlakuMulai = obj.berlaku_mulai;
   if (obj.berlaku_sampai !== undefined && !obj.berlakuSampai) obj.berlakuSampai = obj.berlaku_sampai;
   
@@ -1509,14 +1558,21 @@ function objectToRowValues(obj, headers) {
   if (obj.nama && !obj.nama_pejabat) obj.nama_pejabat = obj.nama;
   if (obj.jabatanPenandatangan && !obj.jabatan) obj.jabatan = obj.jabatanPenandatangan;
   if (obj.status && !obj.status_aktif) obj.status_aktif = obj.status;
-  if (obj.jenisDokumen && !obj.jenis_dokumen) obj.jenis_dokumen = obj.jenisDokumen;
+  if (obj.jenisDokumen !== undefined) obj.jenis_dokumen = obj.jenisDokumen;
+  else if (obj.jenis_dokumen !== undefined) obj.jenisDokumen = obj.jenis_dokumen;
   if (obj.berlakuMulai && !obj.berlaku_mulai) obj.berlaku_mulai = obj.berlakuMulai;
   if (obj.berlakuSampai && !obj.berlaku_sampai) obj.berlaku_sampai = obj.berlakuSampai;
 
-  // Simpan data_json lengkap jika kolom data_json ada di sheet
-  if (headers.indexOf("data_json") !== -1 && !obj.data_json) {
+  // Simpan data_json lengkap segar jika kolom data_json ada di sheet
+  if (headers.indexOf("data_json") !== -1) {
     try {
-      obj.data_json = JSON.stringify(obj);
+      var copyForJson = {};
+      for (var prop in obj) {
+        if (prop !== "data_json") {
+          copyForJson[prop] = obj[prop];
+        }
+      }
+      obj.data_json = JSON.stringify(copyForJson);
     } catch (e) {}
   }
 

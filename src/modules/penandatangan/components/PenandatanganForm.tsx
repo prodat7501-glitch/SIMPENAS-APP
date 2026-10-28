@@ -13,6 +13,7 @@ import { UserCheck, Sparkles } from "lucide-react";
 import {
   DEFAULT_PERAN_DOKUMEN,
   JENIS_DOKUMEN_PENANDATANGAN,
+  JenisDokumenPenandatangan,
   Penandatangan,
   penandatanganSchema,
 } from "../penandatangan.schema";
@@ -66,6 +67,7 @@ export function PenandatanganForm({
     setValue,
     getValues,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof penandatanganSchema>>({
     resolver: zodResolver(penandatanganSchema),
@@ -82,6 +84,8 @@ export function PenandatanganForm({
     },
   });
 
+  const watchedJenis = (watch("jenisDokumen") || []) as JenisDokumenPenandatangan[];
+
   const roleOptions = useMemo(
     () => [...new Set([...DEFAULT_PERAN_DOKUMEN, ...customRoles])],
     [customRoles],
@@ -89,17 +93,29 @@ export function PenandatanganForm({
 
   useEffect(() => {
     if (initialValues) {
-      setValue("pegawaiId", initialValues.pegawaiId || "");
-      setValue("nip", initialValues.nip);
-      setValue("nama", initialValues.nama);
-      setValue("jabatanPenandatangan", initialValues.jabatanPenandatangan);
-      setValue("peran", initialValues.peran);
-      setValue("berlakuMulai", initialValues.berlakuMulai);
-      setValue("berlakuSampai", initialValues.berlakuSampai);
-      setValue("jenisDokumen", initialValues.jenisDokumen);
-      setValue("status", initialValues.status);
+      const docs =
+        Array.isArray(initialValues.jenisDokumen) &&
+        initialValues.jenisDokumen.length > 0
+          ? initialValues.jenisDokumen
+          : ["Nota Dinas"];
+      reset({
+        id: initialValues.id,
+        pegawaiId: initialValues.pegawaiId || "",
+        nip: initialValues.nip || "",
+        nama: initialValues.nama || "",
+        jabatanPenandatangan: initialValues.jabatanPenandatangan || "",
+        peran: initialValues.peran || "Kasubbag",
+        berlakuMulai: initialValues.berlakuMulai || "",
+        berlakuSampai: initialValues.berlakuSampai || "",
+        jenisDokumen: docs as [
+          JenisDokumenPenandatangan,
+          ...JenisDokumenPenandatangan[],
+        ],
+        status: initialValues.status || "Aktif",
+      });
+      setSelectedPegawaiId(initialValues.pegawaiId || "");
     }
-  }, [initialValues, setValue]);
+  }, [initialValues, reset]);
 
   const watchPeran = watch("peran");
   const watchJabatan = watch("jabatanPenandatangan");
@@ -358,19 +374,47 @@ export function PenandatanganForm({
           <span className="text-destructive">*</span>
         </legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {JENIS_DOKUMEN_PENANDATANGAN.map((jenis) => (
-            <label
-              key={jenis}
-              className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                value={jenis}
-                {...register("jenisDokumen")}
-              />
-              {jenis}
-            </label>
-          ))}
+          {JENIS_DOKUMEN_PENANDATANGAN.map((jenis) => {
+            const isChecked = watchedJenis.includes(jenis);
+            return (
+              <label
+                key={jenis}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs transition-all cursor-pointer select-none ${
+                  isChecked
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-xs"
+                    : "border-border text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  value={jenis}
+                  checked={isChecked}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const current = (getValues("jenisDokumen") ||
+                      []) as JenisDokumenPenandatangan[];
+                    const updated = checked
+                      ? [...new Set([...current, jenis])]
+                      : current.filter((d) => d !== jenis);
+                    setValue(
+                      "jenisDokumen",
+                      updated as [
+                        JenisDokumenPenandatangan,
+                        ...JenisDokumenPenandatangan[],
+                      ],
+                      {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      },
+                    );
+                  }}
+                  className="rounded border-input text-primary focus:ring-primary/20 h-4 w-4"
+                />
+                <span>{jenis}</span>
+              </label>
+            );
+          })}
         </div>
         {errors.jenisDokumen && (
           <p className="text-[10px] font-bold text-danger">
