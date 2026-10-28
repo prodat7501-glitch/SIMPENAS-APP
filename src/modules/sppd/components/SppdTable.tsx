@@ -124,7 +124,7 @@ export function SppdTable({
                     {item.nomor}
                   </TableCell>
                   <TableCell className="text-xs font-bold">
-                    {getPegawaiName(item.personil[0]?.pegawaiId ?? "")}
+                    {getPegawaiName((item.personil || [])[0]?.pegawaiId ?? "")}
                   </TableCell>
                   <TableCell className="text-xs">
                     {getSptNumber(item.sptId)}

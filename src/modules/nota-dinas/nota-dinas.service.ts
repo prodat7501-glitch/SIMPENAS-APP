@@ -186,33 +186,91 @@ const normalizeLampiranItem = (
   };
 };
 
-const normalizeNotaDinas = (item: LegacyNotaDinas): NotaDinas => {
+const normalizeNotaDinas = (raw: unknown): NotaDinas => {
+  const item = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+
+  // Parse lampiran safely
+  let rawLampiran = item.lampiran ?? item.personil_json ?? item.personilJson ?? item.lampiran_json ?? item.lampiranJson;
+  if (typeof rawLampiran === "string") {
+    try {
+      rawLampiran = JSON.parse(rawLampiran);
+    } catch {
+      rawLampiran = [];
+    }
+  }
+  const lampiranArray: LegacyLampiranItem[] = Array.isArray(rawLampiran) ? rawLampiran : [];
+
+  const jenis = (item.jenis as NotaDinas["jenis"]) || "Luar Kota";
+  const penandatanganId = String(item.penandatanganId || item.penandatangan_id || "");
   const signer = penandatanganService
     .getAll()
-    .find((candidate) => candidate.id === item.penandatanganId);
-  const lampiran = (item.lampiran || []).map((row) =>
-    normalizeLampiranItem(row, item.jenis),
+    .find((candidate) => candidate.id === penandatanganId);
+
+  const lampiran = lampiranArray.map((row) =>
+    normalizeLampiranItem(row, jenis),
   );
 
+  const perihal = String(item.perihal || item.hal || "").trim();
+  const isi = String(item.isi || item.uraian || "").trim();
+  const nomor = String(item.nomor || "").trim();
+  const dari = String(item.dari || "").trim();
+  const kepada = String(item.kepada || "").trim();
+  const tembusan = String(item.tembusan || "").trim();
+  const tanggal = String(item.tanggal || "").trim();
+  const tanggalBerangkat = String(item.tanggalBerangkat || item.tanggal_berangkat || "").trim();
+  const tanggalKembali = String(item.tanggalKembali || item.tanggal_kembali || "").trim();
+  const lokasiTujuan = String(item.lokasiTujuan || item.lokasi_tujuan || "").trim();
+  const sifat = (item.sifat as NotaDinas["sifat"]) || "Biasa";
+  const status = (item.status as NotaDinas["status"]) || "Draft";
+  const dipaId = String(item.dipaId || item.dipa_id || item.akun_anggaran || "").trim();
+  const createdByPegawaiId = String(item.createdByPegawaiId || item.created_by_pegawai_id || item.created_by || "").trim();
+  const catatanRevisi = String(item.catatanRevisi || item.catatan_revisi || "").trim();
+
+  let travelConflicts = item.travelConflicts || item.travel_conflicts;
+  if (typeof travelConflicts === "string") {
+    try {
+      travelConflicts = JSON.parse(travelConflicts);
+    } catch {
+      travelConflicts = [];
+    }
+  }
+  if (!Array.isArray(travelConflicts)) travelConflicts = [];
+
+  const snapshot = (item.penandatanganSnapshot ?? item.penandatangan_snapshot) as NotaDinas["penandatanganSnapshot"];
+
+  const calculatedTotal = lampiran.reduce((sum, row) => sum + row.total, 0);
+  const totalBiaya = calculatedTotal > 0 ? calculatedTotal : Number(item.totalBiaya || item.total_biaya || 0);
+
   return {
-    ...item,
-    createdByPegawaiId: item.createdByPegawaiId ?? "",
-    catatanRevisi: item.catatanRevisi ?? "",
-    dipaId: item.dipaId ?? "",
-    tanggalBerangkat: item.tanggalBerangkat || "",
-    tanggalKembali: item.tanggalKembali || "",
-    lokasiTujuan: item.lokasiTujuan || "",
-    travelConflicts: item.travelConflicts ?? [],
+    id: String(item.id || ""),
+    nomor,
+    tanggal,
+    tanggalBerangkat,
+    tanggalKembali,
+    lokasiTujuan,
+    kepada,
+    dari,
+    tembusan,
+    sifat,
+    perihal,
+    isi,
+    jenis,
+    status,
+    dipaId,
+    penandatanganId,
+    createdByPegawaiId,
+    catatanRevisi,
+    travelConflicts: travelConflicts as NotaDinasTravelConflict[],
     lampiran,
-    totalBiaya: lampiran.reduce((sum, row) => sum + row.total, 0),
+    totalBiaya,
     penandatanganSnapshot:
-      item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
-        ? item.penandatanganSnapshot
+      snapshot?.penandatanganId === penandatanganId
+        ? snapshot
         : signer
           ? createPenandatanganSnapshot(
               signer,
               "Nota Dinas",
-              item.tanggal,
+              tanggal,
               true,
             )
           : null,
@@ -461,7 +519,11 @@ export const notaDinasService = {
       async () => {
         const res = await apiClient.get<NotaDinas[] | { data?: NotaDinas[]; items?: NotaDinas[] }>("/api/v1/nota-dinas", params);
         const list = Array.isArray(res) ? res : res.data || res.items || [];
-        return list.map(normalizeNotaDinas);
+        const normalized = list.map(normalizeNotaDinas);
+        if (normalized.length > 0) {
+          notaDinasService.saveAll(normalized);
+        }
+        return normalized;
       },
       () => notaDinasService.getAll()
     );
@@ -484,7 +546,10 @@ export const notaDinasService = {
         const payload = { id: data.id || `nd-${Date.now()}`, ...data };
         const res = await apiClient.post<NotaDinas | { data?: NotaDinas }>("/api/v1/nota-dinas", payload);
         const unwrapped = (res as { data?: NotaDinas }).data || (res as NotaDinas);
-        return normalizeNotaDinas(unwrapped);
+        const normalized = normalizeNotaDinas(unwrapped);
+        const items = notaDinasService.getAll();
+        notaDinasService.saveAll([...items.filter((i) => i.id !== normalized.id), normalized]);
+        return normalized;
       },
       async () => {
         const items = notaDinasService.getAll();
@@ -500,7 +565,13 @@ export const notaDinasService = {
       async () => {
         const res = await apiClient.put<NotaDinas | { data?: NotaDinas }>(`/api/v1/nota-dinas/${id}`, data);
         const unwrapped = (res as { data?: NotaDinas }).data || (res as NotaDinas);
-        return normalizeNotaDinas(unwrapped);
+        const normalized = normalizeNotaDinas(unwrapped);
+        const items = notaDinasService.getAll();
+        const existing = items.find((i) => i.id === id);
+        const merged = existing ? normalizeNotaDinas({ ...existing, ...normalized, ...data }) : normalized;
+        const updated = items.map((item) => (item.id === id ? merged : item));
+        notaDinasService.saveAll(updated);
+        return merged;
       },
       async () => {
         const items = notaDinasService.getAll();

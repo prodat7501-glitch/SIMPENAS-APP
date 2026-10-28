@@ -44,25 +44,25 @@ var SCHEMA_DEFINITIONS = {
     "id", "template_key", "name", "html_content", "is_default", "created_at", "updated_at"
   ],
   nota_dinas: [
-    "id", "nomor", "tanggal", "dari", "kepada", "hal", "dasar", "uraian", "personil_json", "anggaran_json", "status", "created_by", "created_at", "updated_at"
+    "id", "nomor", "tanggal", "dari", "kepada", "hal", "perihal", "sifat", "jenis", "tanggal_berangkat", "tanggal_kembali", "lokasi_tujuan", "dasar", "uraian", "isi", "personil_json", "anggaran_json", "status", "catatan_revisi", "created_by", "data_json", "created_at", "updated_at"
   ],
   nota_dinas_lampiran: [
     "id", "nota_dinas_id", "judul", "keterangan", "file_url", "created_at", "updated_at"
   ],
   spt: [
-    "id", "nomor", "tanggal", "nota_dinas_id", "nomor_nota_dinas", "dasar", "untuk", "tanggal_mulai", "tanggal_selesai", "tempat_tujuan", "personil_json", "status", "penandatangan_id", "created_by", "created_at", "updated_at"
+    "id", "nomor", "tanggal", "nota_dinas_id", "nomor_nota_dinas", "dasar", "untuk", "tanggal_mulai", "tanggal_selesai", "tempat_tujuan", "personil_json", "status", "catatan_revisi", "penandatangan_id", "created_by", "data_json", "created_at", "updated_at"
   ],
   spt_personil: [
     "id", "spt_id", "pegawai_id", "nama", "nip", "jabatan", "pangkat", "peran", "created_at", "updated_at"
   ],
   sppd: [
-    "id", "nomor", "spt_id", "nomor_spt", "tanggal", "tanggal_berangkat", "tanggal_harus_kembali", "tempat_berangkat", "tempat_tujuan", "moda_transportasi", "akun_anggaran", "personil_json", "rincian_biaya_json", "status", "created_by", "created_at", "updated_at"
+    "id", "nomor", "spt_id", "nomor_spt", "tanggal", "tanggal_berangkat", "tanggal_harus_kembali", "tempat_berangkat", "tempat_tujuan", "moda_transportasi", "akun_anggaran", "personil_json", "rincian_biaya_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   laporan: [
-    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   spj: [
-    "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "data_json", "created_at", "updated_at"
   ],
   dokumen_keuangan: [
     "id", "jenis", "nomor", "tanggal", "sppd_id", "jumlah_dibayarkan", "terbilang", "untuk_pembayaran", "penerima_nama", "penerima_nip", "bendahara_nama", "ppk_nama", "data_json", "created_at", "updated_at"
@@ -119,6 +119,8 @@ var SHEET_MAP = {
   "spt_personil": "spt_personil",
   "sppd": "sppd",
   "laporan": "laporan",
+  "laporan-perjalanan": "laporan",
+  "laporan_perjalanan": "laporan",
   "spj": "spj",
   "dokumen-keuangan": "dokumen_keuangan",
   "dokumen_keuangan": "dokumen_keuangan",
@@ -1130,18 +1132,42 @@ function getMappedSheetName(resource) {
 function getOrCreateSheet(sheetName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
+  var defHeaders = SCHEMA_DEFINITIONS[sheetName] || ["id", "data_json", "created_at", "updated_at"];
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
-    var headers = SCHEMA_DEFINITIONS[sheetName] || ["id", "data_json", "created_at", "updated_at"];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#ffffff");
+    sheet.getRange(1, 1, 1, defHeaders.length).setValues([defHeaders]);
+    sheet.getRange(1, 1, 1, defHeaders.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#ffffff");
     sheet.setFrozenRows(1);
+  } else {
+    ensureSheetHeaders(sheet, defHeaders);
   }
   return sheet;
 }
 
+function ensureSheetHeaders(sheet, expectedHeaders) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol === 0) {
+    sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+    sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#ffffff");
+    sheet.setFrozenRows(1);
+    return;
+  }
+  var currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var missing = [];
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    if (currentHeaders.indexOf(expectedHeaders[i]) === -1) {
+      missing.push(expectedHeaders[i]);
+    }
+  }
+  if (missing.length > 0) {
+    sheet.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
+    sheet.getRange(1, lastCol + 1, 1, missing.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#ffffff");
+  }
+}
+
 function getHeaders(sheet) {
-  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var lastCol = Math.max(1, sheet.getLastColumn());
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 }
 
 function isDummyRecord(sheetName, obj) {
@@ -1275,6 +1301,70 @@ function rowValuesToObject(rowValues, headers) {
     obj[key] = val;
   }
   
+  // Unpack data_json jika tersedia agar semua properti nested/asli klien terpelihara 100%
+  if (obj.data_json) {
+    var rawData = obj.data_json;
+    if (typeof rawData === "string") {
+      try { rawData = JSON.parse(rawData); } catch (e) {}
+    }
+    if (typeof rawData === "object" && rawData !== null) {
+      for (var k in rawData) {
+        if (obj[k] === undefined || obj[k] === "" || obj[k] === null) {
+          obj[k] = rawData[k];
+        }
+      }
+    }
+  }
+
+  // Kompatibilitas cerdas untuk tabel nota_dinas
+  if (!obj.perihal && obj.hal) obj.perihal = obj.hal;
+  if (!obj.hal && obj.perihal) obj.hal = obj.perihal;
+  if (!obj.isi && obj.uraian) obj.isi = obj.uraian;
+  if (!obj.uraian && obj.isi) obj.uraian = obj.isi;
+  if (!obj.lampiran && obj.personil_json) obj.lampiran = obj.personil_json;
+  if (!obj.personil_json && obj.lampiran) obj.personil_json = obj.lampiran;
+  if (!obj.createdByPegawaiId && obj.created_by) obj.createdByPegawaiId = obj.created_by;
+  if (!obj.catatanRevisi && obj.catatan_revisi) obj.catatanRevisi = obj.catatan_revisi;
+  if (!obj.tanggalBerangkat && obj.tanggal_berangkat) obj.tanggalBerangkat = obj.tanggal_berangkat;
+  if (!obj.tanggalKembali && obj.tanggal_kembali) obj.tanggalKembali = obj.tanggal_kembali;
+  if (!obj.lokasiTujuan && obj.lokasi_tujuan) obj.lokasiTujuan = obj.lokasi_tujuan;
+  if (!obj.dipaId && (obj.dipa_id || obj.akun_anggaran)) obj.dipaId = obj.dipa_id || obj.akun_anggaran;
+  if (obj.total_biaya !== undefined && obj.totalBiaya === undefined) obj.totalBiaya = Number(obj.total_biaya);
+
+  // Kompatibilitas cerdas untuk tabel spt
+  if (!obj.notaDinasId && obj.nota_dinas_id) obj.notaDinasId = obj.nota_dinas_id;
+  if (!obj.nomorNotaDinas && obj.nomor_nota_dinas) obj.nomorNotaDinas = obj.nomor_nota_dinas;
+  if (!obj.tanggalMulai && obj.tanggal_mulai) obj.tanggalMulai = obj.tanggal_mulai;
+  if (!obj.tanggalSelesai && obj.tanggal_selesai) obj.tanggalSelesai = obj.tanggal_selesai;
+  if (!obj.penandatanganId && obj.penandatangan_id) obj.penandatanganId = obj.penandatangan_id;
+  if (!obj.personil && obj.personil_json) obj.personil = obj.personil_json;
+  if (!obj.catatanRevisi && obj.catatan_revisi) obj.catatanRevisi = obj.catatan_revisi;
+  if (!obj.createdByPegawaiId && obj.created_by) obj.createdByPegawaiId = obj.created_by;
+
+  // Kompatibilitas cerdas untuk tabel sppd
+  if (!obj.sptId && obj.spt_id) obj.sptId = obj.spt_id;
+  if (!obj.nomorSpt && obj.nomor_spt) obj.nomorSpt = obj.nomorSpt;
+  if (!obj.tanggalBerangkat && obj.tanggal_berangkat) obj.tanggalBerangkat = obj.tanggal_berangkat;
+  if (!obj.tanggalKembali && (obj.tanggal_kembali || obj.tanggal_harus_kembali)) obj.tanggalKembali = obj.tanggal_kembali || obj.tanggal_harus_kembali;
+  if (!obj.tempatBerangkat && obj.tempat_berangkat) obj.tempatBerangkat = obj.tempat_berangkat;
+  if (!obj.tempatTujuan && obj.tempat_tujuan) obj.tempatTujuan = obj.tempat_tujuan;
+  if (!obj.transportasi && obj.moda_transportasi) obj.transportasi = obj.moda_transportasi;
+  if (!obj.dipaId && (obj.dipa_id || obj.akun_anggaran)) obj.dipaId = obj.dipa_id || obj.akun_anggaran;
+  if (obj.lama_perjalanan !== undefined && obj.lamaPerjalanan === undefined) obj.lamaPerjalanan = Number(obj.lama_perjalanan);
+  if (!obj.personil && obj.personil_json) obj.personil = obj.personil_json;
+  if (!obj.tandaTanganHalaman2 && obj.tanda_tangan_halaman2_json) obj.tandaTanganHalaman2 = obj.tanda_tangan_halaman2_json;
+
+  // Kompatibilitas cerdas untuk tabel laporan
+  if (!obj.sppdId && obj.sppd_id) obj.sppdId = obj.sppd_id;
+  if (!obj.sptId && obj.spt_id) obj.sptId = obj.spt_id;
+  if (!obj.nomorSppd && obj.nomor_sppd) obj.nomorSppd = obj.nomor_sppd;
+  if (!obj.tanggalLaporan && obj.tanggal_laporan) obj.tanggalLaporan = obj.tanggal_laporan;
+  if (!obj.tujuan && obj.tempat_tujuan) obj.tujuan = obj.tempat_tujuan;
+  if (!obj.maksud && obj.maksud_perjalanan) obj.maksud = obj.maksud_perjalanan;
+  if (!obj.hasilPelaksanaan && obj.hasil_perjalanan) obj.hasilPelaksanaan = obj.hasil_perjalanan;
+  if (!obj.catatanVerifikasi && (obj.catatan_verifikasi || obj.catatan)) obj.catatanVerifikasi = obj.catatan_verifikasi || obj.catatan;
+  if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
+  
   // Kompatibilitas cerdas untuk tabel pangkat (gol, ruang, nama -> golongan, nama_pangkat)
   if (obj.gol !== undefined && obj.nama !== undefined) {
     if (!obj.nama_pangkat) obj.nama_pangkat = obj.nama;
@@ -1334,6 +1424,60 @@ function objectToRowValues(obj, headers) {
   if (obj.pagu !== undefined && obj.pagu_awal === undefined) obj.pagu_awal = obj.pagu;
   if (obj.tahunAnggaran && !obj.tahun) obj.tahun = obj.tahunAnggaran;
 
+  // Mapping fallback jika input Nota Dinas dari frontend
+  if (obj.perihal && !obj.hal) obj.hal = obj.perihal;
+  if (obj.isi && !obj.uraian) obj.uraian = obj.isi;
+  if (obj.lampiran && !obj.personil_json) obj.personil_json = obj.lampiran;
+  if (obj.lampiran && !obj.lampiran_json) obj.lampiran_json = obj.lampiran;
+  if (obj.createdByPegawaiId && !obj.created_by) obj.created_by = obj.createdByPegawaiId;
+  if (obj.catatanRevisi && !obj.catatan_revisi) obj.catatan_revisi = obj.catatanRevisi;
+  if (obj.tanggalBerangkat && !obj.tanggal_berangkat) obj.tanggal_berangkat = obj.tanggalBerangkat;
+  if (obj.tanggalKembali && !obj.tanggal_kembali) obj.tanggal_kembali = obj.tanggalKembali;
+  if (obj.lokasiTujuan && !obj.lokasi_tujuan) obj.lokasi_tujuan = obj.lokasiTujuan;
+  if (obj.totalBiaya !== undefined && obj.total_biaya === undefined) obj.total_biaya = obj.totalBiaya;
+  if (obj.penandatanganId && !obj.penandatangan_id) obj.penandatangan_id = obj.penandatanganId;
+  if (obj.dipaId && !obj.dipa_id) obj.dipa_id = obj.dipaId;
+
+  // Mapping fallback jika input SPT dari frontend
+  if (obj.notaDinasId && !obj.nota_dinas_id) obj.nota_dinas_id = obj.notaDinasId;
+  if (obj.nomorNotaDinas && !obj.nomor_nota_dinas) obj.nomor_nota_dinas = obj.nomorNotaDinas;
+  if (obj.tanggalMulai && !obj.tanggal_mulai) obj.tanggal_mulai = obj.tanggalMulai;
+  if (obj.tanggalSelesai && !obj.tanggal_selesai) obj.tanggal_selesai = obj.tanggalSelesai;
+  if (obj.penandatanganId && !obj.penandatangan_id) obj.penandatangan_id = obj.penandatanganId;
+  if (obj.personil && !obj.personil_json) obj.personil_json = obj.personil;
+  if (obj.menimbang && !obj.menimbang_json) obj.menimbang_json = obj.menimbang;
+  if (obj.catatanRevisi && !obj.catatan_revisi) obj.catatan_revisi = obj.catatanRevisi;
+  if (obj.createdByPegawaiId && !obj.created_by) obj.created_by = obj.createdByPegawaiId;
+
+  // Mapping fallback jika input SPPD dari frontend
+  if (obj.sptId && !obj.spt_id) obj.spt_id = obj.sptId;
+  if (obj.nomorSpt && !obj.nomor_spt) obj.nomor_spt = obj.nomorSpt;
+  if (obj.tanggalBerangkat && !obj.tanggal_berangkat) obj.tanggal_berangkat = obj.tanggalBerangkat;
+  if (obj.tanggalKembali && !obj.tanggal_harus_kembali) obj.tanggal_harus_kembali = obj.tanggalKembali;
+  if (obj.tanggalKembali && !obj.tanggal_kembali) obj.tanggal_kembali = obj.tanggalKembali;
+  if (obj.tempatBerangkat && !obj.tempat_berangkat) obj.tempat_berangkat = obj.tempatBerangkat;
+  if (obj.tempatTujuan && !obj.tempat_tujuan) obj.tempat_tujuan = obj.tempatTujuan;
+  if (obj.transportasi && !obj.moda_transportasi) obj.moda_transportasi = obj.transportasi;
+  if (obj.dipaId && !obj.akun_anggaran) obj.akun_anggaran = obj.dipaId;
+  if (obj.dipaId && !obj.dipa_id) obj.dipa_id = obj.dipaId;
+  if (obj.lamaPerjalanan !== undefined && obj.lama_perjalanan === undefined) obj.lama_perjalanan = obj.lamaPerjalanan;
+  if (obj.pengelolaPegawaiId && !obj.pengelola_pegawai_id) obj.pengelola_pegawai_id = obj.pengelolaPegawaiId;
+  if (obj.pengelolaNama && !obj.pengelola_nama) obj.pengelola_nama = obj.pengelolaNama;
+  if (obj.personil && !obj.personil_json) obj.personil_json = obj.personil;
+  if (obj.tandaTanganHalaman2 && !obj.tanda_tangan_halaman2_json) obj.tanda_tangan_halaman2_json = obj.tandaTanganHalaman2;
+
+  // Mapping fallback jika input Laporan dari frontend
+  if (obj.sppdId && !obj.sppd_id) obj.sppd_id = obj.sppdId;
+  if (obj.sptId && !obj.spt_id) obj.spt_id = obj.sptId;
+  if (obj.nomorSppd && !obj.nomor_sppd) obj.nomor_sppd = obj.nomorSppd;
+  if (obj.tanggalLaporan && !obj.tanggal_laporan) obj.tanggal_laporan = obj.tanggalLaporan;
+  if (obj.tujuan && !obj.tempat_tujuan) obj.tempat_tujuan = obj.tujuan;
+  if (obj.maksud && !obj.maksud_perjalanan) obj.maksud_perjalanan = obj.maksud;
+  if (obj.hasilPelaksanaan && !obj.hasil_perjalanan) obj.hasil_perjalanan = obj.hasilPelaksanaan;
+  if (obj.kalimatPenutup && !obj.kesimpulan) obj.kesimpulan = obj.kalimatPenutup;
+  if (obj.catatanVerifikasi && !obj.catatan_verifikasi) obj.catatan_verifikasi = obj.catatanVerifikasi;
+  if (obj.dokumentasi && !obj.dokumentasi_json) obj.dokumentasi_json = obj.dokumentasi;
+
   // Mapping fallback jika input approval_history dari frontend
   if (obj.documentId && !obj.document_id) obj.document_id = obj.documentId;
   if (obj.documentType && !obj.document_type) obj.document_type = obj.documentType;
@@ -1346,6 +1490,13 @@ function objectToRowValues(obj, headers) {
   if (obj.approver && !obj.user_name) obj.user_name = obj.approver;
   if (obj.recipientPegawaiId && !obj.recipient_pegawai_id) obj.recipient_pegawai_id = obj.recipientPegawaiId;
   if (obj.tanggal && !obj.created_at) obj.created_at = obj.tanggal;
+
+  // Simpan data_json lengkap jika kolom data_json ada di sheet
+  if (headers.indexOf("data_json") !== -1 && !obj.data_json) {
+    try {
+      obj.data_json = JSON.stringify(obj);
+    } catch (e) {}
+  }
 
   var row = [];
   for (var i = 0; i < headers.length; i++) {

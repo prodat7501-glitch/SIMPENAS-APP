@@ -110,19 +110,43 @@ const normalizeSinglePersonilSppd = (raw: RawSppdApi): Sppd => {
     .getAll()
     .find((candidate) => candidate.id === penandatanganId);
 
+  let rawPersonil = raw.personil ?? (raw as Record<string, unknown>).personil_json ?? (raw as Record<string, unknown>).personilJson;
+  if (typeof rawPersonil === "string") {
+    try {
+      rawPersonil = JSON.parse(rawPersonil);
+    } catch {
+      rawPersonil = [];
+    }
+  }
+
   let personil: Sppd["personil"] = [];
-  if (Array.isArray(raw.personil) && raw.personil.length > 0) {
-    personil = raw.personil.slice(0, 1);
+  if (Array.isArray(rawPersonil) && rawPersonil.length > 0) {
+    personil = rawPersonil.slice(0, 1).map((p: unknown) => {
+      const pRecord = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
+      return {
+        pegawaiId: String(pRecord.pegawaiId || pRecord.pegawai_id || ""),
+      };
+    });
   } else if (raw.pegawaiId || raw.pegawai_id) {
     personil = [{ pegawaiId: raw.pegawaiId || raw.pegawai_id || "" }];
   }
 
-  const rawTtd = raw.tandaTanganHalaman2 ?? raw.tanda_tangan_halaman2;
+  let rawTtd = raw.tandaTanganHalaman2 ?? raw.tanda_tangan_halaman2 ?? (raw as Record<string, unknown>).tanda_tangan_halaman2_json;
+  if (typeof rawTtd === "string") {
+    try {
+      rawTtd = JSON.parse(rawTtd);
+    } catch {
+      rawTtd = [];
+    }
+  }
   const tandaTanganHalaman2 = Array.isArray(rawTtd)
     ? rawTtd.map((item) => normalizePage2Signer(item as Partial<Page2Signer>))
     : [];
 
   const tanggalBerangkat = raw.tanggalBerangkat ?? raw.tanggal_berangkat ?? "";
+  const tanggalKembali = raw.tanggalKembali ?? raw.tanggal_kembali ?? (raw as Record<string, unknown>).tanggal_harus_kembali as string ?? "";
+  const transportasi = raw.transportasi ?? (raw as Record<string, unknown>).moda_transportasi as string ?? (raw as Record<string, unknown>).modaTransportasi as string ?? "";
+  const dipaId = raw.dipaId ?? raw.dipa_id ?? (raw as Record<string, unknown>).akun_anggaran as string ?? (raw as Record<string, unknown>).akunAnggaran as string ?? "";
   const snapshot = raw.penandatanganSnapshot ?? raw.penandatangan_snapshot;
 
   return {
@@ -133,14 +157,14 @@ const normalizeSinglePersonilSppd = (raw: RawSppdApi): Sppd => {
     pengelolaNama: raw.pengelolaNama ?? raw.pengelola_nama,
     personil,
     maksud: raw.maksud ?? "",
-    transportasi: raw.transportasi ?? "",
+    transportasi,
     tempatBerangkat: raw.tempatBerangkat ?? raw.tempat_berangkat ?? "",
     tempatTujuan: raw.tempatTujuan ?? raw.tempat_tujuan ?? "",
     tanggalBerangkat,
-    tanggalKembali: raw.tanggalKembali ?? raw.tanggal_kembali ?? "",
+    tanggalKembali,
     lamaPerjalanan: Number(raw.lamaPerjalanan ?? raw.lama_perjalanan ?? 1),
     instansi: raw.instansi ?? "Komisi Pemilihan Umum Kabupaten Gorontalo",
-    dipaId: raw.dipaId ?? raw.dipa_id ?? "",
+    dipaId,
     penandatanganId,
     jumlahKolomHalaman2: Number(
       raw.jumlahKolomHalaman2 ?? raw.jumlah_kolom_halaman2 ?? 6,

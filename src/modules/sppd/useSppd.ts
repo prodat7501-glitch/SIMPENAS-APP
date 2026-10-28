@@ -75,9 +75,9 @@ export function useSppd() {
     const search = filters.search.trim().toLowerCase();
     const matchesSearch =
       !search ||
-      item.nomor.toLowerCase().includes(search) ||
-      item.maksud.toLowerCase().includes(search) ||
-      item.tempatTujuan.toLowerCase().includes(search);
+      (item.nomor || "").toLowerCase().includes(search) ||
+      (item.maksud || "").toLowerCase().includes(search) ||
+      (item.tempatTujuan || "").toLowerCase().includes(search);
     const matchesStatus =
       filters.status === "Semua" || item.status === filters.status;
 

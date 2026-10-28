@@ -50,9 +50,9 @@ export function NotaDinasTable({
 
   const filtered = items.filter(
     (item) =>
-      item.perihal.toLowerCase().includes(search.toLowerCase()) ||
-      item.nomor.toLowerCase().includes(search.toLowerCase()) ||
-      item.dari.toLowerCase().includes(search.toLowerCase()),
+      (item.perihal || "").toLowerCase().includes(search.toLowerCase()) ||
+      (item.nomor || "").toLowerCase().includes(search.toLowerCase()) ||
+      (item.dari || "").toLowerCase().includes(search.toLowerCase()),
   );
 
   const formatRupiah = (val: number) => {
@@ -129,12 +129,12 @@ export function NotaDinasTable({
                 >
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-mono text-[10px]">
-                    {item.nomor}
+                    {item.nomor || "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-bold text-foreground line-clamp-1">
-                        {item.perihal}
+                        {item.perihal || "Tanpa Perihal"}
                       </span>
                       {getConflictNames(item).length > 0 && (
                         <span className="mt-1 flex items-start gap-1 text-[10px] font-bold leading-tight text-danger">
@@ -148,15 +148,15 @@ export function NotaDinasTable({
                   <TableCell className="text-xs">
                     {formatTableDate(item.tanggal)}
                   </TableCell>
-                  <TableCell className="text-xs">{item.dari}</TableCell>
+                  <TableCell className="text-xs">{item.dari || "-"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{item.jenis}</Badge>
+                    <Badge variant="outline">{item.jenis || "Luar Kota"}</Badge>
                   </TableCell>
                   <TableCell className="text-center font-bold">
-                    {item.lampiran.length}
+                    {(item.lampiran || []).length}
                   </TableCell>
                   <TableCell className="font-bold text-primary text-xs">
-                    {formatRupiah(item.totalBiaya)}
+                    {formatRupiah(item.totalBiaya || 0)}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col items-start gap-1">

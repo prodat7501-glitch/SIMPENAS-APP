@@ -43,9 +43,9 @@ export function SptTable({
 
   const filtered = items.filter(
     (item) =>
-      item.nomor.toLowerCase().includes(search.toLowerCase()) ||
-      item.untuk.some((u) =>
-        u.text.toLowerCase().includes(search.toLowerCase()),
+      (item.nomor || "").toLowerCase().includes(search.toLowerCase()) ||
+      (item.untuk || []).some((u) =>
+        (u.text || "").toLowerCase().includes(search.toLowerCase()),
       ),
   );
 
@@ -105,14 +105,14 @@ export function SptTable({
                     {getNotaDinasNumber(item.notaDinasId)}
                   </TableCell>
                   <TableCell className="text-xs">
-                    <p className="line-clamp-2">{item.untuk[0]?.text || "-"}</p>
+                    <p className="line-clamp-2">{(item.untuk || [])[0]?.text || "-"}</p>
                   </TableCell>
                   <TableCell className="text-xs">
                     {formatTableDate(item.tanggalMulai)} s.d{" "}
                     {formatTableDate(item.tanggalSelesai)}
                   </TableCell>
                   <TableCell className="text-center font-bold">
-                    {item.personil.length}
+                    {(item.personil || []).length}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col items-start gap-1">

@@ -73,7 +73,7 @@ const isKasubbagSigner = (value: string) => {
 
 const getPrintableCostColumns = (item: NotaDinas): LampiranCostLine[] => {
   const columns = new Map<LampiranCostLine["key"], LampiranCostLine>();
-  item.lampiran.forEach((row) => {
+  (item.lampiran || []).forEach((row) => {
     getLampiranCostLines(row, item.jenis).forEach((line) => {
       if (line.subtotal > 0 && !columns.has(line.key)) {
         columns.set(line.key, line);
@@ -371,7 +371,7 @@ export default function NotaDinasPage() {
               {
                 header: "Personil",
                 value: (item) =>
-                  item.lampiran
+                  (item.lampiran || [])
                     .map(
                       (row) =>
                         pegawais.find((pegawai) => pegawai.id === row.pegawaiId)
@@ -574,7 +574,7 @@ export default function NotaDinasPage() {
                   </thead>
                   <tbody>
                     {sortByPegawaiOrder(
-                      previewItem.lampiran,
+                      previewItem.lampiran || [],
                       (item) => item.pegawaiId,
                       pegawais,
                     ).map((item, idx) => (
