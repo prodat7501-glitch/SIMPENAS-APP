@@ -5,7 +5,6 @@ import Image from "next/image";
 import { Camera, Download, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintPreview } from "@/components/ui/print-preview";
-import { DocumentTemplate } from "@/components/document/DocumentTemplate";
 import { cn } from "@/lib/utils";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
@@ -91,11 +90,13 @@ function SectionBlock({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid grid-cols-[24px_1fr] gap-x-2 laporan-section">
-      <h3 className="font-bold laporan-section-code">{code}</h3>
-      <div>
-        <h3 className="font-bold mb-1 laporan-section-title">{title}</h3>
-        {children}
+    <section className="laporan-section">
+      <div className="flex items-start gap-x-2">
+        <span className="font-bold w-6 shrink-0 laporan-section-code">{code}</span>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold mb-1 laporan-section-title">{title}</h3>
+          {children}
+        </div>
       </div>
     </section>
   );
@@ -494,10 +495,15 @@ export function LaporanPreview({
       isOpen
       title="Pratinjau Laporan Perjalanan Dinas"
       onClose={onClose}
-      printPageSize="215mm 330mm"
       className="laporan-print-sheet w-[215mm] min-h-[330mm] print:overflow-visible"
     >
-      <DocumentTemplate includeHeader={false}>
+      <div
+        className="laporan-document-content text-slate-900"
+        style={{
+          fontFamily: '"Bookman Old Style", Bookman, Georgia, serif',
+          textAlign: "left",
+        }}
+      >
         <header
           className={
             isLaporanKomisioner
@@ -645,43 +651,44 @@ export function LaporanPreview({
           </div>
         )}
 
-        <section className="mt-12 grid grid-cols-[24px_1fr] gap-x-2 laporan-section laporan-documentation-section">
-          <h3 className="font-bold laporan-section-code">G.</h3>
-          <div>
-            <h3 className="font-bold mb-4 laporan-section-title">Dokumentasi</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {item.dokumentasi.map((foto) => (
-                <figure key={foto.id}>
-                  <Image
-                    src={foto.dataUrl}
-                    alt={foto.nama}
-                    width={320}
-                    height={176}
-                    unoptimized
-                    className="w-full h-44 object-cover border"
-                  />
-                </figure>
-              ))}
+        <section className="mt-8 laporan-section laporan-documentation-section">
+          <div className="flex items-start gap-x-2">
+            <span className="font-bold w-6 shrink-0 laporan-section-code">G.</span>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold mb-4 laporan-section-title">Dokumentasi</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {item.dokumentasi.map((foto) => (
+                  <figure key={foto.id}>
+                    <Image
+                      src={foto.dataUrl}
+                      alt={foto.nama}
+                      width={320}
+                      height={176}
+                      unoptimized
+                      className="w-full h-44 object-cover border"
+                    />
+                  </figure>
+                ))}
+              </div>
             </div>
           </div>
         </section>
-      </DocumentTemplate>
+      </div>
       <style jsx global>{`
         .laporan-print-sheet {
           width: 215mm !important;
           min-height: 330mm !important;
-          padding: 16mm 20mm 20mm 20mm !important;
+          padding: 14mm 20mm 20mm 20mm !important;
         }
 
         .laporan-print-sheet > .pt-10 {
           padding-top: 0 !important;
         }
 
-        .laporan-print-sheet > .pt-10 > div {
+        .laporan-document-content {
           font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          gap: 1.25rem !important;
+          display: block !important;
+          width: 100% !important;
         }
 
         .docx-preview-container .docx-wrapper {
@@ -708,70 +715,103 @@ export function LaporanPreview({
             margin: ${template.margin}mm;
           }
 
-          .laporan-print-sheet {
-            box-sizing: border-box;
+          body * {
+            visibility: hidden;
+          }
+
+          .print-direct,
+          .print-direct * {
+            visibility: visible;
+          }
+
+          .print-direct {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+
+          .laporan-print-sheet.print-container {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: 100% !important;
             min-height: 0 !important;
-            page-break-after: auto;
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+            max-height: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            page-break-after: auto !important;
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
             overflow: visible !important;
             padding: 0 !important;
             margin: 0 !important;
+            display: block !important;
           }
 
           .laporan-print-sheet > .pt-10 {
             padding-top: 0 !important;
+            margin: 0 !important;
+            display: block !important;
           }
 
-          .laporan-print-sheet > .pt-10 > div {
-            margin: 0 !important;
-            padding: 0 !important;
+          .laporan-document-content {
+            display: block !important;
+            width: 100% !important;
           }
 
           .laporan-section {
-            break-inside: auto;
-            page-break-inside: auto;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
 
           .laporan-section-code,
           .laporan-section-title {
-            break-after: avoid;
-            page-break-after: avoid;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
 
           .laporan-flow-list,
           .laporan-flow-list li {
-            break-inside: auto;
-            page-break-inside: auto;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
 
           .laporan-closing-sentence {
-            break-inside: auto;
-            page-break-inside: auto;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
 
           .laporan-signature-section {
-            break-inside: auto;
-            page-break-inside: auto;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
 
           .laporan-documentation-section {
-            break-before: page;
-            page-break-before: always;
-            break-inside: auto;
-            page-break-inside: auto;
+            break-before: page !important;
+            page-break-before: always !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
             margin-top: 0 !important;
           }
 
           .laporan-signature-row {
-            break-inside: avoid;
-            page-break-inside: avoid;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
 
           .laporan-print-sheet figure {
-            break-inside: avoid;
-            page-break-inside: avoid;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .no-print {
+            display: none !important;
           }
         }
       `}</style>
