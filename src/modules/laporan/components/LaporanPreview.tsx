@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Download, FileText, Printer, X } from "lucide-react";
+import { Camera, Download, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintPreview } from "@/components/ui/print-preview";
 import { DocumentTemplate } from "@/components/document/DocumentTemplate";
@@ -26,12 +26,17 @@ const formatTanggalIndonesia = (dateStr?: string) => {
   }).format(date);
 };
 
-const formatFileSize = (bytes?: number) => {
-  if (!bytes) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const parts = dataUrl.split(",");
+  const mimeMatch = parts[0]?.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "application/pdf";
+  const bstr = atob(parts[1] || "");
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
 };
 
 const splitPoin = (value: string) =>
@@ -217,6 +222,30 @@ export function LaporanPreview({
   onClose: () => void;
 }) {
   const template = useDocumentTemplate();
+  const pdfIframeRef = useRef<HTMLIFrameElement>(null);
+
+  const pdfBlobUrl = useMemo(() => {
+    if (!item?.fileLaporan?.dataUrl) return null;
+    const dataUrl = item.fileLaporan.dataUrl;
+    if (dataUrl.startsWith("data:")) {
+      try {
+        const blob = dataUrlToBlob(dataUrl);
+        return URL.createObjectURL(blob);
+      } catch (err) {
+        console.error("Gagal membuat blob URL untuk pratinjau dokumen:", err);
+        return dataUrl;
+      }
+    }
+    return dataUrl;
+  }, [item?.fileLaporan?.dataUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl && pdfBlobUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+  }, [pdfBlobUrl]);
 
   if (!item) return null;
 
@@ -260,7 +289,7 @@ export function LaporanPreview({
 
     const handleDownload = () => {
       const a = document.createElement("a");
-      a.href = item.fileLaporan!.dataUrl;
+      a.href = pdfBlobUrl || item.fileLaporan!.dataUrl;
       a.download = item.fileLaporan!.nama;
       document.body.appendChild(a);
       a.click();
@@ -268,9 +297,53 @@ export function LaporanPreview({
     };
 
     const handlePrintPdf = () => {
-      const win = window.open(item.fileLaporan!.dataUrl, "_blank");
-      if (win) {
-        win.focus();
+      // 1. Coba print langsung melalui iframe dokumen yang aktif di layar
+      if (pdfIframeRef.current?.contentWindow) {
+        try {
+          pdfIframeRef.current.contentWindow.focus();
+          pdfIframeRef.current.contentWindow.print();
+          return;
+        } catch (e) {
+          console.warn("Direct iframe print failed, trying fallback:", e);
+        }
+      }
+
+      const targetUrl = pdfBlobUrl || item.fileLaporan?.dataUrl;
+      if (!targetUrl) return;
+
+      if (isDriveUrl) {
+        window.open(targetUrl.replace(/\/view.*$/, "/preview"), "_blank");
+        return;
+      }
+
+      // 2. Buat iframe tersembunyi sementara untuk memicu dialog cetak
+      try {
+        const printFrame = document.createElement("iframe");
+        printFrame.style.position = "fixed";
+        printFrame.style.right = "0";
+        printFrame.style.bottom = "0";
+        printFrame.style.width = "0";
+        printFrame.style.height = "0";
+        printFrame.style.border = "0";
+        printFrame.src = targetUrl;
+        document.body.appendChild(printFrame);
+        printFrame.onload = () => {
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+          } catch {
+            window.open(targetUrl, "_blank");
+          } finally {
+            setTimeout(() => {
+              if (document.body.contains(printFrame)) {
+                document.body.removeChild(printFrame);
+              }
+            }, 60000);
+          }
+        };
+      } catch {
+        // 3. Fallback: buka blob URL di tab baru (aman dan tidak diblokir oleh browser)
+        window.open(targetUrl, "_blank");
       }
     };
 
@@ -336,10 +409,11 @@ export function LaporanPreview({
             {isPdf || isDriveUrl ? (
               <div className="w-full h-[68vh] rounded-xl overflow-hidden border border-border bg-white shadow-sm">
                 <iframe
+                  ref={pdfIframeRef}
                   src={
                     isDriveUrl
                       ? item.fileLaporan.dataUrl.replace(/\/view.*$/, "/preview")
-                      : item.fileLaporan.dataUrl
+                      : (pdfBlobUrl || item.fileLaporan.dataUrl)
                   }
                   title={item.fileLaporan.nama}
                   className="w-full h-full border-0"
@@ -454,7 +528,7 @@ export function LaporanPreview({
           {!isLaporanKomisioner && <span aria-hidden />}
         </header>
 
-        <div className="text-center my-6">
+        <div className="text-center my-4">
           <h2 className="font-black uppercase">{judulLaporan}</h2>
         </div>
 
@@ -593,13 +667,21 @@ export function LaporanPreview({
         </section>
       </DocumentTemplate>
       <style jsx global>{`
-        .laporan-print-sheet > .pt-10 > div {
-          font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
-        }
-
         .laporan-print-sheet {
           width: 215mm !important;
           min-height: 330mm !important;
+          padding: 16mm 20mm 20mm 20mm !important;
+        }
+
+        .laporan-print-sheet > .pt-10 {
+          padding-top: 0 !important;
+        }
+
+        .laporan-print-sheet > .pt-10 > div {
+          font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          gap: 1.25rem !important;
         }
 
         .docx-preview-container .docx-wrapper {
@@ -634,10 +716,17 @@ export function LaporanPreview({
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
             overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
 
           .laporan-print-sheet > .pt-10 {
             padding-top: 0 !important;
+          }
+
+          .laporan-print-sheet > .pt-10 > div {
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           .laporan-section {
