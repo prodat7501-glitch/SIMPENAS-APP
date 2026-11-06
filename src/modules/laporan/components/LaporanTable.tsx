@@ -1,5 +1,5 @@
 "use client";
-import { CheckCircle, Edit2, Eye, Inbox, Search, Trash2 } from "lucide-react";
+import { CheckCircle, Download, Edit2, Eye, Inbox, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -91,12 +91,36 @@ export function LaporanTable(props: Props) {
               {props.items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs font-bold">
-                    {props.getSpt(item)}
+                    <div>{props.getSpt(item)}</div>
+                    {item.metodeLaporan === "upload" && item.fileLaporan && (
+                      <div className="mt-1 flex items-center gap-1 font-sans">
+                        {item.fileLaporan.nama.toLowerCase().endsWith(".pdf") ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-1.5 py-0.5 rounded">
+                            PDF
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded">
+                            Word
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[140px]" title={item.fileLaporan.nama}>
+                          {item.fileLaporan.nama}
+                        </span>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>{props.getPelaksana(item)}</TableCell>
                   <TableCell>{item.tujuan}</TableCell>
                   <TableCell>{formatTableDate(item.tanggalLaporan)}</TableCell>
-                  <TableCell>{item.dokumentasi.length} foto</TableCell>
+                  <TableCell>
+                    {item.metodeLaporan === "upload" ? (
+                      <span className="text-xs text-muted-foreground">
+                        {item.dokumentasi.length > 0 ? `${item.dokumentasi.length} foto` : "Berkas Dokumen"}
+                      </span>
+                    ) : (
+                      <span>{item.dokumentasi.length} foto</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <Badge variant={variant(item.status)}>{item.status}</Badge>
@@ -110,6 +134,23 @@ export function LaporanTable(props: Props) {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
+                      {item.metodeLaporan === "upload" && item.fileLaporan?.dataUrl && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const a = document.createElement("a");
+                            a.href = item.fileLaporan!.dataUrl;
+                            a.download = item.fileLaporan!.nama;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                          title={`Unduh ${item.fileLaporan.nama}`}
+                        >
+                          <Download className="w-4 h-4 text-primary" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

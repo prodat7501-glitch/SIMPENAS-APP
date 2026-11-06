@@ -123,6 +123,11 @@ const createId = () =>
 const buildLaporanApiBody = (payload: LaporanPayload, id?: string) => ({
   ...payload,
   ...(id ? { id } : {}),
+  metode_laporan: payload.metodeLaporan || "form",
+  metodeLaporan: payload.metodeLaporan || "form",
+  file_laporan: payload.fileLaporan,
+  file_laporan_json: payload.fileLaporan,
+  fileLaporan: payload.fileLaporan,
   spt_id: payload.sptId,
   sppd_id: payload.sppdId,
   pelaksana_id: payload.pelaksanaId,
@@ -154,45 +159,76 @@ const buildLaporanApiBody = (payload: LaporanPayload, id?: string) => ({
   tanggal_laporan: payload.tanggalLaporan,
 });
 
-const normalizeLaporan = (item: Partial<Laporan>): Laporan => ({
-  id: item.id ?? createId(),
-  sptId: item.sptId ?? (item as Record<string, unknown>).spt_id as string ?? "",
-  sppdId: item.sppdId ?? (item as Record<string, unknown>).sppd_id as string ?? "",
-  pelaksanaId: item.pelaksanaId ?? (item as Record<string, unknown>).pelaksana_id as string ?? "",
-  judulLaporan: item.judulLaporan ?? "Laporan Perjalanan Dinas",
-  suratTugas: item.suratTugas ?? "Sekretaris KPU",
-  nomorSuratTugas: item.nomorSuratTugas ?? (item as Record<string, unknown>).nomor_surat_tugas as string ?? "",
-  tanggalSuratTugas: item.tanggalSuratTugas ?? (item as Record<string, unknown>).tanggal_surat_tugas as string ?? "",
-  dasarPelaksanaan: buildDasarPelaksanaan(item),
-  maksud: item.maksud ?? (item as Record<string, unknown>).maksud_perjalanan as string ?? "",
-  tujuan: item.tujuan ?? (item as Record<string, unknown>).tempat_tujuan as string ?? "",
-  tempatPelaksanaan: item.tempatPelaksanaan ?? (item as Record<string, unknown>).tempat_pelaksanaan as string ?? "",
-  hariTanggalPelaksanaan: item.hariTanggalPelaksanaan ?? (item as Record<string, unknown>).hari_tanggal_pelaksanaan as string ?? "",
-  tempatWaktu: buildTempatWaktu(item),
-  materi: item.materi ?? "",
-  hasilPelaksanaan: item.hasilPelaksanaan ?? (item as Record<string, unknown>).hasil_perjalanan as string ?? "",
-  kalimatPenutup: item.kalimatPenutup ?? (item as Record<string, unknown>).kesimpulan as string ?? "",
-  dokumentasi: (() => {
-    let raw = item.dokumentasi ?? (item as Record<string, unknown>).dokumentasi_json;
-    if (typeof raw === "string") {
-      try { raw = JSON.parse(raw); } catch { raw = []; }
+const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
+  const metodeLaporan =
+    item.metodeLaporan ??
+    ((item as Record<string, unknown>).metode_laporan as "form" | "upload") ??
+    "form";
+
+  let rawFile =
+    item.fileLaporan ??
+    (item as Record<string, unknown>).file_laporan ??
+    (item as Record<string, unknown>).file_laporan_json;
+  if (typeof rawFile === "string") {
+    try {
+      rawFile = JSON.parse(rawFile);
+    } catch {
+      rawFile = null;
     }
-    return (Array.isArray(raw) ? raw : []).map((foto: unknown, idx: number) => {
-      const f = (foto && typeof foto === "object" ? foto : {}) as Record<string, unknown>;
-      return {
-        id: String(f.id || `dok-${Date.now()}-${idx}`),
-        nama: String(f.nama || `Dokumentasi ${idx + 1}`),
-        dataUrl: String(f.dataUrl || f.url || ""),
-        caption: (f.caption as string) ?? "",
-      };
-    });
-  })(),
-  tandaTangan: item.tandaTangan || "manual",
-  status: item.status ?? "Draft",
-  catatanVerifikasi: item.catatanVerifikasi ?? (item as Record<string, unknown>).catatan_verifikasi as string ?? (item as Record<string, unknown>).catatan as string ?? "",
-  tempatLaporan: item.tempatLaporan ?? "Limboto",
-  tanggalLaporan: item.tanggalLaporan ?? (item as Record<string, unknown>).tanggal_laporan as string ?? new Date().toISOString().slice(0, 10),
-});
+  }
+  const fileLaporan =
+    rawFile && typeof rawFile === "object" && (rawFile as Record<string, unknown>).dataUrl
+      ? {
+          id: String((rawFile as Record<string, unknown>).id || `file-${Date.now()}`),
+          nama: String((rawFile as Record<string, unknown>).nama || "Dokumen Laporan"),
+          dataUrl: String((rawFile as Record<string, unknown>).dataUrl || (rawFile as Record<string, unknown>).url || ""),
+          tipe: String((rawFile as Record<string, unknown>).tipe || (rawFile as Record<string, unknown>).type || ""),
+          ukuran: Number((rawFile as Record<string, unknown>).ukuran || (rawFile as Record<string, unknown>).size || 0),
+        }
+      : null;
+
+  return {
+    id: item.id ?? createId(),
+    metodeLaporan,
+    fileLaporan,
+    sptId: item.sptId ?? (item as Record<string, unknown>).spt_id as string ?? "",
+    sppdId: item.sppdId ?? (item as Record<string, unknown>).sppd_id as string ?? "",
+    pelaksanaId: item.pelaksanaId ?? (item as Record<string, unknown>).pelaksana_id as string ?? "",
+    judulLaporan: item.judulLaporan ?? "Laporan Perjalanan Dinas",
+    suratTugas: item.suratTugas ?? "Sekretaris KPU",
+    nomorSuratTugas: item.nomorSuratTugas ?? (item as Record<string, unknown>).nomor_surat_tugas as string ?? "",
+    tanggalSuratTugas: item.tanggalSuratTugas ?? (item as Record<string, unknown>).tanggal_surat_tugas as string ?? "",
+    dasarPelaksanaan: buildDasarPelaksanaan(item),
+    maksud: item.maksud ?? (item as Record<string, unknown>).maksud_perjalanan as string ?? "",
+    tujuan: item.tujuan ?? (item as Record<string, unknown>).tempat_tujuan as string ?? "",
+    tempatPelaksanaan: item.tempatPelaksanaan ?? (item as Record<string, unknown>).tempat_pelaksanaan as string ?? "",
+    hariTanggalPelaksanaan: item.hariTanggalPelaksanaan ?? (item as Record<string, unknown>).hari_tanggal_pelaksanaan as string ?? "",
+    tempatWaktu: buildTempatWaktu(item),
+    materi: item.materi ?? "",
+    hasilPelaksanaan: item.hasilPelaksanaan ?? (item as Record<string, unknown>).hasil_perjalanan as string ?? "",
+    kalimatPenutup: item.kalimatPenutup ?? (item as Record<string, unknown>).kesimpulan as string ?? "",
+    dokumentasi: (() => {
+      let raw = item.dokumentasi ?? (item as Record<string, unknown>).dokumentasi_json;
+      if (typeof raw === "string") {
+        try { raw = JSON.parse(raw); } catch { raw = []; }
+      }
+      return (Array.isArray(raw) ? raw : []).map((foto: unknown, idx: number) => {
+        const f = (foto && typeof foto === "object" ? foto : {}) as Record<string, unknown>;
+        return {
+          id: String(f.id || `dok-${Date.now()}-${idx}`),
+          nama: String(f.nama || `Dokumentasi ${idx + 1}`),
+          dataUrl: String(f.dataUrl || f.url || ""),
+          caption: (f.caption as string) ?? "",
+        };
+      });
+    })(),
+    tandaTangan: item.tandaTangan || "manual",
+    status: item.status ?? "Draft",
+    catatanVerifikasi: item.catatanVerifikasi ?? (item as Record<string, unknown>).catatan_verifikasi as string ?? (item as Record<string, unknown>).catatan as string ?? "",
+    tempatLaporan: item.tempatLaporan ?? "Limboto",
+    tanggalLaporan: item.tanggalLaporan ?? (item as Record<string, unknown>).tanggal_laporan as string ?? new Date().toISOString().slice(0, 10),
+  };
+};
 
 const readLegacyItems = (): Laporan[] => {
   if (typeof localStorage === "undefined") return [];

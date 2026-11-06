@@ -4,7 +4,17 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, Send, Trash2, UsersRound } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  FileCheck,
+  FileText,
+  FileUp,
+  Send,
+  Trash2,
+  UploadCloud,
+  UsersRound,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +89,14 @@ const getTanggalPelaksanaan = (relatedSppds: Sppd[], spt?: Spt) => {
   return `${formatTanggalIndonesia(start)} s.d. ${formatTanggalIndonesia(end)}`;
 };
 
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+};
+
 const resolveInitialValues = (
   item: Laporan | null,
   spts: Spt[],
@@ -97,6 +115,8 @@ const resolveInitialValues = (
     item?.tanggalSuratTugas || formatTanggalIndonesia(spt?.tanggalMulai);
 
   return {
+    metodeLaporan: item?.metodeLaporan ?? "form",
+    fileLaporan: item?.fileLaporan ?? null,
     sptId,
     sppdId: item?.sppdId || relatedSppds[0]?.id || "",
     pelaksanaId: item?.pelaksanaId || spt?.personil[0]?.pegawaiId || "",
@@ -161,6 +181,8 @@ export function LaporanForm({
   });
   const sptId = useWatch({ control, name: "sptId" });
   const status = useWatch({ control, name: "status" });
+  const metodeLaporan = useWatch({ control, name: "metodeLaporan" }) ?? "form";
+  const fileLaporan = useWatch({ control, name: "fileLaporan" });
   const selectedSpt = spts.find((item) => item.id === sptId);
   const relatedSppds = sppds.filter((item) => item.sptId === sptId);
 
@@ -212,6 +234,52 @@ export function LaporanForm({
     );
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedExts = [".pdf", ".doc", ".docx"];
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!allowedExts.includes(ext)) {
+      alert("Hanya berkas dokumen PDF (.pdf) atau Word (.doc, .docx) yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert("Ukuran berkas tidak boleh melebihi 25 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setValue(
+        "fileLaporan",
+        {
+          id: `file-${Date.now()}`,
+          nama: file.name,
+          dataUrl: String(reader.result),
+          tipe:
+            file.type ||
+            (ext === ".pdf"
+              ? "application/pdf"
+              : ext === ".docx"
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                : "application/msword"),
+          ukuran: file.size,
+        },
+        { shouldValidate: true }
+      );
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const removeFileLaporan = () => {
+    setValue("fileLaporan", null, { shouldValidate: true });
+  };
+
   const addFiles = async (files: File[]) => {
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
@@ -235,13 +303,13 @@ export function LaporanForm({
     const payload = laporanSchema.parse({
       ...data,
       dasarPelaksanaan: buildDasarPelaksanaan(
-        data.suratTugas,
-        data.nomorSuratTugas,
-        data.tanggalSuratTugas,
+        data.suratTugas || DEFAULT_SURAT_TUGAS,
+        data.nomorSuratTugas || "",
+        data.tanggalSuratTugas || "",
       ),
       tempatWaktu: buildTempatWaktu(
-        data.tempatPelaksanaan,
-        data.hariTanggalPelaksanaan,
+        data.tempatPelaksanaan || "",
+        data.hariTanggalPelaksanaan || "",
       ),
       tandaTangan: "manual",
       dokumentasi: (data.dokumentasi ?? []).map((foto) => ({
@@ -310,130 +378,262 @@ export function LaporanForm({
         </div>
       </div>
 
-      <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
-        <h3 className="font-bold text-sm text-foreground">A. Dasar Pelaksanaan</h3>
-        <div className="grid md:grid-cols-3 gap-3">
-          <label className="space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">
-              Surat Tugas
-            </span>
-            <Input {...register("suratTugas")} className="text-sm h-10" />
-            <Error text={errors.suratTugas?.message} />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">
-              Nomor
-            </span>
-            <Input {...register("nomorSuratTugas")} className="text-sm h-10" />
-            <Error text={errors.nomorSuratTugas?.message} />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">
-              Tanggal
-            </span>
-            <Input {...register("tanggalSuratTugas")} className="text-sm h-10" />
-            <Error text={errors.tanggalSuratTugas?.message} />
-          </label>
+      {/* Pilihan Metode Penyusunan Laporan */}
+      <div className="space-y-2">
+        <span className="font-bold text-sm text-foreground block">
+          Metode Penyusunan Laporan
+        </span>
+        <div className="grid grid-cols-2 gap-2 p-1.5 bg-muted/60 border border-border rounded-xl">
+          <button
+            type="button"
+            onClick={() => setValue("metodeLaporan", "form")}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold text-xs transition-all ${
+              metodeLaporan === "form"
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            <FileText className="w-4 h-4 text-primary" />
+            Isi Formulir SIMPENAS
+          </button>
+          <button
+            type="button"
+            onClick={() => setValue("metodeLaporan", "upload")}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold text-xs transition-all ${
+              metodeLaporan === "upload"
+                ? "bg-card text-foreground shadow-sm border border-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            <FileUp className="w-4 h-4 text-primary" />
+            Unggah Berkas Dokumen (PDF / Word)
+          </button>
         </div>
-      </section>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <Field label="B. Maksud" error={errors.maksud?.message}>
-          <textarea
-            {...register("maksud")}
-            className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
-            rows={5}
-            placeholder="Masukkan maksud perjalanan dinas..."
-          />
-        </Field>
-        <Field label="C. Tujuan" error={errors.tujuan?.message}>
-          <textarea
-            {...register("tujuan")}
-            className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
-            rows={5}
-            placeholder="Masukkan tujuan perjalanan dinas (1 per baris)..."
-          />
-          <p className="text-xs font-medium text-muted-foreground mt-1">
-            Isi satu tujuan kegiatan per baris. Saat dicetak akan menjadi poin
-            1, 2, 3, dan seterusnya.
-          </p>
-        </Field>
       </div>
 
-      <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
-        <h3 className="font-bold text-sm text-foreground">
-          D. Tempat dan Waktu Pelaksanaan
-        </h3>
-        <div className="grid md:grid-cols-2 gap-3">
-          <label className="space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">
-              Tempat Pelaksanaan
+      {metodeLaporan === "upload" ? (
+        <section className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <FileUp className="w-4 h-4 text-primary" />
+              Unggah Berkas Laporan (PDF atau Word)
+            </h3>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Maks. 25 MB (.pdf, .docx, .doc)
             </span>
-            <Input {...register("tempatPelaksanaan")} className="text-sm h-10" />
-            <Error text={errors.tempatPelaksanaan?.message} />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">
-              Hari / Tanggal
-            </span>
-            <Input {...register("hariTanggalPelaksanaan")} className="text-sm h-10" />
-            <Error text={errors.hariTanggalPelaksanaan?.message} />
-          </label>
-        </div>
-        {relatedSppds.length > 0 && (
-          <p className="text-xs font-medium text-muted-foreground">
-            Data otomatis memakai SPPD terkait SPT ini, tetapi tetap bisa
-            diedit manual bila diperlukan.
-          </p>
-        )}
-      </section>
+          </div>
 
-      <Field label="E. Materi" error={errors.materi?.message}>
-        <textarea
-          {...register("materi")}
-          className="editor text-sm min-h-[160px] p-3 leading-relaxed resize-y"
-          rows={6}
-          placeholder="Masukkan materi perjalanan dinas (1 materi per baris)..."
-        />
-        <p className="text-xs font-medium text-muted-foreground mt-1">
-          Isi satu materi per baris. Saat dicetak akan menjadi bullet poin.
-        </p>
-      </Field>
+          {!fileLaporan ? (
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card rounded-xl p-6 cursor-pointer transition-all hover:bg-muted/30">
+              <UploadCloud className="w-10 h-10 text-primary mb-2" />
+              <span className="text-sm font-bold text-foreground">
+                Pilih atau Seret Berkas Dokumen ke Sini
+              </span>
+              <span className="text-xs text-muted-foreground mt-1 text-center">
+                Mendukung berkas Microsoft Word (.docx, .doc) atau dokumen PDF (.pdf)
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <div className="flex items-center justify-between bg-card border border-border rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center bg-primary/10 text-primary font-bold">
+                  {fileLaporan.nama.toLowerCase().endsWith(".pdf") ? (
+                    <span className="text-xs text-red-600 font-black">PDF</span>
+                  ) : (
+                    <span className="text-xs text-blue-600 font-black">DOCX</span>
+                  )}
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate max-w-xs md:max-w-md">
+                    {fileLaporan.nama}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatFileSize(fileLaporan.ukuran)}</span>
+                    <span>•</span>
+                    <span className="font-medium text-success flex items-center gap-1">
+                      <FileCheck className="w-3.5 h-3.5" /> Berkas siap disimpan
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="cursor-pointer">
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border hover:bg-muted inline-block">
+                    Ganti
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={removeFileLaporan}
+                  className="text-danger hover:bg-danger/10"
+                  title="Hapus berkas"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          <Error text={errors.fileLaporan?.message as string | undefined} />
 
-      <Field
-        label="F. Hasil Pelaksanaan"
-        error={errors.hasilPelaksanaan?.message}
-      >
-        <textarea
-          {...register("hasilPelaksanaan")}
-          className="editor text-sm min-h-[260px] p-3.5 leading-relaxed resize-y"
-          rows={10}
-          placeholder="Masukkan hasil pelaksanaan kegiatan (1 hasil per baris)..."
-        />
-        <p className="text-xs font-medium text-muted-foreground mt-1">
-          Isi satu hasil pelaksanaan per baris. Saat dicetak akan menjadi
-          poin 1, 2, 3, dan seterusnya.
-        </p>
-      </Field>
+          <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-foreground flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-primary" /> Panduan Format Laporan:
+            </p>
+            <p>
+              • <strong>PDF:</strong> Dokumen langsung dapat dipratinjau dan dicetak langsung dari aplikasi SIMPENAS.
+            </p>
+            <p>
+              • <strong>Word (.docx / .doc):</strong> Dokumen dapat diunduh oleh pemeriksa / kasubbag untuk diverifikasi dan dicetak secara lengkap.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
+          <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
+            <h3 className="font-bold text-sm text-foreground">A. Dasar Pelaksanaan</h3>
+            <div className="grid md:grid-cols-3 gap-3">
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">
+                  Surat Tugas
+                </span>
+                <Input {...register("suratTugas")} className="text-sm h-10" />
+                <Error text={errors.suratTugas?.message} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">
+                  Nomor
+                </span>
+                <Input {...register("nomorSuratTugas")} className="text-sm h-10" />
+                <Error text={errors.nomorSuratTugas?.message} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">
+                  Tanggal
+                </span>
+                <Input {...register("tanggalSuratTugas")} className="text-sm h-10" />
+                <Error text={errors.tanggalSuratTugas?.message} />
+              </label>
+            </div>
+          </section>
 
-      <Field
-        label="Kalimat Penutup"
-        error={errors.kalimatPenutup?.message}
-      >
-        <textarea
-          {...register("kalimatPenutup")}
-          className="editor text-sm min-h-[120px] p-3 leading-relaxed resize-y"
-          rows={4}
-          placeholder="Masukkan kalimat penutup laporan"
-        />
-        <p className="text-xs font-medium text-muted-foreground mt-1">
-          Dicetak setelah poin F dan sejajar dengan posisi huruf F.
-        </p>
-      </Field>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="B. Maksud" error={errors.maksud?.message}>
+              <textarea
+                {...register("maksud")}
+                className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
+                rows={5}
+                placeholder="Masukkan maksud perjalanan dinas..."
+              />
+            </Field>
+            <Field label="C. Tujuan" error={errors.tujuan?.message}>
+              <textarea
+                {...register("tujuan")}
+                className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
+                rows={5}
+                placeholder="Masukkan tujuan perjalanan dinas (1 per baris)..."
+              />
+              <p className="text-xs font-medium text-muted-foreground mt-1">
+                Isi satu tujuan kegiatan per baris. Saat dicetak akan menjadi poin
+                1, 2, 3, dan seterusnya.
+              </p>
+            </Field>
+          </div>
+
+          <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
+            <h3 className="font-bold text-sm text-foreground">
+              D. Tempat dan Waktu Pelaksanaan
+            </h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">
+                  Tempat Pelaksanaan
+                </span>
+                <Input {...register("tempatPelaksanaan")} className="text-sm h-10" />
+                <Error text={errors.tempatPelaksanaan?.message} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">
+                  Hari / Tanggal
+                </span>
+                <Input {...register("hariTanggalPelaksanaan")} className="text-sm h-10" />
+                <Error text={errors.hariTanggalPelaksanaan?.message} />
+              </label>
+            </div>
+            {relatedSppds.length > 0 && (
+              <p className="text-xs font-medium text-muted-foreground">
+                Data otomatis memakai SPPD terkait SPT ini, tetapi tetap bisa
+                diedit manual bila diperlukan.
+              </p>
+            )}
+          </section>
+
+          <Field label="E. Materi" error={errors.materi?.message}>
+            <textarea
+              {...register("materi")}
+              className="editor text-sm min-h-[160px] p-3 leading-relaxed resize-y"
+              rows={6}
+              placeholder="Masukkan materi perjalanan dinas (1 materi per baris)..."
+            />
+            <p className="text-xs font-medium text-muted-foreground mt-1">
+              Isi satu materi per baris. Saat dicetak akan menjadi bullet poin.
+            </p>
+          </Field>
+
+          <Field
+            label="F. Hasil Pelaksanaan"
+            error={errors.hasilPelaksanaan?.message}
+          >
+            <textarea
+              {...register("hasilPelaksanaan")}
+              className="editor text-sm min-h-[260px] p-3.5 leading-relaxed resize-y"
+              rows={10}
+              placeholder="Masukkan hasil pelaksanaan kegiatan (1 hasil per baris)..."
+            />
+            <p className="text-xs font-medium text-muted-foreground mt-1">
+              Isi satu hasil pelaksanaan per baris. Saat dicetak akan menjadi
+              poin 1, 2, 3, dan seterusnya.
+            </p>
+          </Field>
+
+          <Field
+            label="Kalimat Penutup"
+            error={errors.kalimatPenutup?.message}
+          >
+            <textarea
+              {...register("kalimatPenutup")}
+              className="editor text-sm min-h-[120px] p-3 leading-relaxed resize-y"
+              rows={4}
+              placeholder="Masukkan kalimat penutup laporan"
+            />
+            <p className="text-xs font-medium text-muted-foreground mt-1">
+              Dicetak setelah poin F dan sejajar dengan posisi huruf F.
+            </p>
+          </Field>
+        </>
+      )}
 
       <section className="space-y-3 border border-border rounded-xl p-4">
         <h3 className="font-bold text-foreground flex gap-2">
           <Camera className="w-4 h-4" /> G. Dokumentasi Kegiatan
+          {metodeLaporan === "upload" && (
+            <span className="text-xs font-normal text-muted-foreground self-center">
+              (Opsional jika sudah ada dalam berkas)
+            </span>
+          )}
         </h3>
         <Upload
           accept="image/png,image/jpeg,image/webp"

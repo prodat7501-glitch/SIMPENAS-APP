@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { Camera, Download, FileText, Printer, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PrintPreview } from "@/components/ui/print-preview";
 import { DocumentTemplate } from "@/components/document/DocumentTemplate";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
@@ -20,6 +22,14 @@ const formatTanggalIndonesia = (dateStr?: string) => {
     month: "long",
     year: "numeric",
   }).format(date);
+};
+
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
 const splitPoin = (value: string) =>
@@ -134,6 +144,185 @@ export function LaporanPreview({
     "-";
   const isLaporanKomisioner =
     daftarPelaksana.length > 0 && daftarPelaksana.every(isKomisioner);
+
+  if (item.metodeLaporan === "upload" && item.fileLaporan) {
+    const isPdf =
+      item.fileLaporan.tipe?.includes("pdf") ||
+      item.fileLaporan.nama.toLowerCase().endsWith(".pdf");
+
+    const handleDownload = () => {
+      const a = document.createElement("a");
+      a.href = item.fileLaporan!.dataUrl;
+      a.download = item.fileLaporan!.nama;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    const handlePrintPdf = () => {
+      const win = window.open(item.fileLaporan!.dataUrl, "_blank");
+      if (win) {
+        win.focus();
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="relative flex flex-col w-full max-w-5xl h-[92vh] rounded-2xl bg-card text-foreground shadow-2xl border border-border overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                  isPdf
+                    ? "bg-red-100 dark:bg-red-950/50 text-red-600"
+                    : "bg-blue-100 dark:bg-blue-950/50 text-blue-600"
+                }`}
+              >
+                {isPdf ? "PDF" : "DOCX"}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-foreground truncate">
+                  {item.fileLaporan.nama}
+                </h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  SPT: {nomorSuratTugas} • Tanggal Laporan: {formatTanggalIndonesia(item.tanggalLaporan)} • Status: {item.status}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {isPdf && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintPdf}
+                  className="gap-1.5"
+                >
+                  <Printer className="w-4 h-4" />
+                  Cetak PDF
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant={isPdf ? "outline" : "default"}
+                size="sm"
+                onClick={handleDownload}
+                className={!isPdf ? "bg-blue-600 hover:bg-blue-700 text-white gap-1.5" : "gap-1.5"}
+              >
+                <Download className="w-4 h-4" />
+                {isPdf ? "Unduh PDF" : "Unduh Dokumen Word"}
+              </Button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Tutup"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 bg-muted/20 space-y-6">
+            {isPdf ? (
+              <div className="w-full h-[68vh] rounded-xl overflow-hidden border border-border bg-white shadow-sm">
+                <iframe
+                  src={item.fileLaporan.dataUrl}
+                  title={item.fileLaporan.nama}
+                  className="w-full h-full border-0"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 bg-card border-2 border-dashed border-border rounded-2xl text-center space-y-4 max-w-2xl mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-base text-foreground">
+                    {item.fileLaporan.nama}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ukuran: {formatFileSize(item.fileLaporan.ukuran)} • Format: Dokumen Microsoft Word
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Dokumen laporan ini diunggah dalam format Microsoft Word (.docx/.doc). Silakan unduh dokumen untuk dicetak, diperiksa, atau disunting secara lengkap.
+                </p>
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={handleDownload}
+                  className="gap-2 font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Download className="w-4 h-4" /> Unduh Dokumen Word Sekarang
+                </Button>
+              </div>
+            )}
+
+            {/* Pelaksana Perjalanan Dinas & Verifikasi Notes */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-card p-4 rounded-xl border border-border text-xs space-y-2">
+                <p className="font-bold text-foreground">
+                  Tim Yang Melaksanakan Perjalanan Dinas:
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                  {daftarPelaksana.map((pegawai, index) => (
+                    <li key={pegawai?.id ?? index} className="font-medium text-foreground">
+                      {pegawai?.nama ?? "-"}
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({isKomisioner(pegawai)
+                          ? `Jabatan: ${getJabatanPelaksana(pegawai)}`
+                          : `NIP. ${pegawai?.nip || "-"}`})
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {item.catatanVerifikasi && (
+                <div className="bg-card p-4 rounded-xl border border-danger/30 text-xs space-y-1 bg-danger/5">
+                  <p className="font-bold text-danger">Catatan Verifikasi:</p>
+                  <p className="text-foreground leading-relaxed">
+                    {item.catatanVerifikasi}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Lampiran Dokumentasi Kegiatan jika ada */}
+            {item.dokumentasi && item.dokumentasi.length > 0 && (
+              <div className="bg-card p-5 rounded-xl border border-border">
+                <h3 className="font-bold text-sm text-foreground mb-3 flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-primary" /> Lampiran Dokumentasi Kegiatan ({item.dokumentasi.length} Foto)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {item.dokumentasi.map((foto) => (
+                    <figure
+                      key={foto.id}
+                      className="rounded-lg overflow-hidden border border-border bg-muted/20"
+                    >
+                      <Image
+                        src={foto.dataUrl}
+                        alt={foto.nama}
+                        width={320}
+                        height={176}
+                        unoptimized
+                        className="w-full h-44 object-cover"
+                      />
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <PrintPreview

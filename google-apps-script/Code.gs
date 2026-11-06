@@ -59,7 +59,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "nomor", "spt_id", "nomor_spt", "tanggal", "tanggal_berangkat", "tanggal_harus_kembali", "tempat_berangkat", "tempat_tujuan", "moda_transportasi", "akun_anggaran", "personil_json", "rincian_biaya_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   laporan: [
-    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "data_json", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "metode_laporan", "file_laporan_json", "data_json", "created_at", "updated_at"
   ],
   spj: [
     "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "data_json", "created_at", "updated_at"
@@ -930,6 +930,17 @@ function handleUpdate(sheet, id, data, userId) {
       existingObj.dokumentasi = valDok;
       existingObj.dokumentasi_json = valDok;
     }
+    if (data.metodeLaporan !== undefined || data.metode_laporan !== undefined) {
+      var valMetode = data.metodeLaporan !== undefined ? data.metodeLaporan : data.metode_laporan;
+      existingObj.metode_laporan = valMetode;
+      existingObj.metodeLaporan = valMetode;
+    }
+    if (data.fileLaporan !== undefined || data.file_laporan_json !== undefined || data.file_laporan !== undefined) {
+      var valFile = data.fileLaporan !== undefined ? data.fileLaporan : (data.file_laporan_json !== undefined ? data.file_laporan_json : data.file_laporan);
+      existingObj.file_laporan_json = valFile;
+      existingObj.file_laporan = valFile;
+      existingObj.fileLaporan = valFile;
+    }
     
     var newRowValues = objectToRowValues(existingObj, headers);
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([newRowValues]);
@@ -1423,6 +1434,8 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.saran && obj.materi) obj.saran = obj.materi;
   if (!obj.catatanVerifikasi && (obj.catatan_verifikasi || obj.catatan)) obj.catatanVerifikasi = obj.catatan_verifikasi || obj.catatan;
   if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
+  if (!obj.metodeLaporan && obj.metode_laporan) obj.metodeLaporan = obj.metode_laporan;
+  if (!obj.fileLaporan && (obj.file_laporan_json || obj.file_laporan)) obj.fileLaporan = obj.file_laporan_json || obj.file_laporan;
   
   // Kompatibilitas cerdas untuk tabel pangkat (gol, ruang, nama -> golongan, nama_pangkat)
   if (obj.gol !== undefined && obj.nama !== undefined) {
@@ -1594,6 +1607,8 @@ function objectToRowValues(obj, headers) {
   }
   if (obj.catatanVerifikasi !== undefined) obj.catatan_verifikasi = obj.catatanVerifikasi;
   if (obj.dokumentasi) obj.dokumentasi_json = obj.dokumentasi;
+  if (obj.metodeLaporan !== undefined) obj.metode_laporan = obj.metodeLaporan;
+  if (obj.fileLaporan !== undefined) obj.file_laporan_json = obj.fileLaporan;
 
   // Mapping fallback jika input approval_history dari frontend
   if (obj.documentId && !obj.document_id) obj.document_id = obj.documentId;
