@@ -120,6 +120,40 @@ const createId = () =>
     ? crypto.randomUUID()
     : `laporan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const buildLaporanApiBody = (payload: LaporanPayload, id?: string) => ({
+  ...payload,
+  ...(id ? { id } : {}),
+  spt_id: payload.sptId,
+  sppd_id: payload.sppdId,
+  pelaksana_id: payload.pelaksanaId,
+  judul_laporan: payload.judulLaporan,
+  surat_tugas: payload.suratTugas,
+  nomor_surat_tugas: payload.nomorSuratTugas,
+  tanggal_surat_tugas: payload.tanggalSuratTugas,
+  dasar_pelaksanaan: payload.dasarPelaksanaan,
+  maksud: payload.maksud,
+  maksud_perjalanan: payload.maksud,
+  tujuan: payload.tujuan,
+  tempat_tujuan: payload.tujuan,
+  tempat_pelaksanaan: payload.tempatPelaksanaan,
+  hari_tanggal_pelaksanaan: payload.hariTanggalPelaksanaan,
+  tempat_waktu: payload.tempatWaktu,
+  materi: payload.materi,
+  hasil_pelaksanaan: payload.hasilPelaksanaan,
+  hasil_perjalanan: payload.hasilPelaksanaan,
+  hasilPelaksanaan: payload.hasilPelaksanaan,
+  kalimat_penutup: payload.kalimatPenutup,
+  kesimpulan: payload.kalimatPenutup,
+  kalimatPenutup: payload.kalimatPenutup,
+  dokumentasi: payload.dokumentasi,
+  dokumentasi_json: payload.dokumentasi,
+  tanda_tangan: payload.tandaTangan,
+  status: payload.status,
+  catatan_verifikasi: payload.catatanVerifikasi,
+  tempat_laporan: payload.tempatLaporan,
+  tanggal_laporan: payload.tanggalLaporan,
+});
+
 const normalizeLaporan = (item: Partial<Laporan>): Laporan => ({
   id: item.id ?? createId(),
   sptId: item.sptId ?? (item as Record<string, unknown>).spt_id as string ?? "",
@@ -238,9 +272,12 @@ export const laporanService = {
   create: async (payload: LaporanPayload) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.post<Laporan | { data?: Laporan }>("/api/v1/laporan-perjalanan", payload);
+        const body = buildLaporanApiBody(payload);
+        const res = await apiClient.post<Laporan | { data?: Laporan }>("/api/v1/laporan-perjalanan", body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        return normalizeLaporan(unwrapped);
+        const normalized = normalizeLaporan({ ...payload, ...unwrapped });
+        await putDatabaseItem(normalized);
+        return normalized;
       },
       async () => {
         const items = await getItems();
@@ -256,9 +293,12 @@ export const laporanService = {
   update: async (id: string, payload: LaporanPayload) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, payload);
+        const body = buildLaporanApiBody(payload, id);
+        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        return normalizeLaporan(unwrapped);
+        const normalized = normalizeLaporan({ ...unwrapped, ...payload, id });
+        await putDatabaseItem(normalized);
+        return normalized;
       },
       async () => {
         const items = await getItems();
@@ -292,9 +332,20 @@ export const laporanService = {
   ) => {
     return withApiFallback(
       async () => {
-        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, { status, catatanVerifikasi: catatan });
+        const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, {
+          status,
+          catatanVerifikasi: catatan,
+          catatan_verifikasi: catatan,
+        });
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        return normalizeLaporan(unwrapped);
+        const normalized = normalizeLaporan({
+          ...unwrapped,
+          id,
+          status,
+          catatanVerifikasi: catatan,
+        });
+        await putDatabaseItem(normalized);
+        return normalized;
       },
       async () => {
         const items = await getItems();

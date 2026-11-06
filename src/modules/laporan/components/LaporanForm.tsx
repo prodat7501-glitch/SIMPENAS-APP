@@ -164,9 +164,12 @@ export function LaporanForm({
   const selectedSpt = spts.find((item) => item.id === sptId);
   const relatedSppds = sppds.filter((item) => item.sptId === sptId);
 
+  const reportId = initialValues?.id;
+
   useEffect(() => {
     reset(resolveInitialValues(initialValues, spts, sppds));
-  }, [initialValues, reset, sppds, spts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportId, reset]);
 
   const selectSpt = (id: string) => {
     const spt = spts.find((item) => item.id === id);
@@ -252,21 +255,22 @@ export function LaporanForm({
   return (
     <form
       onSubmit={submit}
-      className="space-y-6 max-h-[75vh] overflow-y-auto pr-2"
+      className="space-y-6 max-h-[78vh] overflow-y-auto pr-2"
     >
-      <label className="space-y-1 block">
-        <span className="font-bold text-foreground">Judul Laporan</span>
-        <Input {...register("judulLaporan")} />
+      <label className="space-y-1.5 block">
+        <span className="font-bold text-sm text-foreground">Judul Laporan</span>
+        <Input {...register("judulLaporan")} className="text-sm h-11" />
         <Error text={errors.judulLaporan?.message} />
       </label>
 
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-        <label className="space-y-1">
-          <span className="font-bold text-foreground">Nomor SPT</span>
+        <label className="space-y-1.5 block">
+          <span className="font-bold text-sm text-foreground">Nomor SPT</span>
           <Select
             value={sptId}
             onChange={(e) => selectSpt(e.target.value)}
             disabled={!!initialValues}
+            className="text-sm h-11"
           >
             <option value="">Pilih Nomor SPT</option>
             {spts.map((item) => (
@@ -306,28 +310,28 @@ export function LaporanForm({
         </div>
       </div>
 
-      <section className="space-y-3 rounded-xl border border-border p-4">
-        <h3 className="font-bold text-foreground">A. Dasar Pelaksanaan</h3>
+      <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
+        <h3 className="font-bold text-sm text-foreground">A. Dasar Pelaksanaan</h3>
         <div className="grid md:grid-cols-3 gap-3">
           <label className="space-y-1">
             <span className="text-xs font-bold text-muted-foreground">
               Surat Tugas
             </span>
-            <Input {...register("suratTugas")} />
+            <Input {...register("suratTugas")} className="text-sm h-10" />
             <Error text={errors.suratTugas?.message} />
           </label>
           <label className="space-y-1">
             <span className="text-xs font-bold text-muted-foreground">
               Nomor
             </span>
-            <Input {...register("nomorSuratTugas")} />
+            <Input {...register("nomorSuratTugas")} className="text-sm h-10" />
             <Error text={errors.nomorSuratTugas?.message} />
           </label>
           <label className="space-y-1">
             <span className="text-xs font-bold text-muted-foreground">
               Tanggal
             </span>
-            <Input {...register("tanggalSuratTugas")} />
+            <Input {...register("tanggalSuratTugas")} className="text-sm h-10" />
             <Error text={errors.tanggalSuratTugas?.message} />
           </label>
         </div>
@@ -335,19 +339,29 @@ export function LaporanForm({
 
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="B. Maksud" error={errors.maksud?.message}>
-          <textarea {...register("maksud")} className="editor" rows={3} />
+          <textarea
+            {...register("maksud")}
+            className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
+            rows={5}
+            placeholder="Masukkan maksud perjalanan dinas..."
+          />
         </Field>
         <Field label="C. Tujuan" error={errors.tujuan?.message}>
-          <textarea {...register("tujuan")} className="editor" rows={3} />
-          <p className="text-[10px] font-semibold text-muted-foreground">
+          <textarea
+            {...register("tujuan")}
+            className="editor text-sm min-h-[140px] p-3 leading-relaxed resize-y"
+            rows={5}
+            placeholder="Masukkan tujuan perjalanan dinas (1 per baris)..."
+          />
+          <p className="text-xs font-medium text-muted-foreground mt-1">
             Isi satu tujuan kegiatan per baris. Saat dicetak akan menjadi poin
             1, 2, 3, dan seterusnya.
           </p>
         </Field>
       </div>
 
-      <section className="space-y-3 rounded-xl border border-border p-4">
-        <h3 className="font-bold text-foreground">
+      <section className="space-y-3 rounded-xl border border-border p-4 bg-muted/10">
+        <h3 className="font-bold text-sm text-foreground">
           D. Tempat dan Waktu Pelaksanaan
         </h3>
         <div className="grid md:grid-cols-2 gap-3">
@@ -355,47 +369,52 @@ export function LaporanForm({
             <span className="text-xs font-bold text-muted-foreground">
               Tempat Pelaksanaan
             </span>
-            <Input {...register("tempatPelaksanaan")} />
+            <Input {...register("tempatPelaksanaan")} className="text-sm h-10" />
             <Error text={errors.tempatPelaksanaan?.message} />
           </label>
           <label className="space-y-1">
             <span className="text-xs font-bold text-muted-foreground">
               Hari / Tanggal
             </span>
-            <Input {...register("hariTanggalPelaksanaan")} />
+            <Input {...register("hariTanggalPelaksanaan")} className="text-sm h-10" />
             <Error text={errors.hariTanggalPelaksanaan?.message} />
           </label>
         </div>
         {relatedSppds.length > 0 && (
-          <p className="text-[10px] font-semibold text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Data otomatis memakai SPPD terkait SPT ini, tetapi tetap bisa
             diedit manual bila diperlukan.
           </p>
         )}
       </section>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Field label="E. Materi" error={errors.materi?.message}>
-          <textarea {...register("materi")} className="editor" rows={3} />
-          <p className="text-[10px] font-semibold text-muted-foreground">
-            Isi satu materi per baris. Saat dicetak akan menjadi bullet.
-          </p>
-        </Field>
-        <Field
-          label="F. Hasil Pelaksanaan"
-          error={errors.hasilPelaksanaan?.message}
-        >
-          <textarea
-            {...register("hasilPelaksanaan")}
-            className="editor"
-            rows={5}
-          />
-          <p className="text-[10px] font-semibold text-muted-foreground">
-            Isi satu hasil pelaksanaan per baris. Saat dicetak akan menjadi
-            poin 1, 2, 3, dan seterusnya.
-          </p>
-        </Field>
-      </div>
+      <Field label="E. Materi" error={errors.materi?.message}>
+        <textarea
+          {...register("materi")}
+          className="editor text-sm min-h-[160px] p-3 leading-relaxed resize-y"
+          rows={6}
+          placeholder="Masukkan materi perjalanan dinas (1 materi per baris)..."
+        />
+        <p className="text-xs font-medium text-muted-foreground mt-1">
+          Isi satu materi per baris. Saat dicetak akan menjadi bullet poin.
+        </p>
+      </Field>
+
+      <Field
+        label="F. Hasil Pelaksanaan"
+        error={errors.hasilPelaksanaan?.message}
+      >
+        <textarea
+          {...register("hasilPelaksanaan")}
+          className="editor text-sm min-h-[260px] p-3.5 leading-relaxed resize-y"
+          rows={10}
+          placeholder="Masukkan hasil pelaksanaan kegiatan (1 hasil per baris)..."
+        />
+        <p className="text-xs font-medium text-muted-foreground mt-1">
+          Isi satu hasil pelaksanaan per baris. Saat dicetak akan menjadi
+          poin 1, 2, 3, dan seterusnya.
+        </p>
+      </Field>
 
       <Field
         label="Kalimat Penutup"
@@ -403,11 +422,11 @@ export function LaporanForm({
       >
         <textarea
           {...register("kalimatPenutup")}
-          className="editor"
-          rows={3}
+          className="editor text-sm min-h-[120px] p-3 leading-relaxed resize-y"
+          rows={4}
           placeholder="Masukkan kalimat penutup laporan"
         />
-        <p className="text-[10px] font-semibold text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground mt-1">
           Dicetak setelah poin F dan sejajar dengan posisi huruf F.
         </p>
       </Field>
@@ -522,8 +541,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="space-y-1">
-      <span className="font-bold text-foreground">{label}</span>
+    <label className="space-y-1.5 block">
+      <span className="font-bold text-sm text-foreground">{label}</span>
       {children}
       <Error text={error} />
     </label>

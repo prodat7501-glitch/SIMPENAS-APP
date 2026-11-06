@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -79,41 +79,71 @@ export default function LaporanPage() {
       "pegawai pembuat SPT pertama"
     );
   };
-  const eligibleSppds = sppds
-    .filter((item) => SPPD_REPORT_READY_STATUSES.includes(item.status))
-    .filter(
-      (item) =>
-        !scopeMutationsToNotaDinas ||
-        canAccessSppdByNotaDinas(
-          effectiveCurrentPegawaiId,
-          item,
-          spts,
-          notas,
-          user,
+  const eligibleSppds = useMemo(
+    () =>
+      sppds
+        .filter((item) => SPPD_REPORT_READY_STATUSES.includes(item.status))
+        .filter(
+          (item) =>
+            !scopeMutationsToNotaDinas ||
+            canAccessSppdByNotaDinas(
+              effectiveCurrentPegawaiId,
+              item,
+              spts,
+              notas,
+              user,
+            ),
         ),
-    );
-  const eligibleSpts = spts.filter(
-    (spt) =>
-      ["Disetujui", "Selesai"].includes(spt.status) &&
-      eligibleSppds.some((sppd) => sppd.sptId === spt.id) &&
-      (!scopeMutationsToNotaDinas ||
-        canAccessSptByNotaDinas(
-          effectiveCurrentPegawaiId,
-          spt,
-          notas,
-          user,
-        )),
+    [sppds, scopeMutationsToNotaDinas, effectiveCurrentPegawaiId, spts, notas, user],
   );
+
+  const eligibleSpts = useMemo(
+    () =>
+      spts.filter(
+        (spt) =>
+          ["Disetujui", "Selesai"].includes(spt.status) &&
+          eligibleSppds.some((sppd) => sppd.sptId === spt.id) &&
+          (!scopeMutationsToNotaDinas ||
+            canAccessSptByNotaDinas(
+              effectiveCurrentPegawaiId,
+              spt,
+              notas,
+              user,
+            )),
+      ),
+    [spts, eligibleSppds, scopeMutationsToNotaDinas, effectiveCurrentPegawaiId, notas, user],
+  );
+
   const getLaporanSptId = (item: Laporan) =>
     item.sptId || sppds.find((sppd) => sppd.id === item.sppdId)?.sptId || "";
-  const manageableEligibleSpts = eligibleSpts.filter((spt) =>
-    canManageSeries(spt.id ?? ""),
+
+  const manageableEligibleSpts = useMemo(
+    () => eligibleSpts.filter((spt) => canManageSeries(spt.id ?? "")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eligibleSpts, effectiveCurrentPegawaiId, isPrivilegedUser, user, notas, spts],
   );
-  const availableSpts = manageableEligibleSpts.filter(
-    (spt) => !laporan.items.some((item) => getLaporanSptId(item) === spt.id),
+
+  const availableSpts = useMemo(
+    () =>
+      manageableEligibleSpts.filter(
+        (spt) => !laporan.items.some((item) => getLaporanSptId(item) === spt.id),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [manageableEligibleSpts, laporan.items, sppds],
   );
+
   const lockedSeriesCount = eligibleSpts.length - manageableEligibleSpts.length;
-  const formSpts = laporan.selected ? eligibleSpts : availableSpts;
+
+  const formSpts = useMemo(() => {
+    if (!laporan.selected) return availableSpts;
+    const selectedSptId = getLaporanSptId(laporan.selected);
+    const selectedSpt = spts.find((s) => s.id === selectedSptId);
+    if (selectedSpt && !eligibleSpts.some((s) => s.id === selectedSpt.id)) {
+      return [selectedSpt, ...eligibleSpts];
+    }
+    return eligibleSpts.length ? eligibleSpts : (selectedSpt ? [selectedSpt] : spts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableSpts, eligibleSpts, laporan.selected, spts, sppds]);
   const visibleReports = scopeToNotaDinas
     ? laporan.filteredItems.filter((item) =>
         canAccessLaporanByNotaDinas(
@@ -322,7 +352,8 @@ export default function LaporanPage() {
         isOpen={open}
         onClose={() => setOpen(false)}
         title={laporan.selected ? "Ubah Laporan" : "Buat Laporan Perjalanan"}
-        className="max-w-6xl"
+        className="max-w-6xl max-h-[92vh] flex flex-col"
+        bodyClassName="overflow-y-auto pr-1 flex-1 max-h-[calc(92vh-5rem)]"
       >
         <LaporanForm
           initialValues={laporan.selected}

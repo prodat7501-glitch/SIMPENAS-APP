@@ -892,6 +892,43 @@ function handleUpdate(sheet, id, data, userId) {
       existingObj.jenisDokumen = data.jenis_dokumen;
       existingObj.jenis_dokumen = data.jenis_dokumen;
     }
+
+    // Sinkronisasi khusus laporan saat update agar field alias tertimpa dengan data baru
+    if (data.hasilPelaksanaan !== undefined || data.hasil_pelaksanaan !== undefined || data.hasil_perjalanan !== undefined) {
+      var valHasil = data.hasilPelaksanaan !== undefined ? data.hasilPelaksanaan : (data.hasil_pelaksanaan !== undefined ? data.hasil_pelaksanaan : data.hasil_perjalanan);
+      existingObj.hasil_perjalanan = valHasil;
+      existingObj.hasil_pelaksanaan = valHasil;
+      existingObj.hasilPelaksanaan = valHasil;
+    }
+    if (data.kalimatPenutup !== undefined || data.kalimat_penutup !== undefined || data.kesimpulan !== undefined) {
+      var valPenutup = data.kalimatPenutup !== undefined ? data.kalimatPenutup : (data.kalimat_penutup !== undefined ? data.kalimat_penutup : data.kesimpulan);
+      existingObj.kesimpulan = valPenutup;
+      existingObj.kalimat_penutup = valPenutup;
+      existingObj.kalimatPenutup = valPenutup;
+    }
+    if (data.tujuan !== undefined || data.tempat_tujuan !== undefined) {
+      var valTujuan = data.tujuan !== undefined ? data.tujuan : data.tempat_tujuan;
+      existingObj.tempat_tujuan = valTujuan;
+      existingObj.tujuan = valTujuan;
+    }
+    if (data.maksud !== undefined || data.maksud_perjalanan !== undefined) {
+      var valMaksud = data.maksud !== undefined ? data.maksud : data.maksud_perjalanan;
+      existingObj.maksud_perjalanan = valMaksud;
+      existingObj.maksud = valMaksud;
+    }
+    if (data.materi !== undefined) {
+      existingObj.materi = data.materi;
+    }
+    if (data.catatanVerifikasi !== undefined || data.catatan_verifikasi !== undefined) {
+      var valCatatan = data.catatanVerifikasi !== undefined ? data.catatanVerifikasi : data.catatan_verifikasi;
+      existingObj.catatan_verifikasi = valCatatan;
+      existingObj.catatanVerifikasi = valCatatan;
+    }
+    if (data.dokumentasi !== undefined || data.dokumentasi_json !== undefined) {
+      var valDok = data.dokumentasi !== undefined ? data.dokumentasi : data.dokumentasi_json;
+      existingObj.dokumentasi = valDok;
+      existingObj.dokumentasi_json = valDok;
+    }
     
     var newRowValues = objectToRowValues(existingObj, headers);
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([newRowValues]);
@@ -1380,6 +1417,7 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.tujuan && obj.tempat_tujuan) obj.tujuan = obj.tempat_tujuan;
   if (!obj.maksud && obj.maksud_perjalanan) obj.maksud = obj.maksud_perjalanan;
   if (!obj.hasilPelaksanaan && obj.hasil_perjalanan) obj.hasilPelaksanaan = obj.hasil_perjalanan;
+  if (!obj.kalimatPenutup && obj.kesimpulan) obj.kalimatPenutup = obj.kesimpulan;
   if (!obj.catatanVerifikasi && (obj.catatan_verifikasi || obj.catatan)) obj.catatanVerifikasi = obj.catatan_verifikasi || obj.catatan;
   if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
   
@@ -1537,16 +1575,18 @@ function objectToRowValues(obj, headers) {
   if (obj.tandaTanganHalaman2 && !obj.tanda_tangan_halaman2_json) obj.tanda_tangan_halaman2_json = obj.tandaTanganHalaman2;
 
   // Mapping fallback jika input Laporan dari frontend
-  if (obj.sppdId && !obj.sppd_id) obj.sppd_id = obj.sppdId;
-  if (obj.sptId && !obj.spt_id) obj.spt_id = obj.sptId;
-  if (obj.nomorSppd && !obj.nomor_sppd) obj.nomor_sppd = obj.nomorSppd;
-  if (obj.tanggalLaporan && !obj.tanggal_laporan) obj.tanggal_laporan = obj.tanggalLaporan;
-  if (obj.tujuan && !obj.tempat_tujuan) obj.tempat_tujuan = obj.tujuan;
-  if (obj.maksud && !obj.maksud_perjalanan) obj.maksud_perjalanan = obj.maksud;
-  if (obj.hasilPelaksanaan && !obj.hasil_perjalanan) obj.hasil_perjalanan = obj.hasilPelaksanaan;
-  if (obj.kalimatPenutup && !obj.kesimpulan) obj.kesimpulan = obj.kalimatPenutup;
-  if (obj.catatanVerifikasi && !obj.catatan_verifikasi) obj.catatan_verifikasi = obj.catatanVerifikasi;
-  if (obj.dokumentasi && !obj.dokumentasi_json) obj.dokumentasi_json = obj.dokumentasi;
+  if (obj.sppdId) obj.sppd_id = obj.sppdId;
+  if (obj.sptId) obj.spt_id = obj.sptId;
+  if (obj.nomorSppd) obj.nomor_sppd = obj.nomorSppd;
+  if (obj.tanggalLaporan) obj.tanggal_laporan = obj.tanggalLaporan;
+  if (obj.tujuan !== undefined) obj.tempat_tujuan = obj.tujuan;
+  if (obj.maksud !== undefined) obj.maksud_perjalanan = obj.maksud;
+  if (obj.hasilPelaksanaan !== undefined) obj.hasil_perjalanan = obj.hasilPelaksanaan;
+  else if (obj.hasil_pelaksanaan !== undefined) obj.hasil_perjalanan = obj.hasil_pelaksanaan;
+  if (obj.kalimatPenutup !== undefined) obj.kesimpulan = obj.kalimatPenutup;
+  else if (obj.kalimat_penutup !== undefined) obj.kesimpulan = obj.kalimat_penutup;
+  if (obj.catatanVerifikasi !== undefined) obj.catatan_verifikasi = obj.catatanVerifikasi;
+  if (obj.dokumentasi) obj.dokumentasi_json = obj.dokumentasi;
 
   // Mapping fallback jika input approval_history dari frontend
   if (obj.documentId && !obj.document_id) obj.document_id = obj.documentId;
