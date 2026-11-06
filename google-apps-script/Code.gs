@@ -824,6 +824,65 @@ function getDashboardStats() {
   };
 }
 
+function saveFileToDriveIfBase64(fileObj) {
+  if (!fileObj) return fileObj;
+  if (typeof fileObj === "string") {
+    try { fileObj = JSON.parse(fileObj); } catch (e) { return fileObj; }
+  }
+  if (!fileObj || typeof fileObj !== "object") return fileObj;
+  
+  var dUrl = fileObj.dataUrl || fileObj.data_url || fileObj.url;
+  if (!dUrl || typeof dUrl !== "string" || dUrl.indexOf("data:") !== 0) {
+    return fileObj;
+  }
+  
+  try {
+    var commaIdx = dUrl.indexOf(",");
+    if (commaIdx === -1) return fileObj;
+    var meta = dUrl.substring(0, commaIdx);
+    var b64Data = dUrl.substring(commaIdx + 1);
+    var mimeMatch = meta.match(/:(.*?);/);
+    var mimeType = mimeMatch ? mimeMatch[1] : (fileObj.tipe || "application/octet-stream");
+    var fileName = fileObj.nama || ("dokumen_" + new Date().getTime());
+    var decoded = Utilities.base64Decode(b64Data);
+    var blob = Utilities.newBlob(decoded, mimeType, fileName);
+    
+    var folderName = "SIMPENAS_DOKUMEN";
+    var folders = DriveApp.getFoldersByName(folderName);
+    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    var createdFile = folder.createFile(blob);
+    try {
+      createdFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (errShare) {}
+    
+    var fileId = createdFile.getId();
+    var viewUrl = "https://drive.google.com/file/d/" + fileId + "/preview";
+    var downloadUrl = "https://drive.google.com/uc?export=download&id=" + fileId;
+    
+    return {
+      id: fileObj.id || ("file-" + fileId),
+      nama: fileName,
+      tipe: mimeType,
+      ukuran: fileObj.ukuran || blob.getBytes().length,
+      driveId: fileId,
+      dataUrl: downloadUrl,
+      data_url: downloadUrl,
+      url: createdFile.getUrl(),
+      viewUrl: viewUrl,
+      downloadUrl: downloadUrl
+    };
+  } catch (e) {
+    return {
+      id: fileObj.id || "file-dokumen",
+      nama: fileObj.nama || "Dokumen Laporan",
+      tipe: fileObj.tipe || "",
+      ukuran: fileObj.ukuran || 0,
+      dataUrl: "",
+      data_url: ""
+    };
+  }
+}
+
 /**
  * Operasi CREATE (Menambahkan baris baru)
  */
@@ -842,6 +901,14 @@ function handleCreate(sheet, data, userId) {
     data.updated_at = now;
     if (userId && !data.created_by && headers.indexOf("created_by") !== -1) {
       data.created_by = userId;
+    }
+
+    if (data.fileLaporan !== undefined || data.file_laporan_json !== undefined || data.file_laporan !== undefined) {
+      var valFileCreate = data.fileLaporan !== undefined ? data.fileLaporan : (data.file_laporan_json !== undefined ? data.file_laporan_json : data.file_laporan);
+      valFileCreate = saveFileToDriveIfBase64(valFileCreate);
+      data.file_laporan_json = valFileCreate;
+      data.file_laporan = valFileCreate;
+      data.fileLaporan = valFileCreate;
     }
     
     var rowValues = objectToRowValues(data, headers);
@@ -937,6 +1004,7 @@ function handleUpdate(sheet, id, data, userId) {
     }
     if (data.fileLaporan !== undefined || data.file_laporan_json !== undefined || data.file_laporan !== undefined) {
       var valFile = data.fileLaporan !== undefined ? data.fileLaporan : (data.file_laporan_json !== undefined ? data.file_laporan_json : data.file_laporan);
+      valFile = saveFileToDriveIfBase64(valFile);
       existingObj.file_laporan_json = valFile;
       existingObj.file_laporan = valFile;
       existingObj.fileLaporan = valFile;
@@ -1436,6 +1504,12 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
   if (!obj.metodeLaporan && obj.metode_laporan) obj.metodeLaporan = obj.metode_laporan;
   if (!obj.fileLaporan && (obj.file_laporan_json || obj.file_laporan)) obj.fileLaporan = obj.file_laporan_json || obj.file_laporan;
+  if (obj.fileLaporan && typeof obj.fileLaporan === "object") {
+    if (!obj.fileLaporan.dataUrl && obj.fileLaporan.data_url) obj.fileLaporan.dataUrl = obj.fileLaporan.data_url;
+    if (!obj.fileLaporan.dataUrl && (obj.fileLaporan.viewUrl || obj.fileLaporan.url || obj.fileLaporan.downloadUrl)) {
+      obj.fileLaporan.dataUrl = obj.fileLaporan.viewUrl || obj.fileLaporan.url || obj.fileLaporan.downloadUrl;
+    }
+  }
   
   // Kompatibilitas cerdas untuk tabel pangkat (gol, ruang, nama -> golongan, nama_pangkat)
   if (obj.gol !== undefined && obj.nama !== undefined) {
@@ -1640,6 +1714,25 @@ function objectToRowValues(obj, headers) {
       var copyForJson = {};
       for (var prop in obj) {
         if (prop !== "data_json") {
+          // Buang dataUrl base64 besar dari data_json agar sel tidak melebihi 50,000 karakter
+          if (prop === "file_laporan_json" || prop === "file_laporan" || prop === "fileLaporan") {
+            if (obj[prop] && typeof obj[prop] === "object") {
+              var fClone = {};
+              for (var fp in obj[prop]) {
+                if (fp === "dataUrl" || fp === "data_url") {
+                  if (typeof obj[prop][fp] === "string" && obj[prop][fp].length > 500) {
+                    fClone[fp] = "";
+                  } else {
+                    fClone[fp] = obj[prop][fp];
+                  }
+                } else {
+                  fClone[fp] = obj[prop][fp];
+                }
+              }
+              copyForJson[prop] = fClone;
+              continue;
+            }
+          }
           copyForJson[prop] = obj[prop];
         }
       }
@@ -1655,6 +1748,10 @@ function objectToRowValues(obj, headers) {
     // Serialisasi jika bertipe objek/array ke JSON string
     if (typeof val === "object" && val !== null) {
       val = JSON.stringify(val);
+    }
+    // Proteksi batas 50,000 karakter per sel Google Sheets
+    if (typeof val === "string" && val.length > 49000) {
+      val = val.substring(0, 49000);
     }
     row.push(val);
   }

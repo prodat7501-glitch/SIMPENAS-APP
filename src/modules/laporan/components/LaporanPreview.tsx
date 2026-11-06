@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Download, FileText, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintPreview } from "@/components/ui/print-preview";
 import { DocumentTemplate } from "@/components/document/DocumentTemplate";
+import { cn } from "@/lib/utils";
 import type { Jabatan } from "@/modules/jabatan/jabatan.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
 import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
@@ -94,6 +96,111 @@ function SectionBlock({
   );
 }
 
+function DocxViewer({
+  dataUrl,
+  fileName,
+  className,
+}: {
+  dataUrl: string;
+  fileName?: string;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function renderDocx() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (!containerRef.current) return;
+        containerRef.current.innerHTML = "";
+
+        let arrayBuffer: ArrayBuffer;
+        if (dataUrl.startsWith("data:")) {
+          const commaIdx = dataUrl.indexOf(",");
+          const base64 = commaIdx !== -1 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+          const binaryString = atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          arrayBuffer = bytes.buffer;
+        } else {
+          const res = await fetch(dataUrl);
+          arrayBuffer = await res.arrayBuffer();
+        }
+
+        const docx = await import("docx-preview");
+        if (isMounted && containerRef.current) {
+          await docx.renderAsync(arrayBuffer, containerRef.current, undefined, {
+            className: "docx-rendered-page",
+            inWrapper: true,
+            ignoreWidth: false,
+            ignoreHeight: false,
+            breakPages: true,
+          });
+        }
+      } catch (err) {
+        console.error("Gagal merender dokumen docx:", err);
+        if (isMounted) {
+          setError(
+            "Pratinjau otomatis dokumen Word tidak dapat dirender. Pastikan berkas berformat .docx standar.",
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    renderDocx();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dataUrl]);
+
+  return (
+    <div
+      className={cn(
+        "relative w-full rounded-xl overflow-hidden border border-border bg-slate-100 dark:bg-slate-900 shadow-inner flex flex-col",
+        className,
+      )}
+    >
+      {loading && (
+        <div className="flex flex-col items-center justify-center p-12 space-y-3 bg-card min-h-[300px]">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-foreground">
+            Menyusun pratinjau dokumen Word ({fileName || "Dokumen"})...
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Mohon tunggu, isi berkas sedang diubah ke tampilan visual peramban
+          </p>
+        </div>
+      )}
+      {error && (
+        <div className="p-6 text-center space-y-2 bg-card border-b border-border">
+          <p className="text-xs font-bold text-danger">{error}</p>
+          <p className="text-[11px] text-muted-foreground">
+            Petugas dapat mengunduh berkas langsung melalui tombol &quot;Unduh Dokumen Word&quot; di atas.
+          </p>
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className="w-full max-h-[70vh] overflow-y-auto overflow-x-auto p-4 flex flex-col items-center text-slate-900 docx-preview-container"
+      />
+    </div>
+  );
+}
+
 export function LaporanPreview({
   item,
   spts,
@@ -146,6 +253,7 @@ export function LaporanPreview({
     daftarPelaksana.length > 0 && daftarPelaksana.every(isKomisioner);
 
   if (item.metodeLaporan === "upload" && item.fileLaporan) {
+    const isDriveUrl = item.fileLaporan.dataUrl.includes("drive.google.com");
     const isPdf =
       item.fileLaporan.tipe?.includes("pdf") ||
       item.fileLaporan.nama.toLowerCase().endsWith(".pdf");
@@ -192,18 +300,16 @@ export function LaporanPreview({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {isPdf && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintPdf}
-                  className="gap-1.5"
-                >
-                  <Printer className="w-4 h-4" />
-                  Cetak PDF
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={isPdf ? handlePrintPdf : () => window.print()}
+                className="gap-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                {isPdf ? "Cetak PDF" : "Cetak Dokumen"}
+              </Button>
               <Button
                 type="button"
                 variant={isPdf ? "outline" : "default"}
@@ -227,39 +333,24 @@ export function LaporanPreview({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 bg-muted/20 space-y-6">
-            {isPdf ? (
+            {isPdf || isDriveUrl ? (
               <div className="w-full h-[68vh] rounded-xl overflow-hidden border border-border bg-white shadow-sm">
                 <iframe
-                  src={item.fileLaporan.dataUrl}
+                  src={
+                    isDriveUrl
+                      ? item.fileLaporan.dataUrl.replace(/\/view.*$/, "/preview")
+                      : item.fileLaporan.dataUrl
+                  }
                   title={item.fileLaporan.nama}
                   className="w-full h-full border-0"
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center p-8 bg-card border-2 border-dashed border-border rounded-2xl text-center space-y-4 max-w-2xl mx-auto shadow-sm">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-bold text-base text-foreground">
-                    {item.fileLaporan.nama}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Ukuran: {formatFileSize(item.fileLaporan.ukuran)} • Format: Dokumen Microsoft Word
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground max-w-md">
-                  Dokumen laporan ini diunggah dalam format Microsoft Word (.docx/.doc). Silakan unduh dokumen untuk dicetak, diperiksa, atau disunting secara lengkap.
-                </p>
-                <Button
-                  type="button"
-                  size="lg"
-                  onClick={handleDownload}
-                  className="gap-2 font-bold bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Download className="w-4 h-4" /> Unduh Dokumen Word Sekarang
-                </Button>
-              </div>
+              <DocxViewer
+                dataUrl={item.fileLaporan.dataUrl}
+                fileName={item.fileLaporan.nama}
+                className="w-full min-h-[68vh]"
+              />
             )}
 
             {/* Pelaksana Perjalanan Dinas & Verifikasi Notes */}
@@ -509,6 +600,24 @@ export function LaporanPreview({
         .laporan-print-sheet {
           width: 215mm !important;
           min-height: 330mm !important;
+        }
+
+        .docx-preview-container .docx-wrapper {
+          background: transparent !important;
+          padding: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          width: 100% !important;
+        }
+
+        .docx-preview-container .docx-wrapper > section.docx {
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+          margin-bottom: 24px !important;
+          background: white !important;
+          color: black !important;
+          max-width: 100% !important;
+          overflow-x: auto !important;
         }
 
         @media print {

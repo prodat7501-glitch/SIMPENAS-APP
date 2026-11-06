@@ -269,7 +269,7 @@ export function LaporanForm({
                 : "application/msword"),
           ukuran: file.size,
         },
-        { shouldValidate: true }
+        { shouldValidate: true, shouldDirty: true, shouldTouch: true }
       );
     };
     reader.readAsDataURL(file);
@@ -277,7 +277,7 @@ export function LaporanForm({
   };
 
   const removeFileLaporan = () => {
-    setValue("fileLaporan", null, { shouldValidate: true });
+    setValue("fileLaporan", null, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   const addFiles = async (files: File[]) => {

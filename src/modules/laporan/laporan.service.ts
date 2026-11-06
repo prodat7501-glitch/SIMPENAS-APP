@@ -176,12 +176,23 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
       rawFile = null;
     }
   }
+
+  const rawDataUrl =
+    rawFile && typeof rawFile === "object"
+      ? (rawFile as Record<string, unknown>).dataUrl ||
+        (rawFile as Record<string, unknown>).data_url ||
+        (rawFile as Record<string, unknown>).url ||
+        (rawFile as Record<string, unknown>).viewUrl ||
+        (rawFile as Record<string, unknown>).downloadUrl ||
+        ""
+      : "";
+
   const fileLaporan =
-    rawFile && typeof rawFile === "object" && (rawFile as Record<string, unknown>).dataUrl
+    rawFile && typeof rawFile === "object" && rawDataUrl
       ? {
           id: String((rawFile as Record<string, unknown>).id || `file-${Date.now()}`),
           nama: String((rawFile as Record<string, unknown>).nama || "Dokumen Laporan"),
-          dataUrl: String((rawFile as Record<string, unknown>).dataUrl || (rawFile as Record<string, unknown>).url || ""),
+          dataUrl: String(rawDataUrl),
           tipe: String((rawFile as Record<string, unknown>).tipe || (rawFile as Record<string, unknown>).type || ""),
           ukuran: Number((rawFile as Record<string, unknown>).ukuran || (rawFile as Record<string, unknown>).size || 0),
         }
@@ -275,7 +286,30 @@ const getItems = async (params?: { page?: number; limit?: number; search?: strin
     async () => {
       const res = await apiClient.get<Laporan[] | { data?: Laporan[]; items?: Laporan[] }>("/api/v1/laporan-perjalanan", params);
       const list = Array.isArray(res) ? res : res.data || res.items || [];
-      return list.map(normalizeLaporan);
+      const remoteItems = list.map(normalizeLaporan);
+
+      // Sinkronkan dengan IndexedDB: Jika data lokal memiliki fileLaporan base64, pertahankan agar preview instan tidak hilang
+      const localItems = await readDatabaseItems();
+      const localMap = new Map(localItems.map((item) => [item.id!, item]));
+
+      const merged = remoteItems.map((remote) => {
+        const local = localMap.get(remote.id!);
+        if (local?.fileLaporan?.dataUrl) {
+          if (!remote.fileLaporan?.dataUrl || !remote.fileLaporan.dataUrl.startsWith("data:")) {
+            return {
+              ...remote,
+              fileLaporan: {
+                ...remote.fileLaporan,
+                ...local.fileLaporan,
+              },
+            };
+          }
+        }
+        return remote;
+      });
+
+      await writeDatabaseItems(merged);
+      return merged;
     },
     async () => {
       await ensureLegacyMigration();
@@ -300,7 +334,7 @@ export const laporanService = {
         return unwrapped ? normalizeLaporan(unwrapped) : null;
       },
       async () => {
-        const items = await getItems();
+        const items = await readDatabaseItems();
         return items.find((l) => l.id === id) || null;
       }
     );
@@ -311,12 +345,13 @@ export const laporanService = {
         const body = buildLaporanApiBody(payload);
         const res = await apiClient.post<Laporan | { data?: Laporan }>("/api/v1/laporan-perjalanan", body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        const normalized = normalizeLaporan({ ...payload, ...unwrapped });
+        const fileLaporan = payload.fileLaporan || (unwrapped as Laporan)?.fileLaporan;
+        const normalized = normalizeLaporan({ ...unwrapped, ...payload, fileLaporan });
         await putDatabaseItem(normalized);
         return normalized;
       },
       async () => {
-        const items = await getItems();
+        const items = await readDatabaseItems();
         if (items.some((item) => item.sptId === payload.sptId)) {
           throw new Error("Laporan untuk Nomor SPT ini sudah dibuat.");
         }
@@ -332,12 +367,13 @@ export const laporanService = {
         const body = buildLaporanApiBody(payload, id);
         const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        const normalized = normalizeLaporan({ ...unwrapped, ...payload, id });
+        const fileLaporan = payload.fileLaporan || (unwrapped as Laporan)?.fileLaporan;
+        const normalized = normalizeLaporan({ ...unwrapped, ...payload, fileLaporan, id });
         await putDatabaseItem(normalized);
         return normalized;
       },
       async () => {
-        const items = await getItems();
+        const items = await readDatabaseItems();
         if (!items.some((item) => item.id === id)) {
           throw new Error("Laporan tidak ditemukan.");
         }
