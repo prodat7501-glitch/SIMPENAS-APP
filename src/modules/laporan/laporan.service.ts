@@ -1,6 +1,7 @@
 import type { Laporan } from "./laporan.schema";
 import type { LaporanPayload, LaporanStatus } from "./laporan.types";
 import { apiClient, withApiFallback } from "@/services/api";
+import { cleanDateString } from "@/lib/formatters";
 
 const DATABASE_NAME = "simpenas-laporan-perjalanan";
 const DATABASE_VERSION = 1;
@@ -208,7 +209,7 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
     judulLaporan: item.judulLaporan ?? "Laporan Perjalanan Dinas",
     suratTugas: item.suratTugas ?? "Sekretaris KPU",
     nomorSuratTugas: item.nomorSuratTugas ?? (item as Record<string, unknown>).nomor_surat_tugas as string ?? "",
-    tanggalSuratTugas: item.tanggalSuratTugas ?? (item as Record<string, unknown>).tanggal_surat_tugas as string ?? "",
+    tanggalSuratTugas: cleanDateString(item.tanggalSuratTugas ?? (item as Record<string, unknown>).tanggal_surat_tugas),
     dasarPelaksanaan: buildDasarPelaksanaan(item),
     maksud: item.maksud ?? (item as Record<string, unknown>).maksud_perjalanan as string ?? "",
     tujuan: item.tujuan ?? (item as Record<string, unknown>).tempat_tujuan as string ?? "",
@@ -237,7 +238,7 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
     status: item.status ?? "Draft",
     catatanVerifikasi: item.catatanVerifikasi ?? (item as Record<string, unknown>).catatan_verifikasi as string ?? (item as Record<string, unknown>).catatan as string ?? "",
     tempatLaporan: item.tempatLaporan ?? "Limboto",
-    tanggalLaporan: item.tanggalLaporan ?? (item as Record<string, unknown>).tanggal_laporan as string ?? new Date().toISOString().slice(0, 10),
+    tanggalLaporan: cleanDateString(item.tanggalLaporan ?? (item as Record<string, unknown>).tanggal_laporan) || new Date().toISOString().slice(0, 10),
   };
 };
 

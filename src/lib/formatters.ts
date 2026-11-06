@@ -59,14 +59,50 @@ export const formatNumber = (value: number) => numberFormatter.format(value);
 export const formatRupiahTerbilang = (value: number) =>
   `${capitalizeWords(toWords(Math.max(0, Math.floor(value))))} Rupiah`;
 
+export const cleanDateString = (val: unknown): string => {
+  if (!val) return "";
+  const s = String(val).replace(/^["']+|["']+$/g, "").trim();
+  if (!s) return "";
+  if (s.includes("T")) {
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  }
+  const match = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (match) {
+    const y = match[1];
+    const m = match[2].padStart(2, "0");
+    const d = match[3].padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return s;
+};
+
 export const formatTableDate = (
   value?: string | Date | null,
   fallback = "-",
 ) => {
   if (!value) return fallback;
+
   if (typeof value === "string") {
-    const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const cleaned = cleanDateString(value);
+    if (!cleaned) return fallback;
+
+    const isoDate = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+
+    const dmyDate = cleaned.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dmyDate) {
+      const d = dmyDate[1].padStart(2, "0");
+      const m = dmyDate[2].padStart(2, "0");
+      return `${d}/${m}/${dmyDate[3]}`;
+    }
+
+    return cleaned;
   }
 
   const date = value instanceof Date ? value : new Date(value);
@@ -83,8 +119,12 @@ export const formatTableDateTime = (
   fallback = "-",
 ) => {
   if (!value) return fallback;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  const cleaned =
+    typeof value === "string"
+      ? value.replace(/^["']+|["']+$/g, "").trim()
+      : value;
+  const date = cleaned instanceof Date ? cleaned : new Date(cleaned);
+  if (Number.isNaN(date.getTime())) return formatTableDate(value, fallback);
   const time = new Intl.DateTimeFormat("id-ID", {
     hour: "2-digit",
     minute: "2-digit",

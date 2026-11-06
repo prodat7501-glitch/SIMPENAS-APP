@@ -8,6 +8,7 @@ import {
   penandatanganService,
 } from "@/modules/penandatangan/penandatangan.service";
 import { apiClient, withApiFallback } from "@/services/api";
+import { cleanDateString } from "@/lib/formatters";
 
 const STORAGE_KEY = "simpenas_nota_dinas";
 
@@ -220,9 +221,9 @@ const normalizeNotaDinas = (raw: unknown): NotaDinas => {
   const dari = String(item.dari || "").trim();
   const kepada = String(item.kepada || "").trim();
   const tembusan = String(item.tembusan || "").trim();
-  const tanggal = String(item.tanggal || "").trim();
-  const tanggalBerangkat = String(item.tanggalBerangkat || item.tanggal_berangkat || "").trim();
-  const tanggalKembali = String(item.tanggalKembali || item.tanggal_kembali || "").trim();
+  const tanggal = cleanDateString(item.tanggal || item.created_at || "");
+  const tanggalBerangkat = cleanDateString(item.tanggalBerangkat || item.tanggal_berangkat || "");
+  const tanggalKembali = cleanDateString(item.tanggalKembali || item.tanggal_kembali || "");
   const lokasiTujuan = String(item.lokasiTujuan || item.lokasi_tujuan || "").trim();
   const sifat = (item.sifat as NotaDinas["sifat"]) || "Biasa";
   const status = (item.status as NotaDinas["status"]) || "Draft";

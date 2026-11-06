@@ -1421,12 +1421,29 @@ function rowValuesToObject(rowValues, headers) {
     var key = headers[i];
     var val = rowValues[i];
     
+    // Konversi nilai Date native Google Sheets ke format string YYYY-MM-DD
+    if (val instanceof Date) {
+      val = Utilities.formatDate(val, Session.getScriptTimeZone() || "Asia/Makassar", "yyyy-MM-dd");
+    }
+
     // Parse format JSON jika tersimpan sebagai array/objek string
     if (typeof val === "string" && (val.charAt(0) === "{" || val.charAt(0) === "[")) {
       try {
         val = JSON.parse(val);
       } catch (e) {}
     }
+
+    // Bersihkan kutip string tanggal/nilai jika tersimpan dari serialisasi JSON string ganda
+    if (typeof val === "string") {
+      var trimmed = val.trim();
+      if (/^"\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+        try {
+          var parsed = JSON.parse(trimmed);
+          if (typeof parsed === "string") val = parsed;
+        } catch (e) {}
+      }
+    }
+
     obj[key] = val;
   }
   
@@ -1746,7 +1763,9 @@ function objectToRowValues(obj, headers) {
     var val = (obj[key] !== undefined) ? obj[key] : "";
     
     // Serialisasi jika bertipe objek/array ke JSON string
-    if (typeof val === "object" && val !== null) {
+    if (val instanceof Date) {
+      val = Utilities.formatDate(val, Session.getScriptTimeZone() || "Asia/Makassar", "yyyy-MM-dd");
+    } else if (typeof val === "object" && val !== null) {
       val = JSON.stringify(val);
     }
     // Proteksi batas 50,000 karakter per sel Google Sheets

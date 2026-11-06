@@ -9,6 +9,7 @@ import {
 } from "@/modules/penandatangan/penandatangan.service";
 import { penomoranService } from "@/modules/pengaturan/penomoran.service";
 import { apiClient, withApiFallback } from "@/services/api";
+import { cleanDateString } from "@/lib/formatters";
 
 const STORAGE_KEY = "simpenas_spt";
 const RESERVATION_MIGRATION_KEY = "simpenas_spt_reservation_reconciled_v2";
@@ -174,8 +175,8 @@ const normalizeSptFromApi = (
     id: raw.id || "",
     nomor: raw.nomor ?? "",
     notaDinasId: raw.notaDinasId ?? raw.nota_dinas_id ?? "",
-    tanggalMulai: raw.tanggalMulai ?? raw.tanggal_mulai ?? "",
-    tanggalSelesai: raw.tanggalSelesai ?? raw.tanggal_selesai ?? "",
+    tanggalMulai: cleanDateString(raw.tanggalMulai ?? raw.tanggal_mulai ?? ""),
+    tanggalSelesai: cleanDateString(raw.tanggalSelesai ?? raw.tanggal_selesai ?? ""),
     penandatanganId: raw.penandatanganId ?? raw.penandatangan_id ?? "",
     penandatanganSnapshot: (raw.penandatanganSnapshot ??
       raw.penandatangan_snapshot ??
