@@ -29,7 +29,9 @@ const splitPoin = (value: string) =>
     .filter(Boolean);
 
 const renderNumberedList = (value: string) => {
-  const items = splitPoin(value);
+  const items = splitPoin(value)
+    .map((item) => item.replace(/^(\d+[\s.)-]+|[-*•\s]+)/, "").trim())
+    .filter(Boolean);
 
   if (!items.length) {
     return <p>-</p>;
@@ -45,7 +47,9 @@ const renderNumberedList = (value: string) => {
 };
 
 const renderBulletList = (value: string) => {
-  const items = splitPoin(value);
+  const items = splitPoin(value)
+    .map((item) => item.replace(/^[-*•\s]+/, "").trim())
+    .filter(Boolean);
 
   if (!items.length) {
     return <p>-</p>;

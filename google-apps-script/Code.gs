@@ -59,7 +59,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "nomor", "spt_id", "nomor_spt", "tanggal", "tanggal_berangkat", "tanggal_harus_kembali", "tempat_berangkat", "tempat_tujuan", "moda_transportasi", "akun_anggaran", "personil_json", "rincian_biaya_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   laporan: [
-    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "data_json", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   spj: [
     "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "data_json", "created_at", "updated_at"
@@ -918,6 +918,7 @@ function handleUpdate(sheet, id, data, userId) {
     }
     if (data.materi !== undefined) {
       existingObj.materi = data.materi;
+      existingObj.saran = data.materi;
     }
     if (data.catatanVerifikasi !== undefined || data.catatan_verifikasi !== undefined) {
       var valCatatan = data.catatanVerifikasi !== undefined ? data.catatanVerifikasi : data.catatan_verifikasi;
@@ -1418,6 +1419,8 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.maksud && obj.maksud_perjalanan) obj.maksud = obj.maksud_perjalanan;
   if (!obj.hasilPelaksanaan && obj.hasil_perjalanan) obj.hasilPelaksanaan = obj.hasil_perjalanan;
   if (!obj.kalimatPenutup && obj.kesimpulan) obj.kalimatPenutup = obj.kesimpulan;
+  if (!obj.materi && obj.saran) obj.materi = obj.saran;
+  if (!obj.saran && obj.materi) obj.saran = obj.materi;
   if (!obj.catatanVerifikasi && (obj.catatan_verifikasi || obj.catatan)) obj.catatanVerifikasi = obj.catatan_verifikasi || obj.catatan;
   if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
   
@@ -1585,6 +1588,10 @@ function objectToRowValues(obj, headers) {
   else if (obj.hasil_pelaksanaan !== undefined) obj.hasil_perjalanan = obj.hasil_pelaksanaan;
   if (obj.kalimatPenutup !== undefined) obj.kesimpulan = obj.kalimatPenutup;
   else if (obj.kalimat_penutup !== undefined) obj.kesimpulan = obj.kalimat_penutup;
+  if (obj.materi !== undefined) {
+    obj.materi = obj.materi;
+    if (!obj.saran) obj.saran = obj.materi;
+  }
   if (obj.catatanVerifikasi !== undefined) obj.catatan_verifikasi = obj.catatanVerifikasi;
   if (obj.dokumentasi) obj.dokumentasi_json = obj.dokumentasi;
 
