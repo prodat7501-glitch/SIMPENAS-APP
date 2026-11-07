@@ -189,7 +189,7 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
       : "";
 
   const fileLaporan =
-    rawFile && typeof rawFile === "object" && rawDataUrl
+    rawFile && typeof rawFile === "object" && (rawDataUrl || (rawFile as Record<string, unknown>).nama)
       ? {
           id: String((rawFile as Record<string, unknown>).id || `file-${Date.now()}`),
           nama: String((rawFile as Record<string, unknown>).nama || "Dokumen Laporan"),
@@ -289,24 +289,50 @@ const getItems = async (params?: { page?: number; limit?: number; search?: strin
       const list = Array.isArray(res) ? res : res.data || res.items || [];
       const remoteItems = list.map(normalizeLaporan);
 
-      // Sinkronkan dengan IndexedDB: Jika data lokal memiliki fileLaporan base64, pertahankan agar preview instan tidak hilang
+      // Sinkronkan dengan IndexedDB: Jika data lokal memiliki fileLaporan base64 atau dokumentasi foto, pertahankan agar tidak hilang
       const localItems = await readDatabaseItems();
-      const localMap = new Map(localItems.map((item) => [item.id!, item]));
+      const localMap = new Map<string, Laporan>();
+      localItems.forEach((item) => {
+        if (item.id) localMap.set(item.id, item);
+        if (item.sptId) localMap.set(`spt-${item.sptId}`, item);
+      });
 
       const merged = remoteItems.map((remote) => {
-        const local = localMap.get(remote.id!);
-        if (local?.fileLaporan?.dataUrl) {
-          if (!remote.fileLaporan?.dataUrl || !remote.fileLaporan.dataUrl.startsWith("data:")) {
-            return {
-              ...remote,
-              fileLaporan: {
-                ...remote.fileLaporan,
-                ...local.fileLaporan,
-              },
+        const local = localMap.get(remote.id!) || (remote.sptId ? localMap.get(`spt-${remote.sptId}`) : undefined);
+        if (!local) return remote;
+
+        let fileLaporan = remote.fileLaporan;
+        const localFile = local.fileLaporan;
+        if (localFile?.dataUrl) {
+          if (!remote.fileLaporan?.dataUrl || (localFile.dataUrl.startsWith("data:") && !remote.fileLaporan.dataUrl.startsWith("data:"))) {
+            fileLaporan = {
+              ...(remote.fileLaporan || {}),
+              ...localFile,
             };
           }
+        } else if (localFile && !remote.fileLaporan) {
+          fileLaporan = localFile;
         }
-        return remote;
+
+        let dokumentasi = remote.dokumentasi;
+        const localDok = local.dokumentasi || [];
+        if (localDok.length > 0 && (!remote.dokumentasi || remote.dokumentasi.length === 0)) {
+          dokumentasi = localDok;
+        } else if (localDok.length > 0 && remote.dokumentasi && remote.dokumentasi.length > 0) {
+          dokumentasi = remote.dokumentasi.map((rem, idx) => {
+            const loc = localDok[idx];
+            if ((!rem.dataUrl || rem.dataUrl === "") && loc?.dataUrl) {
+              return { ...rem, dataUrl: loc.dataUrl };
+            }
+            return rem;
+          });
+        }
+
+        return {
+          ...remote,
+          fileLaporan: fileLaporan || null,
+          dokumentasi: dokumentasi || [],
+        };
       });
 
       await writeDatabaseItems(merged);
@@ -332,7 +358,19 @@ export const laporanService = {
       async () => {
         const res = await apiClient.get<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        return unwrapped ? normalizeLaporan(unwrapped) : null;
+        if (!unwrapped) return null;
+        const normalized = normalizeLaporan(unwrapped);
+        const localItems = await readDatabaseItems();
+        const local = localItems.find((l) => l.id === id || (normalized.sptId && l.sptId === normalized.sptId));
+        if (local) {
+          if (!normalized.fileLaporan?.dataUrl && local.fileLaporan?.dataUrl) {
+            normalized.fileLaporan = local.fileLaporan;
+          }
+          if ((!normalized.dokumentasi || normalized.dokumentasi.length === 0) && local.dokumentasi?.length) {
+            normalized.dokumentasi = local.dokumentasi;
+          }
+        }
+        return normalized;
       },
       async () => {
         const items = await readDatabaseItems();
@@ -346,8 +384,11 @@ export const laporanService = {
         const body = buildLaporanApiBody(payload);
         const res = await apiClient.post<Laporan | { data?: Laporan }>("/api/v1/laporan-perjalanan", body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        const fileLaporan = payload.fileLaporan || (unwrapped as Laporan)?.fileLaporan;
-        const normalized = normalizeLaporan({ ...unwrapped, ...payload, fileLaporan });
+        const fileLaporan = payload.fileLaporan || (unwrapped as Laporan)?.fileLaporan || null;
+        const dokumentasi = (payload.dokumentasi && payload.dokumentasi.length > 0)
+          ? payload.dokumentasi
+          : (unwrapped as Laporan)?.dokumentasi || [];
+        const normalized = normalizeLaporan({ ...unwrapped, ...payload, fileLaporan, dokumentasi });
         await putDatabaseItem(normalized);
         return normalized;
       },
@@ -365,11 +406,35 @@ export const laporanService = {
   update: async (id: string, payload: LaporanPayload) => {
     return withApiFallback(
       async () => {
+        const localItems = await readDatabaseItems();
+        const existingLocal = localItems.find((item) => item.id === id || (payload.sptId && item.sptId === payload.sptId));
+
         const body = buildLaporanApiBody(payload, id);
         const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, body);
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
-        const fileLaporan = payload.fileLaporan || (unwrapped as Laporan)?.fileLaporan;
-        const normalized = normalizeLaporan({ ...unwrapped, ...payload, fileLaporan, id });
+
+        const fileLaporan =
+          payload.fileLaporan?.dataUrl
+            ? payload.fileLaporan
+            : (unwrapped as Laporan)?.fileLaporan?.dataUrl
+            ? (unwrapped as Laporan).fileLaporan
+            : existingLocal?.fileLaporan || payload.fileLaporan || null;
+
+        const dokumentasi =
+          payload.dokumentasi && payload.dokumentasi.length > 0
+            ? payload.dokumentasi
+            : (unwrapped as Laporan)?.dokumentasi && (unwrapped as Laporan).dokumentasi.length > 0
+            ? (unwrapped as Laporan).dokumentasi
+            : existingLocal?.dokumentasi || [];
+
+        const normalized = normalizeLaporan({
+          ...existingLocal,
+          ...unwrapped,
+          ...payload,
+          id,
+          fileLaporan,
+          dokumentasi,
+        });
         await putDatabaseItem(normalized);
         return normalized;
       },
@@ -405,17 +470,34 @@ export const laporanService = {
   ) => {
     return withApiFallback(
       async () => {
+        const localItems = await readDatabaseItems();
+        const existingLocal = localItems.find((item) => item.id === id);
+
         const res = await apiClient.put<Laporan | { data?: Laporan }>(`/api/v1/laporan-perjalanan/${id}`, {
           status,
           catatanVerifikasi: catatan,
           catatan_verifikasi: catatan,
         });
         const unwrapped = (res as { data?: Laporan }).data || (res as Laporan);
+
+        const fileLaporan =
+          unwrapped.fileLaporan?.dataUrl
+            ? unwrapped.fileLaporan
+            : existingLocal?.fileLaporan || unwrapped.fileLaporan || null;
+
+        const dokumentasi =
+          unwrapped.dokumentasi && unwrapped.dokumentasi.length > 0
+            ? unwrapped.dokumentasi
+            : existingLocal?.dokumentasi || unwrapped.dokumentasi || [];
+
         const normalized = normalizeLaporan({
+          ...existingLocal,
           ...unwrapped,
           id,
           status,
           catatanVerifikasi: catatan,
+          fileLaporan,
+          dokumentasi,
         });
         await putDatabaseItem(normalized);
         return normalized;

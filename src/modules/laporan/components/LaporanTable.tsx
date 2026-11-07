@@ -110,7 +110,18 @@ export function LaporanTable(props: Props) {
                     )}
                   </TableCell>
                   <TableCell>{props.getPelaksana(item)}</TableCell>
-                  <TableCell>{item.tujuan}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">
+                        {item.tempatPelaksanaan || item.tujuan || "-"}
+                      </span>
+                      {item.tempatPelaksanaan && item.tujuan && item.tempatPelaksanaan.trim() !== item.tujuan.trim() && (
+                        <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-[280px]" title={item.tujuan}>
+                          {item.tujuan}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{formatTableDate(item.tanggalLaporan)}</TableCell>
                   <TableCell>
                     {item.metodeLaporan === "upload" ? (

@@ -124,7 +124,8 @@ export function useLaporan() {
     return (
       (!q ||
         item.dasarPelaksanaan.toLowerCase().includes(q) ||
-        item.tujuan.toLowerCase().includes(q)) &&
+        item.tujuan.toLowerCase().includes(q) ||
+        (item.tempatPelaksanaan && item.tempatPelaksanaan.toLowerCase().includes(q))) &&
       (store.filters.status === "Semua" || item.status === store.filters.status)
     );
   });

@@ -282,7 +282,25 @@ export function LaporanPreview({
   const isLaporanKomisioner =
     daftarPelaksana.length > 0 && daftarPelaksana.every(isKomisioner);
 
-  if (item.metodeLaporan === "upload" && item.fileLaporan) {
+  if (item.metodeLaporan === "upload") {
+    if (!item.fileLaporan) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="relative flex flex-col w-full max-w-lg rounded-2xl bg-card text-foreground shadow-2xl border border-border p-6 text-center space-y-4">
+            <h3 className="font-bold text-base text-foreground">Berkas Dokumen Laporan Belum Tersedia</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Berkas laporan yang diunggah untuk SPT {nomorSuratTugas} belum tersimpan atau tidak ditemukan dalam penyimpanan browser ini. Silakan ubah laporan dan unggah kembali berkas dokumen Anda.
+            </p>
+            <div className="flex justify-center gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={onClose}>
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const isDriveUrl = item.fileLaporan.dataUrl.includes("drive.google.com");
     const isPdf =
       item.fileLaporan.tipe?.includes("pdf") ||

@@ -59,7 +59,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "nomor", "spt_id", "nomor_spt", "tanggal", "tanggal_berangkat", "tanggal_harus_kembali", "tempat_berangkat", "tempat_tujuan", "moda_transportasi", "akun_anggaran", "personil_json", "rincian_biaya_json", "status", "created_by", "data_json", "created_at", "updated_at"
   ],
   laporan: [
-    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "metode_laporan", "file_laporan_json", "data_json", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "metode_laporan", "file_laporan_json", "catatan_verifikasi", "dokumentasi_json", "data_json", "created_at", "updated_at"
   ],
   spj: [
     "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "data_json", "created_at", "updated_at"
@@ -1747,6 +1747,29 @@ function objectToRowValues(obj, headers) {
                 }
               }
               copyForJson[prop] = fClone;
+              continue;
+            }
+          }
+          if (prop === "dokumentasi" || prop === "dokumentasi_json") {
+            if (Array.isArray(obj[prop])) {
+              copyForJson[prop] = obj[prop].map(function(item) {
+                if (item && typeof item === "object") {
+                  var dClone = {};
+                  for (var dp in item) {
+                    if (dp === "dataUrl" || dp === "url") {
+                      if (typeof item[dp] === "string" && item[dp].length > 500) {
+                        dClone[dp] = "";
+                      } else {
+                        dClone[dp] = item[dp];
+                      }
+                    } else {
+                      dClone[dp] = item[dp];
+                    }
+                  }
+                  return dClone;
+                }
+                return item;
+              });
               continue;
             }
           }
