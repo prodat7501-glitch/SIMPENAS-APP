@@ -68,6 +68,23 @@ type ChainContext = {
 
 type SpjSourceContext = Pick<ChainContext, "sppds" | "spts" | "notas">;
 
+const deduplicateSpjs = (items: Spj[]): Spj[] => {
+  const seen = new Set<string>();
+  const result: Spj[] = [];
+  for (const item of items) {
+    if (!item) continue;
+    const key = item.laporanId
+      ? `lap:${item.laporanId}`
+      : item.sppdId
+      ? `sppd:${item.sppdId}`
+      : `id:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+};
+
 const areAllPaymentsComplete = (documents: DokumenKeuangan[]) => {
   const expectedRecipients = new Set(
     documents
@@ -514,17 +531,27 @@ export const keuanganService = {
           docs = [];
         }
 
-        const localCurrent = get();
-        const mergedMap = new Map<string, Spj>();
+        const localCurrent = deduplicateSpjs(get());
+        const localById = new Map<string, Spj>();
+        const localByLaporanId = new Map<string, Spj>();
+        const localBySppdId = new Map<string, Spj>();
         localCurrent.forEach((item) => {
-          if (item.id) mergedMap.set(item.id, item);
-          if (item.laporanId) mergedMap.set(`lap-${item.laporanId}`, item);
+          if (!item) return;
+          if (item.id) localById.set(item.id, item);
+          if (item.laporanId) localByLaporanId.set(item.laporanId, item);
+          if (item.sppdId) localBySppdId.set(item.sppdId, item);
         });
 
+        // Simpan SPJ unik berdasarkan satu primary key (laporanId, sppdId, atau id)
+        const mergedByUniqueKey = new Map<string, Spj>();
+
         remoteList.forEach((remote) => {
+          if (!remote) return;
           const existing =
-            mergedMap.get(remote.id) ||
-            (remote.laporanId ? mergedMap.get(`lap-${remote.laporanId}`) : undefined);
+            localById.get(remote.id) ||
+            (remote.laporanId ? localByLaporanId.get(remote.laporanId) : undefined) ||
+            (remote.sppdId ? localBySppdId.get(remote.sppdId) : undefined);
+
           const combinedDocs =
             Array.isArray(remote.dokumen) && remote.dokumen.length > 0
               ? remote.dokumen
@@ -534,7 +561,13 @@ export const keuanganService = {
                   (d) => d.spjId === remote.id || d.sppdId === remote.sppdId,
                 );
 
-          mergedMap.set(remote.id, {
+          const key = remote.laporanId
+            ? `lap:${remote.laporanId}`
+            : remote.sppdId
+            ? `sppd:${remote.sppdId}`
+            : `id:${remote.id}`;
+
+          mergedByUniqueKey.set(key, {
             ...existing,
             ...remote,
             status: normalizeSpjWorkflowStatus(remote, combinedDocs),
@@ -542,7 +575,21 @@ export const keuanganService = {
           });
         });
 
-        const currentSpjList: Spj[] = Array.from(mergedMap.values());
+        // Tambahkan record lokal yang belum ada di remote
+        localCurrent.forEach((local) => {
+          if (!local) return;
+          const key = local.laporanId
+            ? `lap:${local.laporanId}`
+            : local.sppdId
+            ? `sppd:${local.sppdId}`
+            : `id:${local.id}`;
+
+          if (!mergedByUniqueKey.has(key)) {
+            mergedByUniqueKey.set(key, local);
+          }
+        });
+
+        const currentSpjList: Spj[] = deduplicateSpjs(Array.from(mergedByUniqueKey.values()));
 
         // Sinkronisasi otomatis: Temukan laporan yang sudah Terverifikasi
         const verified = reports.filter(
@@ -557,7 +604,7 @@ export const keuanganService = {
           const hasSpj = currentSpjList.some(
             (spj) =>
               spj.laporanId === report.id ||
-              (report.sptId && spj.sppdId === report.sppdId),
+              (report.sppdId && spj.sppdId === report.sppdId),
           );
           if (!hasSpj) {
             const sppdId =
@@ -592,7 +639,7 @@ export const keuanganService = {
           }
         }
 
-        const finalList = [...currentSpjList, ...additions];
+        const finalList = deduplicateSpjs([...currentSpjList, ...additions]);
         put(finalList);
         return finalList;
       },
@@ -667,13 +714,14 @@ export const keuanganService = {
               realisasiBiaya: buildRealisasiBiaya(spj, context),
             };
           });
+        const deduplicatedFallback = deduplicateSpjs([...migrated, ...additions]);
         if (
           removed.length ||
           additions.length ||
-          JSON.stringify(current) !== JSON.stringify(migrated)
+          JSON.stringify(current) !== JSON.stringify(deduplicatedFallback)
         )
-          put([...migrated, ...additions]);
-        return [...migrated, ...additions];
+          put(deduplicatedFallback);
+        return deduplicatedFallback;
       },
     );
   },

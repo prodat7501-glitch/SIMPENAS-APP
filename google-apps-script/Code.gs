@@ -240,6 +240,13 @@ function deduplicateSheetRows(sheet) {
     } else if (sName === "user_accounts" && userColIdx !== -1) {
       var uname = String(row[userColIdx] || "").trim().toLowerCase();
       if (uname) key = "user:" + uname;
+    } else if (sName === "spj") {
+      var lapColIdx = headers.indexOf("laporan_id");
+      var sppdColIdx = headers.indexOf("sppd_id");
+      var lapId = (lapColIdx !== -1) ? String(row[lapColIdx] || "").trim() : "";
+      var sppdId = (sppdColIdx !== -1) ? String(row[sppdColIdx] || "").trim() : "";
+      if (lapId) key = "lap:" + lapId;
+      else if (sppdId) key = "sppd:" + sppdId;
     }
     
     if (seenKeys[key]) {
@@ -910,6 +917,22 @@ function handleCreate(sheet, data, userId) {
       data.file_laporan = valFileCreate;
       data.fileLaporan = valFileCreate;
     }
+
+    // Cegah duplikasi record SPJ jika laporan_id atau sppd_id sudah terdaftar di sheet
+    if (sheet.getName() === "spj") {
+      var lapTarget = data.laporan_id || data.laporanId;
+      var sppdTarget = data.sppd_id || data.sppdId;
+      if (lapTarget || sppdTarget) {
+        var existingSpjList = getItems(sheet);
+        for (var sIdx = 0; sIdx < existingSpjList.length; sIdx++) {
+          var sItem = existingSpjList[sIdx];
+          if ((lapTarget && (sItem.laporan_id === lapTarget || sItem.laporanId === lapTarget)) ||
+              (sppdTarget && (sItem.sppd_id === sppdTarget || sItem.sppdId === sppdTarget))) {
+            return handleUpdate(sheet, sItem.id, data, userId);
+          }
+        }
+      }
+    }
     
     var rowValues = objectToRowValues(data, headers);
     sheet.appendRow(rowValues);
@@ -1390,6 +1413,12 @@ function getItems(sheet, filterParams) {
       var dipaKey = dipaKode ? (dipaTahun + "::" + dipaKode) : (dipaTahun + "::" + dipaKro + "." + dipaAkun);
       if (dipaKey && seenUniqueKeys[dipaKey]) continue;
       if (dipaKey) seenUniqueKeys[dipaKey] = true;
+    } else if (sName === "spj") {
+      var spjLapId = String(obj.laporan_id || obj.laporanId || "").trim();
+      var spjSppdId = String(obj.sppd_id || obj.sppdId || "").trim();
+      var spjKey = spjLapId ? ("lap:" + spjLapId) : (spjSppdId ? ("sppd:" + spjSppdId) : "");
+      if (spjKey && seenUniqueKeys[spjKey]) continue;
+      if (spjKey) seenUniqueKeys[spjKey] = true;
     }
     
     seenIds[idKey] = true;
