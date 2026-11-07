@@ -62,7 +62,7 @@ var SCHEMA_DEFINITIONS = {
     "id", "sppd_id", "nomor_sppd", "spt_id", "tanggal_laporan", "tempat_tujuan", "maksud_perjalanan", "hasil_perjalanan", "kesimpulan", "materi", "saran", "tindak_lanjut", "personil_hadir_json", "status", "created_by", "metode_laporan", "file_laporan_json", "catatan_verifikasi", "dokumentasi_json", "data_json", "created_at", "updated_at"
   ],
   spj: [
-    "id", "sppd_id", "nomor_sppd", "tanggal_pengajuan", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "created_by", "data_json", "created_at", "updated_at"
+    "id", "sppd_id", "nomor_sppd", "laporan_id", "tanggal_pengajuan", "tanggal_diterima", "total_anggaran", "total_realisasi", "sisa_lebih_kurang", "status", "verifikator_id", "tanggal_verifikasi", "catatan", "checklist_json", "realisasi_biaya_json", "created_by", "data_json", "created_at", "updated_at"
   ],
   dokumen_keuangan: [
     "id", "jenis", "nomor", "tanggal", "sppd_id", "jumlah_dibayarkan", "terbilang", "untuk_pembayaran", "penerima_nama", "penerima_nip", "bendahara_nama", "ppk_nama", "data_json", "created_at", "updated_at"
@@ -1009,6 +1009,16 @@ function handleUpdate(sheet, id, data, userId) {
       existingObj.file_laporan = valFile;
       existingObj.fileLaporan = valFile;
     }
+    if (data.checklist !== undefined || data.checklist_json !== undefined) {
+      var valChecklist = data.checklist !== undefined ? data.checklist : data.checklist_json;
+      existingObj.checklist = valChecklist;
+      existingObj.checklist_json = valChecklist;
+    }
+    if (data.realisasiBiaya !== undefined || data.realisasi_biaya_json !== undefined) {
+      var valRealisasi = data.realisasiBiaya !== undefined ? data.realisasiBiaya : data.realisasi_biaya_json;
+      existingObj.realisasiBiaya = valRealisasi;
+      existingObj.realisasi_biaya_json = valRealisasi;
+    }
     
     var newRowValues = objectToRowValues(existingObj, headers);
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([newRowValues]);
@@ -1527,6 +1537,15 @@ function rowValuesToObject(rowValues, headers) {
       obj.fileLaporan.dataUrl = obj.fileLaporan.viewUrl || obj.fileLaporan.url || obj.fileLaporan.downloadUrl;
     }
   }
+
+  // Kompatibilitas cerdas untuk tabel spj
+  if (!obj.laporanId && obj.laporan_id) obj.laporanId = obj.laporan_id;
+  if (!obj.laporan_id && obj.laporanId) obj.laporan_id = obj.laporanId;
+  if (!obj.sppdId && obj.sppd_id) obj.sppdId = obj.sppd_id;
+  if (!obj.sppd_id && obj.sppdId) obj.sppd_id = obj.sppdId;
+  if (!obj.tanggalDiterima && (obj.tanggal_diterima || obj.tanggal_pengajuan)) obj.tanggalDiterima = obj.tanggal_diterima || obj.tanggal_pengajuan;
+  if (!obj.checklist && obj.checklist_json) obj.checklist = obj.checklist_json;
+  if (!obj.realisasiBiaya && obj.realisasi_biaya_json) obj.realisasiBiaya = obj.realisasi_biaya_json;
   
   // Kompatibilitas cerdas untuk tabel pangkat (gol, ruang, nama -> golongan, nama_pangkat)
   if (obj.gol !== undefined && obj.nama !== undefined) {
@@ -1724,6 +1743,14 @@ function objectToRowValues(obj, headers) {
   else if (obj.jenis_dokumen !== undefined) obj.jenisDokumen = obj.jenis_dokumen;
   if (obj.berlakuMulai && !obj.berlaku_mulai) obj.berlaku_mulai = obj.berlakuMulai;
   if (obj.berlakuSampai && !obj.berlaku_sampai) obj.berlaku_sampai = obj.berlakuSampai;
+
+  // Mapping fallback jika input SPJ dari frontend
+  if (obj.laporanId && !obj.laporan_id) obj.laporan_id = obj.laporanId;
+  if (obj.sppdId && !obj.sppd_id) obj.sppd_id = obj.sppdId;
+  if (obj.tanggalDiterima && !obj.tanggal_diterima) obj.tanggal_diterima = obj.tanggalDiterima;
+  if (obj.tanggalDiterima && !obj.tanggal_pengajuan) obj.tanggal_pengajuan = obj.tanggalDiterima;
+  if (obj.checklist && !obj.checklist_json) obj.checklist_json = obj.checklist;
+  if (obj.realisasiBiaya && !obj.realisasi_biaya_json) obj.realisasi_biaya_json = obj.realisasiBiaya;
 
   // Simpan data_json lengkap segar jika kolom data_json ada di sheet
   if (headers.indexOf("data_json") !== -1) {

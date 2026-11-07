@@ -91,10 +91,11 @@ export function SpjPageContent() {
   const { items: dipas } = useDipa();
   const { items: pegawais } = usePegawai();
   const { items: unitKerja } = useUnitKerja();
+  const sourcesReady = !reportsLoading && !sppdsLoading;
   const data = useKeuangan(
     reports,
     { sppds, spts, notas, dipas },
-    !reportsLoading && !sppdsLoading,
+    sourcesReady,
   );
   const currentPegawai = resolveCurrentPegawai(user, pegawais);
   const currentPegawaiId = currentPegawai?.id;

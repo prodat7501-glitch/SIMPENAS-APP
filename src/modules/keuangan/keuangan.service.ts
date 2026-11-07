@@ -68,11 +68,6 @@ type ChainContext = {
 
 type SpjSourceContext = Pick<ChainContext, "sppds" | "spts" | "notas">;
 
-const PAYMENT_PROCESS_READY_STATUSES = new Set<Spj["status"]>([
-  "Validasi Selesai",
-  "Proses Pembayaran",
-]);
-
 const areAllPaymentsComplete = (documents: DokumenKeuangan[]) => {
   const expectedRecipients = new Set(
     documents
@@ -101,12 +96,17 @@ const isReportChainAvailable = (
   context?: SpjSourceContext,
 ) => {
   if (!context) return true;
-  const sppd = context.sppds.find((item) => item.id === report.sppdId);
+  if (!context.spts?.length && !context.notas?.length) {
+    return true;
+  }
+  const sppd = context.sppds.find(
+    (item) => item.id === report.sppdId || (report.sptId && item.sptId === report.sptId),
+  );
   const spt = context.spts.find(
     (item) => item.id === report.sptId || item.id === sppd?.sptId,
   );
   const nota = context.notas.find((item) => item.id === spt?.notaDinasId);
-  return Boolean(sppd && spt && nota);
+  return Boolean((sppd || spt) && (nota || !context.notas.length));
 };
 
 const normalizeSpjWorkflowStatus = (
@@ -499,32 +499,102 @@ export const keuanganService = {
         const res = await apiClient.get<
           Spj[] | { data?: Spj[]; items?: Spj[] }
         >("/api/v1/spj", params);
-        const list = Array.isArray(res) ? res : res.data || res.items || [];
-        if (list.length === 0) return [];
+        const remoteList = Array.isArray(res) ? res : res.data || res.items || [];
 
+        let docs: DokumenKeuangan[] = [];
         try {
           const docsRes = await apiClient.get<
             | DokumenKeuangan[]
             | { data?: DokumenKeuangan[]; items?: DokumenKeuangan[] }
           >("/api/v1/dokumen-keuangan");
-          const docs = Array.isArray(docsRes)
+          docs = Array.isArray(docsRes)
             ? docsRes
             : docsRes.data || docsRes.items || [];
-          return list.map((spj) => ({
-            ...spj,
-            dokumen:
-              Array.isArray(spj.dokumen) && spj.dokumen.length > 0
-                ? spj.dokumen
-                : docs.filter(
-                    (d) => d.spjId === spj.id || d.sppdId === spj.sppdId,
-                  ),
-          }));
         } catch {
-          return list.map((spj) => ({
-            ...spj,
-            dokumen: spj.dokumen || [],
-          }));
+          docs = [];
         }
+
+        const localCurrent = get();
+        const mergedMap = new Map<string, Spj>();
+        localCurrent.forEach((item) => {
+          if (item.id) mergedMap.set(item.id, item);
+          if (item.laporanId) mergedMap.set(`lap-${item.laporanId}`, item);
+        });
+
+        remoteList.forEach((remote) => {
+          const existing =
+            mergedMap.get(remote.id) ||
+            (remote.laporanId ? mergedMap.get(`lap-${remote.laporanId}`) : undefined);
+          const combinedDocs =
+            Array.isArray(remote.dokumen) && remote.dokumen.length > 0
+              ? remote.dokumen
+              : existing?.dokumen && existing.dokumen.length > 0
+              ? existing.dokumen
+              : docs.filter(
+                  (d) => d.spjId === remote.id || d.sppdId === remote.sppdId,
+                );
+
+          mergedMap.set(remote.id, {
+            ...existing,
+            ...remote,
+            status: normalizeSpjWorkflowStatus(remote, combinedDocs),
+            dokumen: combinedDocs,
+          });
+        });
+
+        const currentSpjList: Spj[] = Array.from(mergedMap.values());
+
+        // Sinkronisasi otomatis: Temukan laporan yang sudah Terverifikasi
+        const verified = reports.filter(
+          (item) =>
+            item.status === "Terverifikasi" &&
+            item.id &&
+            isReportChainAvailable(item, context),
+        );
+
+        const additions: Spj[] = [];
+        for (const report of verified) {
+          const hasSpj = currentSpjList.some(
+            (spj) =>
+              spj.laporanId === report.id ||
+              (report.sptId && spj.sppdId === report.sppdId),
+          );
+          if (!hasSpj) {
+            const sppdId =
+              report.sppdId ||
+              context?.sppds.find((s) => s.sptId === report.sptId)?.id ||
+              "";
+            const newSpj: Spj = {
+              id: id("spj"),
+              laporanId: report.id!,
+              sppdId,
+              status: "SPJ Diterima",
+              checklist: {
+                laporan: true,
+                sppd: true,
+                dokumentasi: (report.dokumentasi?.length ?? 0) > 0,
+                tandaTangan: !!report.tandaTangan,
+              },
+              realisasiBiaya: [],
+              catatan: "",
+              tanggalDiterima: new Date().toISOString().slice(0, 10),
+              dokumen: [],
+            };
+            newSpj.realisasiBiaya = buildRealisasiBiaya(newSpj, context);
+            additions.push(newSpj);
+
+            // Simpan SPJ ke backend API
+            try {
+              await apiClient.post("/api/v1/spj", newSpj);
+            } catch (err) {
+              console.warn("Gagal menyimpan SPJ baru ke API:", err);
+            }
+          }
+        }
+
+        const finalList = [...currentSpjList, ...additions];
+        put(finalList);
+        return finalList;
       },
       async () => {
         const current = get();
@@ -616,16 +686,31 @@ export const keuanganService = {
   ) => {
     return withApiFallback(
       async () => {
+        const nextStatus = action === "selesai" ? "Validasi Selesai" : "Validasi SPJ";
         const res = await apiClient.put<Spj | { data?: Spj }>(
           `/api/v1/spj/${spjId}`,
           {
             checklist,
             realisasiBiaya,
             catatan,
-            status: action === "selesai" ? "Validasi Selesai" : "Validasi SPJ",
+            status: nextStatus,
           },
         );
         const unwrapped = (res as { data?: Spj }).data || (res as Spj);
+        const items = get();
+        const updated: Spj[] = items.map((item) =>
+          item.id === spjId
+            ? {
+                ...item,
+                ...unwrapped,
+                checklist,
+                realisasiBiaya,
+                catatan,
+                status: nextStatus as Spj["status"],
+              }
+            : item,
+        );
+        put(updated);
         return unwrapped;
       },
       async () => {

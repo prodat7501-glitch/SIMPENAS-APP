@@ -79,13 +79,17 @@ export const isFinanceUnitUser = (
   units: UnitKerja[],
 ) => {
   if (!user) return false;
-  if (user.role === "Administrator") {
+  if (user.role === "Administrator" || user.role === "Sub Bagian Keuangan") {
     return true;
   }
-  if (user.role !== "Sub Bagian Keuangan") return false;
+
+  const username = normalize(user.username || "");
+  if (username.includes("keuangan") || username.includes("bendahara")) {
+    return true;
+  }
 
   const unit = units.find((item) => item.id === currentPegawai?.unitKerjaId);
-  return currentPegawai ? isFinanceUnit(unit) : true;
+  return currentPegawai ? isFinanceUnit(unit) : false;
 };
 
 export const isPegawaiInNotaDinas = (
