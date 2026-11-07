@@ -1538,6 +1538,23 @@ function rowValuesToObject(rowValues, headers) {
     }
   }
 
+  // Pemulihan cerdas jika terjadi pergeseran kolom status di tabel laporan (misal status terisi USER ID seperti USER-PG20)
+  var validLaporanStatuses = ["Draft", "Menunggu Verifikasi", "Terverifikasi", "Perlu Revisi"];
+  if (obj.status && validLaporanStatuses.indexOf(obj.status) === -1) {
+    var rawStatusStr = String(obj.status).trim();
+    if (/^user[-_]|^pg\d+/i.test(rawStatusStr)) {
+      if (!obj.created_by) obj.created_by = rawStatusStr;
+      if (obj.personil_hadir_json && validLaporanStatuses.indexOf(obj.personil_hadir_json) !== -1) {
+        obj.status = obj.personil_hadir_json;
+        obj.personil_hadir_json = [];
+      } else if (obj.catatan_verifikasi || obj.catatanVerifikasi) {
+        obj.status = "Terverifikasi";
+      } else {
+        obj.status = "Draft";
+      }
+    }
+  }
+
   // Kompatibilitas cerdas untuk tabel spj
   if (!obj.laporanId && obj.laporan_id) obj.laporanId = obj.laporan_id;
   if (!obj.laporan_id && obj.laporanId) obj.laporan_id = obj.laporanId;

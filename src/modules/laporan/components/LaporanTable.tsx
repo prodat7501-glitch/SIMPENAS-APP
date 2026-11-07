@@ -36,14 +36,20 @@ interface Props {
   getSpt: (item: Laporan) => string;
   getPelaksana: (item: Laporan) => string;
 }
-const variant = (status: LaporanStatus) =>
-  status === "Draft"
-    ? "outline"
-    : status === "Menunggu Verifikasi"
-      ? "warning"
-      : status === "Perlu Revisi"
-        ? "danger"
-        : "success";
+const variant = (status: LaporanStatus) => {
+  switch (status) {
+    case "Draft":
+      return "outline";
+    case "Menunggu Verifikasi":
+      return "warning";
+    case "Perlu Revisi":
+      return "danger";
+    case "Terverifikasi":
+      return "success";
+    default:
+      return "outline";
+  }
+};
 
 export function LaporanTable(props: Props) {
   return (

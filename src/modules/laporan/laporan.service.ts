@@ -235,7 +235,33 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
       });
     })(),
     tandaTangan: item.tandaTangan || "manual",
-    status: item.status ?? "Draft",
+    status: (() => {
+      const validStatuses: LaporanStatus[] = ["Draft", "Menunggu Verifikasi", "Terverifikasi", "Perlu Revisi"];
+      const rawStatus = String(item.status ?? (item as Record<string, unknown>).status_laporan ?? "").trim();
+      if (validStatuses.includes(rawStatus as LaporanStatus)) {
+        return rawStatus as LaporanStatus;
+      }
+      // Deteksi jika terjadi pergeseran kolom di Google Sheets (misalnya kolom personil_hadir_json berisi status asli)
+      const rawPersonil = String((item as Record<string, unknown>).personil_hadir_json ?? "").trim();
+      if (validStatuses.includes(rawPersonil as LaporanStatus)) {
+        return rawPersonil as LaporanStatus;
+      }
+      const rawLower = rawStatus.toLowerCase();
+      if (rawLower.includes("verifikasi") && !rawLower.includes("menunggu")) {
+        return "Terverifikasi";
+      }
+      if (rawLower.includes("menunggu")) {
+        return "Menunggu Verifikasi";
+      }
+      if (rawLower.includes("revisi")) {
+        return "Perlu Revisi";
+      }
+      if (rawLower === "selesai" || (item.catatanVerifikasi && String(item.catatanVerifikasi).trim().length > 0)) {
+        return "Terverifikasi";
+      }
+      // Jika status berisi user id / kode pegawai (seperti USER-PG20), default ke Terverifikasi jika sudah ada riwayat verifikasi
+      return "Draft";
+    })(),
     catatanVerifikasi: item.catatanVerifikasi ?? (item as Record<string, unknown>).catatan_verifikasi as string ?? (item as Record<string, unknown>).catatan as string ?? "",
     tempatLaporan: item.tempatLaporan ?? "Limboto",
     tanggalLaporan: cleanDateString(item.tanggalLaporan ?? (item as Record<string, unknown>).tanggal_laporan) || new Date().toISOString().slice(0, 10),
