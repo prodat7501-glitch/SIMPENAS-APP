@@ -29,6 +29,7 @@ import { useLaporan } from "@/modules/laporan/useLaporan";
 import { useNotaDinas } from "@/modules/nota-dinas/useNotaDinas";
 import { getLampiranCostBreakdown } from "@/modules/nota-dinas/nota-dinas-calculation";
 import { usePegawai } from "@/modules/pegawai/usePegawai";
+import { sortByPegawaiOrder } from "@/modules/pegawai/pegawai-order";
 import { useSppd } from "@/modules/sppd/useSppd";
 import { useSpt } from "@/modules/spt/useSpt";
 import { useUnitKerja } from "@/modules/unit-kerja/useUnitKerja";
@@ -152,8 +153,11 @@ export function SpjPageContent() {
       addToast(e instanceof Error ? e.message : "Validasi gagal", "error");
     }
   };
+  const selectedLaporan = reports.find((item) => item.id === selected?.laporanId);
   const selectedSppd = sppds.find((item) => item.id === selected?.sppdId);
-  const selectedSpt = spts.find((item) => item.id === selectedSppd?.sptId);
+  const selectedSpt = spts.find(
+    (item) => item.id === selectedLaporan?.sptId || item.id === selectedSppd?.sptId,
+  );
   const selectedNota = notas.find(
     (item) => item.id === selectedSpt?.notaDinasId,
   );
@@ -211,15 +215,52 @@ export function SpjPageContent() {
   const getRealisasiTotal = (row: RealisasiBiaya) =>
     getDailyAllowance(row) +
     REALISASI_COLUMNS.reduce((sum, column) => sum + row[column.field], 0);
-  const getSppdPersonilNames = (sppdId: string) => {
-    const relatedSppd = sppds.find((item) => item.id === sppdId);
-    if (!relatedSppd) return [];
+  const getSpjSpt = (item: Spj) => {
+    const laporan = reports.find((r) => r.id === item.laporanId);
+    const sppd = sppds.find((s) => s.id === item.sppdId);
+    const sptId = laporan?.sptId || sppd?.sptId;
+    return spts.find((s) => s.id === sptId);
+  };
 
-    return relatedSppd.personil.map(
-      (person) =>
-        pegawais.find((pegawai) => pegawai.id === person.pegawaiId)?.nama ??
-        person.pegawaiId,
-    );
+  const getSpjSptNumber = (item: Spj) => {
+    const spt = getSpjSpt(item);
+    if (spt?.nomor) return spt.nomor;
+    const laporan = reports.find((r) => r.id === item.laporanId);
+    if (laporan?.nomorSuratTugas) return laporan.nomorSuratTugas;
+    const sppd = sppds.find((s) => s.id === item.sppdId);
+    if (sppd?.sptId) {
+      const relatedSpt = spts.find((s) => s.id === sppd.sptId);
+      if (relatedSpt?.nomor) return relatedSpt.nomor;
+    }
+    return "-";
+  };
+
+  const getSpjPelaksanaNames = (item: Spj) => {
+    const spt = getSpjSpt(item);
+    if (spt?.personil?.length) {
+      const names = sortByPegawaiOrder(
+        spt.personil,
+        (person) => person.pegawaiId,
+        pegawais,
+      )
+        .map(
+          (p) =>
+            pegawais.find((pegawai) => pegawai.id === p.pegawaiId)?.nama,
+        )
+        .filter(Boolean) as string[];
+      if (names.length) return names;
+    }
+
+    const relatedSppd = sppds.find((itemSppd) => itemSppd.id === item.sppdId);
+    if (relatedSppd?.personil?.length) {
+      return relatedSppd.personil.map(
+        (person) =>
+          pegawais.find((pegawai) => pegawai.id === person.pegawaiId)?.nama ??
+          person.pegawaiId,
+      );
+    }
+
+    return [];
   };
   return (
     <div className="space-y-6">
@@ -257,8 +298,8 @@ export function SpjPageContent() {
         <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
-              <TableHead>SPPD</TableHead>
-              <TableHead>Personil SPPD</TableHead>
+              <TableHead>Nomor SPT</TableHead>
+              <TableHead>Pelaksana</TableHead>
               <TableHead>Tanggal Diterima</TableHead>
               <TableHead>Kelengkapan</TableHead>
               <TableHead>Status</TableHead>
@@ -268,15 +309,27 @@ export function SpjPageContent() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleItems.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-mono font-bold">
-                  {sppds.find((x) => x.id === item.sppdId)?.nomor ?? "-"}
-                </TableCell>
-                <TableCell className="min-w-52 font-semibold">
-                  {getSppdPersonilNames(item.sppdId).join(", ") || "-"}
-                </TableCell>
-                <TableCell>{formatTableDate(item.tanggalDiterima)}</TableCell>
+            {visibleItems.map((item) => {
+              const sptNomor = getSpjSptNumber(item);
+              const sppdNomor = sppds.find((x) => x.id === item.sppdId)?.nomor;
+              const pelaksanaNames = getSpjPelaksanaNames(item);
+
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono font-bold">
+                    <div className="flex flex-col">
+                      <span className="text-foreground">{sptNomor}</span>
+                      {sppdNomor && (
+                        <span className="text-[11px] font-normal text-muted-foreground">
+                          SPPD: {sppdNomor}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="min-w-52 font-semibold">
+                    {pelaksanaNames.length > 0 ? pelaksanaNames.join(", ") : "-"}
+                  </TableCell>
+                  <TableCell>{formatTableDate(item.tanggalDiterima)}</TableCell>
                 <TableCell>
                   {Object.values(item.checklist).filter(Boolean).length}/4
                 </TableCell>
@@ -322,7 +375,8 @@ export function SpjPageContent() {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            );
+          })}
             {!visibleItems.length && (
               <TableRow>
                 <TableCell
@@ -343,6 +397,24 @@ export function SpjPageContent() {
         className="max-w-[96vw]"
       >
         <div className="max-h-[80vh] space-y-5 overflow-y-auto pr-1">
+          {selected && (
+            <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs flex flex-wrap gap-x-6 gap-y-2">
+              <div>
+                <span className="text-muted-foreground block text-[10px]">Nomor SPT:</span>
+                <span className="font-semibold text-foreground">{getSpjSptNumber(selected)}</span>
+              </div>
+              {selectedSppd?.nomor && (
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Nomor SPPD:</span>
+                  <span className="font-semibold text-foreground">{selectedSppd.nomor}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground block text-[10px]">Pelaksana:</span>
+                <span className="font-semibold text-foreground">{getSpjPelaksanaNames(selected).join(", ") || "-"}</span>
+              </div>
+            </div>
+          )}
           <Stepper
             steps={steps}
             currentStep={selected ? step(selected.status) : 0}
