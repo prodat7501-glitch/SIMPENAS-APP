@@ -1,7 +1,9 @@
 "use client";
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle, RotateCcw } from "lucide-react";
+import { CheckCircle, FileText, RotateCcw, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { formatTableDate } from "@/lib/formatters";
@@ -72,29 +74,46 @@ export function ApprovalDetail({
       isOpen
       onClose={onClose}
       title={`Detail Approval ${item.documentType}`}
-      className="max-w-5xl"
+      className="w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] flex flex-col max-h-[92vh]"
+      bodyClassName="min-h-0 flex-1 overflow-y-auto pr-2"
     >
-      <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-2">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-muted/30 rounded-xl p-4">
-          <Info label="Jenis Dokumen" value={item.documentType} />
-          <Info label="Nomor Dokumen" value={item.nomor} />
-          <Info label="Tanggal" value={getTanggalInfo(item)} />
+      <div className="space-y-6">
+        {/* Ringkasan Metadata Dokumen */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+          <Info
+            label="Jenis Dokumen"
+            value={
+              <Badge variant="outline" className="font-bold text-xs">
+                {item.documentType}
+              </Badge>
+            }
+          />
+          <Info
+            label="Nomor Dokumen"
+            value={
+              <span className="font-mono text-sm sm:text-base font-bold tracking-wide text-foreground">
+                {item.nomor}
+              </span>
+            }
+          />
+          <Info label="Tanggal Dokumen" value={getTanggalInfo(item)} />
           <Info
             label="Penandatangan Dokumen"
             value={
               item.penandatanganSnapshot?.nama
                 ? `${item.penandatanganSnapshot.nama} (${item.penandatanganSnapshot.jabatanPenandatangan || item.penandatanganSnapshot.peran})`
-                : item.penandatanganId
+                : item.penandatanganId || "-"
             }
           />
           <Info
             label="Jumlah Personil"
-            value={String(getPersonilCount(item))}
+            value={`${getPersonilCount(item)} Orang`}
           />
           {item.documentType === "Nota Dinas" && (
             <Info
               label="Total Anggaran"
               value={formatRupiah(item.totalBiaya)}
+              highlight
             />
           )}
         </div>
@@ -116,8 +135,28 @@ export function ApprovalDetail({
           </>
         ) : (
           <>
-            <Section title="Perihal" items={[item.perihal]} />
-            <Section title="Isi Nota Dinas" items={[item.isi]} />
+            {/* Perihal */}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Perihal Nota Dinas
+              </span>
+              <p className="text-sm sm:text-base font-bold text-foreground leading-snug">
+                {item.perihal || "-"}
+              </p>
+            </div>
+
+            {/* Isi Nota Dinas */}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2 border-b border-border pb-2.5">
+                <FileText className="w-4 h-4 text-primary" />
+                Isi Nota Dinas
+              </h3>
+              <div className="text-sm sm:text-[14.5px] leading-relaxed text-foreground/90 whitespace-pre-line bg-muted/30 p-4 rounded-xl border border-border/60">
+                {item.isi || "-"}
+              </div>
+            </div>
+
+            {/* Lampiran Biaya & Personil */}
             <NotaDinasLampiranTable
               item={item}
               pegawais={pegawais}
@@ -127,28 +166,35 @@ export function ApprovalDetail({
           </>
         )}
 
-        <label className="block space-y-1">
-          <span className="text-xs font-bold text-foreground">
-            Catatan Keputusan
-          </span>
-          <textarea
-            {...register("catatan")}
-            rows={4}
-            className="editor"
-            placeholder={`Wajib diisi apabila ${item.documentType} ditolak untuk revisi.`}
-          />
-          {errors.catatan && (
-            <p className="text-[10px] font-bold text-danger">
-              {errors.catatan.message}
-            </p>
-          )}
-        </label>
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border pt-4">
+        {/* Catatan Keputusan */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-3">
+          <label className="block space-y-2">
+            <span className="text-sm font-bold text-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Catatan Keputusan Approver
+            </span>
+            <textarea
+              {...register("catatan")}
+              rows={3}
+              className="w-full text-sm p-3.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-foreground placeholder:text-muted-foreground transition-all duration-200"
+              placeholder={`Wajib diisi apabila ${item.documentType} ditolak untuk revisi.`}
+            />
+            {errors.catatan && (
+              <p className="text-xs font-bold text-danger">
+                {errors.catatan.message}
+              </p>
+            )}
+          </label>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border pt-4">
           <Button
             type="button"
             variant="ghost"
             onClick={onClose}
             disabled={isSaving}
+            className="h-11 px-6 text-sm font-semibold cursor-pointer"
           >
             Batal
           </Button>
@@ -157,6 +203,7 @@ export function ApprovalDetail({
             variant="destructive"
             onClick={() => submitDecision("Perlu Revisi")}
             disabled={isSaving}
+            className="h-11 px-6 text-sm font-bold gap-2 cursor-pointer shadow-sm"
           >
             <RotateCcw className="w-4 h-4" /> Tolak / Perlu Revisi
           </Button>
@@ -164,6 +211,7 @@ export function ApprovalDetail({
             type="button"
             onClick={() => submitDecision("Disetujui")}
             disabled={isSaving}
+            className="h-11 px-7 text-sm font-bold gap-2 cursor-pointer shadow-md bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <CheckCircle className="w-4 h-4" /> Setujui
           </Button>
@@ -205,28 +253,41 @@ function SptPersonilTable({
   getJabatanName: (pegawaiId: string) => string;
 }) {
   return (
-    <section className="space-y-2">
-      <div>
-        <h3 className="text-xs font-bold text-foreground">
-          Personil yang Ditugaskan
-        </h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Daftar pegawai yang tercantum dalam dokumen SPT untuk proses
-          persetujuan.
-        </p>
+    <section className="space-y-3 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-border pb-3">
+        <div>
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            Personil yang Ditugaskan
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Daftar pegawai yang tercantum dalam dokumen SPT untuk proses
+            persetujuan.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="self-start sm:self-auto font-medium text-xs"
+        >
+          {item.personil.length} Personil
+        </Badge>
       </div>
       <div className="overflow-x-auto rounded-xl border border-border bg-background">
-        <table className="w-full min-w-[680px] border-collapse text-[11px]">
-          <thead className="bg-muted/70">
+        <table className="w-full min-w-[680px] border-collapse text-xs">
+          <thead className="bg-muted/80">
             <tr>
-              <th className="border-b border-border p-2 text-center w-10">
+              <th className="border-b border-border p-3 text-center w-12 font-bold text-foreground uppercase tracking-wider text-[11px]">
                 No
               </th>
-              <th className="border-b border-border p-2 text-left">
+              <th className="border-b border-border p-3 text-left font-bold text-foreground uppercase tracking-wider text-[11px]">
                 Nama / NIP
               </th>
-              <th className="border-b border-border p-2 text-left">Kategori</th>
-              <th className="border-b border-border p-2 text-left">Jabatan</th>
+              <th className="border-b border-border p-3 text-left font-bold text-foreground uppercase tracking-wider text-[11px]">
+                Kategori
+              </th>
+              <th className="border-b border-border p-3 text-left font-bold text-foreground uppercase tracking-wider text-[11px]">
+                Jabatan
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -237,22 +298,25 @@ function SptPersonilTable({
             ).map((personil, index) => {
               const pegawai = getPegawai(personil.pegawaiId);
               return (
-                <tr key={`${personil.pegawaiId}-${index}`}>
-                  <td className="border-b border-border p-2 text-center">
+                <tr
+                  key={`${personil.pegawaiId}-${index}`}
+                  className="hover:bg-muted/30 transition-colors"
+                >
+                  <td className="border-b border-border p-3 text-center font-bold text-muted-foreground text-xs">
                     {index + 1}
                   </td>
-                  <td className="border-b border-border p-2">
-                    <p className="font-bold text-foreground">
+                  <td className="border-b border-border p-3">
+                    <p className="font-bold text-foreground text-sm">
                       {pegawai?.nama ?? "Pegawai tidak ditemukan"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
                       NIP. {pegawai?.nip || "-"}
                     </p>
                   </td>
-                  <td className="border-b border-border p-2">
+                  <td className="border-b border-border p-3 text-foreground/80 font-medium">
                     {pegawai?.kategoriPegawai ?? "-"}
                   </td>
-                  <td className="border-b border-border p-2">
+                  <td className="border-b border-border p-3 text-foreground/80 font-medium">
                     {getJabatanName(personil.pegawaiId)}
                   </td>
                 </tr>
@@ -288,35 +352,49 @@ function NotaDinasLampiranTable({
   ).map(([, line]) => line);
 
   return (
-    <section className="space-y-2">
-      <div>
-        <h3 className="text-xs font-bold text-foreground">
-          Lampiran Personil Nota Dinas
-        </h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Rincian personil dan komponen biaya yang diajukan dalam Nota Dinas.
-        </p>
+    <section className="space-y-3 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-border pb-3">
+        <div>
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            Lampiran Personil & Rincian Anggaran Nota Dinas
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Rincian personil pelaksana dan rincian komponen biaya yang diajukan dalam Nota Dinas.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="self-start sm:self-auto font-medium text-xs"
+        >
+          {item.lampiran.length} Personil
+        </Badge>
       </div>
+
       <div className="overflow-x-auto rounded-xl border border-border bg-background">
-        <table className="w-full min-w-[980px] border-collapse text-[11px]">
-          <thead className="bg-muted/70">
+        <table className="w-full min-w-[900px] border-collapse text-xs">
+          <thead className="bg-muted/80">
             <tr>
-              <th className="border-b border-border p-2 text-center w-10">
+              <th className="border-b border-border p-3 text-center w-12 font-bold text-foreground uppercase tracking-wider text-[11px]">
                 No
               </th>
-              <th className="border-b border-border p-2 text-left">
+              <th className="border-b border-border p-3 text-left font-bold text-foreground uppercase tracking-wider text-[11px] min-w-[200px]">
                 Nama / NIP
               </th>
-              <th className="border-b border-border p-2 text-left">Jabatan</th>
+              <th className="border-b border-border p-3 text-left font-bold text-foreground uppercase tracking-wider text-[11px] min-w-[160px]">
+                Jabatan
+              </th>
               {costColumns.map((column) => (
                 <th
                   key={column.key}
-                  className="border-b border-border p-2 text-right"
+                  className="border-b border-border p-3 text-right font-bold text-foreground uppercase tracking-wider text-[11px] whitespace-nowrap min-w-[140px]"
                 >
                   {column.label}
                 </th>
               ))}
-              <th className="border-b border-border p-2 text-right">Total</th>
+              <th className="border-b border-border p-3 text-right font-bold text-foreground uppercase tracking-wider text-[11px] min-w-[140px]">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -327,20 +405,25 @@ function NotaDinasLampiranTable({
             ).map((lampiran, index) => {
               const pegawai = getPegawai(lampiran.pegawaiId);
               return (
-                <tr key={`${lampiran.pegawaiId}-${index}`}>
-                  <td className="border-b border-border p-2 text-center">
+                <tr
+                  key={`${lampiran.pegawaiId}-${index}`}
+                  className="hover:bg-muted/30 transition-colors"
+                >
+                  <td className="border-b border-border p-3 text-center font-bold text-muted-foreground text-xs">
                     {index + 1}
                   </td>
-                  <td className="border-b border-border p-2">
-                    <p className="font-bold text-foreground">
+                  <td className="border-b border-border p-3">
+                    <p className="font-bold text-foreground text-sm">
                       {pegawai?.nama ?? "Pegawai tidak ditemukan"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
                       NIP. {pegawai?.nip || "-"}
                     </p>
                   </td>
-                  <td className="border-b border-border p-2">
-                    {getJabatanName(lampiran.pegawaiId)}
+                  <td className="border-b border-border p-3">
+                    <span className="text-xs font-medium text-foreground/80 leading-snug">
+                      {getJabatanName(lampiran.pegawaiId)}
+                    </span>
                   </td>
                   {costColumns.map((column) => {
                     const line = getLampiranCostLines(
@@ -350,25 +433,25 @@ function NotaDinasLampiranTable({
                     return (
                       <td
                         key={column.key}
-                        className="border-b border-border p-2 text-right whitespace-nowrap"
+                        className="border-b border-border p-3 text-right whitespace-nowrap"
                       >
                         {line && line.subtotal > 0 ? (
-                          <>
-                            <p>
+                          <div className="space-y-0.5">
+                            <span className="text-[11px] font-mono text-muted-foreground block">
                               {formatRupiah(line.rate)} × {line.quantity}{" "}
                               {line.unit}
-                            </p>
-                            <p className="font-bold">
-                              = {formatRupiah(line.subtotal)}
-                            </p>
-                          </>
+                            </span>
+                            <span className="font-bold text-foreground text-xs sm:text-sm block">
+                              {formatRupiah(line.subtotal)}
+                            </span>
+                          </div>
                         ) : (
-                          "-"
+                          <span className="text-muted-foreground/50">-</span>
                         )}
                       </td>
                     );
                   })}
-                  <td className="border-b border-border p-2 text-right font-bold text-primary">
+                  <td className="border-b border-border p-3 text-right font-black text-primary text-sm whitespace-nowrap">
                     {formatRupiah(lampiran.total)}
                   </td>
                 </tr>
@@ -376,14 +459,14 @@ function NotaDinasLampiranTable({
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-primary/5">
+            <tr className="bg-primary/10 border-t-2 border-primary/20">
               <td
                 colSpan={3 + costColumns.length}
-                className="p-2 text-right font-bold"
+                className="p-3.5 text-right font-bold text-foreground text-sm"
               >
-                Total Anggaran
+                Total Anggaran Keseluruhan
               </td>
-              <td className="p-2 text-right font-black text-primary">
+              <td className="p-3.5 text-right font-black text-primary text-base whitespace-nowrap">
                 {formatRupiah(item.totalBiaya)}
               </td>
             </tr>
@@ -394,26 +477,47 @@ function NotaDinasLampiranTable({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: React.ReactNode;
+  highlight?: boolean;
+}) {
   return (
-    <div>
-      <p className="text-[10px] uppercase font-bold text-muted-foreground">
+    <div className="space-y-1">
+      <span className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground block">
         {label}
-      </p>
-      <p className="text-xs font-semibold text-foreground mt-1">{value}</p>
+      </span>
+      <div
+        className={
+          highlight
+            ? "text-base sm:text-lg font-black text-primary"
+            : "text-sm sm:text-[14px] font-bold text-foreground leading-snug"
+        }
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
 function Section({ title, items }: { title: string; items: string[] }) {
+  if (!items || items.length === 0) return null;
   return (
-    <section>
-      <h3 className="text-xs font-bold text-foreground mb-2">{title}</h3>
-      <ol className="list-decimal pl-5 space-y-1 text-xs text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-2">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2 border-b border-border pb-2.5">
+        <FileText className="w-4 h-4 text-primary" /> {title}
+      </h3>
+      <ol className="list-decimal pl-5 space-y-2 text-sm leading-relaxed text-foreground/90">
         {items.map((text, index) => (
-          <li key={`${title}-${index}`}>{text}</li>
+          <li key={`${title}-${index}`} className="pl-1">
+            {text}
+          </li>
         ))}
       </ol>
-    </section>
+    </div>
   );
 }
