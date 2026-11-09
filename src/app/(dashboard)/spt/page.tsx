@@ -660,7 +660,7 @@ export default function SptPage() {
 
             {/* Judul SPT */}
             <div className="text-center space-y-1">
-              <h3 className="text-[14pt] font-bold underline tracking-wider uppercase">
+              <h3 className="text-[14pt] font-normal underline tracking-wider uppercase">
                 SURAT TUGAS
               </h3>
               <p className="text-[12pt]">Nomor: {previewItem.nomor}</p>
@@ -668,7 +668,7 @@ export default function SptPage() {
 
             {/* Menimbang */}
             <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed">
-              <div className="font-bold">Menimbang</div>
+              <div className="font-normal">Menimbang</div>
               <div>:</div>
               <div className="space-y-1.5 text-justify">
                 {previewItem.menimbang.map((m, idx) => (
@@ -676,7 +676,7 @@ export default function SptPage() {
                     key={idx}
                     className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
-                    <span className="font-bold text-right">
+                    <span className="font-normal text-right">
                       {String.fromCharCode(97 + idx)}.
                     </span>
                     <p>{m.text}</p>
@@ -687,7 +687,7 @@ export default function SptPage() {
 
             {/* Dasar */}
             <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
-              <div className="font-bold">Dasar</div>
+              <div className="font-normal">Dasar</div>
               <div>:</div>
               <div className="space-y-1.5 text-justify">
                 {previewItem.dasar.map((d, idx) => (
@@ -695,7 +695,7 @@ export default function SptPage() {
                     key={idx}
                     className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
-                    <span className="font-bold text-right">{idx + 1}.</span>
+                    <span className="font-normal text-right">{idx + 1}.</span>
                     <p>{d.text}</p>
                   </div>
                 ))}
@@ -704,14 +704,14 @@ export default function SptPage() {
 
             {/* Perintah Tengah */}
             <div className="text-center pt-2">
-              <h4 className="text-[12pt] font-bold tracking-widest uppercase">
+              <h4 className="text-[12pt] font-normal tracking-widest uppercase">
                 Memberi Tugas :
               </h4>
             </div>
 
             {/* Kepada */}
             <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
-              <div className="font-bold">Kepada</div>
+              <div className="font-normal">Kepada</div>
               <div>:</div>
               <div>
                 {isSptKomisioner(previewItem) ? (
@@ -722,12 +722,12 @@ export default function SptPage() {
                       <col className="w-[44%]" />
                     </colgroup>
                     <thead>
-                      <tr className="font-bold">
-                        <th className="border-0 px-1 py-0.5 text-center">No</th>
-                        <th className="border-0 px-1 py-0.5 text-center">
+                      <tr className="font-normal">
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">No</th>
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">
                           Nama
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center">
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">
                           Jabatan
                         </th>
                       </tr>
@@ -747,7 +747,7 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-bold">
+                            <td className="border-0 px-1 py-0.5 text-left align-top font-normal">
                               {nama}
                             </td>
                             <td className="border-0 px-1 py-0.5 text-left align-top">
@@ -767,15 +767,15 @@ export default function SptPage() {
                       <col className="w-[28%]" />
                     </colgroup>
                     <thead>
-                      <tr className="font-bold">
-                        <th className="border-0 px-1 py-0.5 text-center">No</th>
-                        <th className="border-0 px-1 py-0.5 text-center">
+                      <tr className="font-normal">
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">No</th>
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">
                           Nama
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center">
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">
                           NIP
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center">
+                        <th className="border-0 px-1 py-0.5 text-center font-normal">
                           Pangkat
                         </th>
                       </tr>
@@ -795,7 +795,7 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-bold">
+                            <td className="border-0 px-1 py-0.5 text-left align-top font-normal">
                               {nama}
                             </td>
                             <td className="border-0 px-1 py-0.5 text-center align-top">
@@ -815,7 +815,7 @@ export default function SptPage() {
 
             {/* Untuk */}
             <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
-              <div className="font-bold">Untuk</div>
+              <div className="font-normal">Untuk</div>
               <div>:</div>
               <div className="space-y-1.5 text-justify">
                 {previewItem.untuk.map((u, idx) => (
@@ -823,7 +823,7 @@ export default function SptPage() {
                     key={idx}
                     className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
-                    <span className="font-bold text-right">{idx + 1}.</span>
+                    <span className="font-normal text-right">{idx + 1}.</span>
                     <p>{u.text}</p>
                   </div>
                 ))}
@@ -840,14 +840,14 @@ export default function SptPage() {
                       Limboto,{" "}
                       {formatTanggalIndonesia(previewItem.tanggalMulai)}
                     </p>
-                    <div className="font-bold text-center mt-2">
+                    <div className="font-normal text-center mt-2">
                       {getSptSignatureTitleLines(previewItem).map((line) => (
                         <p key={line}>{line}</p>
                       ))}
                     </div>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-bold underline uppercase">
+                    <p className="font-normal underline uppercase">
                       {getSptSigningOfficial(previewItem)?.nama || "-"}
                     </p>
                     {!isSptKomisioner(previewItem) && (
@@ -873,8 +873,10 @@ export default function SptPage() {
         }
         .spt-print-document * {
           font-family: Tahoma, Geneva, sans-serif !important;
+          font-weight: 400 !important;
         }
-        .spt-print-document .spt-kop-title {
+        .spt-print-document .spt-kop-title,
+        .spt-print-document .spt-kop-title * {
           font-weight: 900 !important;
           font-size: 13.5pt !important;
         }

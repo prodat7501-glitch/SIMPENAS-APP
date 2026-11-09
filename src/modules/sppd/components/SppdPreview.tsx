@@ -283,7 +283,7 @@ export function SppdPreview({
 
           {mode === "page1" && (
           <div
-            className="min-h-[330mm] w-[215mm] p-5 text-[12pt] leading-[1.25]"
+            className="sppd-page1-container min-h-[330mm] w-[215mm] p-5 text-[12pt] leading-[1.25]"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
             <div className="grid grid-cols-[1fr_1.1fr] gap-8">
@@ -295,7 +295,7 @@ export function SppdPreview({
                   height={64}
                   className="h-16 w-16 object-contain"
                 />
-                <div className="text-[13pt] font-black uppercase leading-[1.15]">
+                <div className="sppd-kop-title text-[13pt] font-black uppercase leading-[1.15]">
                   <p>KOMISI PEMILIHAN UMUM</p>
                   <p>KABUPATEN GORONTALO</p>
                 </div>
@@ -319,7 +319,7 @@ export function SppdPreview({
               </div>
             </div>
 
-            <h3 className="py-6 text-center text-[14pt] font-black uppercase leading-none underline">
+            <h3 className="sppd-doc-title py-6 text-center text-[14pt] font-black uppercase leading-none underline">
               SURAT PERJALANAN DINAS (SPD)
             </h3>
 
@@ -523,7 +523,7 @@ export function SppdPreview({
 
           {mode === "page2" && (
           <div
-            className="min-h-[330mm] w-[215mm] p-[6mm] text-[12pt] leading-[1.2] print:h-auto print:min-h-0 print:w-full print:p-0"
+            className="sppd-page2-container min-h-[330mm] w-[215mm] p-[6mm] text-[12pt] leading-[1.2] print:h-auto print:min-h-0 print:w-full print:p-0"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
             <table className="sppd-page2-table w-full table-fixed border border-black border-collapse text-[12pt] leading-[1.2]">
@@ -758,6 +758,20 @@ export function SppdPreview({
         </div>
       </div>
       <style jsx global>{`
+        .sppd-page1-container,
+        .sppd-page2-container {
+          font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
+          font-weight: 400 !important;
+        }
+        .sppd-page1-container *,
+        .sppd-page2-container * {
+          font-weight: 400;
+        }
+        .sppd-page1-container .sppd-kop-title,
+        .sppd-page1-container .sppd-kop-title *,
+        .sppd-page1-container .sppd-doc-title {
+          font-weight: 800 !important;
+        }
         @media print {
           body * {
             visibility: hidden;
