@@ -11,7 +11,7 @@ export interface TemplateConfig {
   penandatanganId: string;
   logo: string;
   kopSurat: string;
-  font: "Arial" | "Times New Roman" | "Inter";
+  font: "Arial" | "Times New Roman" | "Inter" | "Tahoma" | "Bookman Old Style";
   alignment: "left" | "center" | "right";
 }
 

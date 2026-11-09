@@ -130,16 +130,16 @@ export function SppdPreview({
   const catatanRoman = finalRoman + 1;
   const perhatianRoman = finalRoman + 2;
   const page2ValueClass =
-    "whitespace-normal break-words text-[13px] leading-[1.18]";
+    "whitespace-normal break-words text-[12pt] leading-[1.2]";
   const renderPage2SignatureName = (value?: string) => {
     const name = value?.trim() ?? "";
 
     if (!name) {
-      return <div className="h-[14px] border-b border-black" />;
+      return <div className="h-[15px] border-b border-black" />;
     }
 
     return (
-      <div className="max-h-[27px] overflow-hidden whitespace-normal break-words text-center text-[13px] leading-[1.05]">
+      <div className="max-h-[30px] overflow-hidden whitespace-normal break-words text-center text-[12pt] leading-[1.1]">
         <span
           className="inline-block max-w-full border-b border-black px-[1mm]"
         >
@@ -150,7 +150,7 @@ export function SppdPreview({
   };
   const renderPage2Nip = (nip?: string, hasSignatureIdentity = false) => (
     <p
-      className={`text-[13px] leading-[1.05] ${
+      className={`text-[12pt] leading-[1.1] ${
         hasSignatureIdentity ? "text-center" : "text-left"
       }`}
     >
@@ -283,7 +283,7 @@ export function SppdPreview({
 
           {mode === "page1" && (
           <div
-            className="min-h-[330mm] w-[215mm] p-5 text-[15px] leading-[1.18]"
+            className="min-h-[330mm] w-[215mm] p-5 text-[12pt] leading-[1.25]"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
             <div className="grid grid-cols-[1fr_1.1fr] gap-8">
@@ -295,12 +295,12 @@ export function SppdPreview({
                   height={64}
                   className="h-16 w-16 object-contain"
                 />
-                <div className="text-[17px] font-black uppercase leading-[1.15]">
+                <div className="text-[13pt] font-black uppercase leading-[1.15]">
                   <p>KOMISI PEMILIHAN UMUM</p>
                   <p>KABUPATEN GORONTALO</p>
                 </div>
               </div>
-              <div className="space-y-3 text-[16px] leading-[1.15]">
+              <div className="space-y-2 text-[12pt] leading-[1.2]">
                 <div className="grid grid-cols-[110px_16px_1fr]">
                   <span>Lembar Ke</span>
                   <span>:</span>
@@ -311,7 +311,7 @@ export function SppdPreview({
                   <span>:</span>
                   <span />
                 </div>
-                <div className="grid grid-cols-[110px_16px_1fr] pt-5">
+                <div className="grid grid-cols-[110px_16px_1fr] pt-4">
                   <span>Nomor</span>
                   <span>:</span>
                   <span>{item.nomor}</span>
@@ -319,11 +319,11 @@ export function SppdPreview({
               </div>
             </div>
 
-            <h3 className="py-8 text-center text-[18px] font-black uppercase leading-none">
+            <h3 className="py-6 text-center text-[14pt] font-black uppercase leading-none underline">
               SURAT PERJALANAN DINAS (SPD)
             </h3>
 
-            <table className="w-full border-2 border-black border-collapse text-[16px] leading-[1.18]">
+            <table className="w-full border-2 border-black border-collapse text-[12pt] leading-[1.25]">
               <tbody>
                 <tr>
                   <td className="border-2 border-black px-2 py-0.5 align-top text-center w-10">
@@ -505,16 +505,16 @@ export function SppdPreview({
               </tbody>
             </table>
 
-            <p className="pl-14 text-[15px]">Coret yang tidak perlu *)</p>
+            <p className="pl-14 text-[12pt]">Coret yang tidak perlu *)</p>
 
-            <div className="ml-auto mt-4 w-[46%] space-y-20 text-[16px] leading-[1.2]">
+            <div className="ml-auto mt-4 w-[46%] space-y-16 text-[12pt] leading-[1.2]">
               <div>
                 <p>Dikeluarkan di Limboto</p>
                 <p>Tanggal {formatTanggalIndonesia(item.tanggalBerangkat)}</p>
                 <p>Pejabat Pembuat Komitmen</p>
               </div>
               <div>
-                <p>{effectivePenandatangan?.nama ?? "-"}</p>
+                <p className="font-bold underline">{effectivePenandatangan?.nama ?? "-"}</p>
                 <p>NIP. {effectivePenandatangan?.nip ?? "-"}</p>
               </div>
             </div>
@@ -523,21 +523,21 @@ export function SppdPreview({
 
           {mode === "page2" && (
           <div
-            className="min-h-[330mm] w-[215mm] p-[6mm] text-[14px] leading-[1.15] print:h-auto print:min-h-0 print:w-full print:p-0"
+            className="min-h-[330mm] w-[215mm] p-[6mm] text-[12pt] leading-[1.2] print:h-auto print:min-h-0 print:w-full print:p-0"
             style={{ fontFamily: '"Bookman Old Style", Bookman, Georgia, serif' }}
           >
-            <table className="sppd-page2-table w-full table-fixed border border-black border-collapse text-[14px] leading-[1.15]">
+            <table className="sppd-page2-table w-full table-fixed border border-black border-collapse text-[12pt] leading-[1.2]">
               <colgroup>
                 <col className="w-1/2" />
                 <col className="w-1/2" />
               </colgroup>
               <tbody className="sppd-page2-keep-block">
                 <tr className="h-[8mm]">
-                  <td className="border-0 px-[1.5mm] py-[0.8mm] align-top text-[15px] leading-[1.1]">
+                  <td className="border-0 px-[1.5mm] py-[0.8mm] align-top text-[12pt] leading-[1.1]">
                     Lampiran SPPD Tanggal :{" "}
                     {formatTanggalIndonesia(item.tanggalBerangkat)}
                   </td>
-                  <td className="border-0 px-[1.5mm] py-[0.8mm] align-top text-center text-[15px] leading-[1.1]">
+                  <td className="border-0 px-[1.5mm] py-[0.8mm] align-top text-center text-[12pt] leading-[1.1]">
                     Nomor : {item.nomor}
                   </td>
                 </tr>
@@ -734,13 +734,13 @@ export function SppdPreview({
               </tbody>
               <tbody className="sppd-page2-keep-block">
                 <tr>
-                  <td colSpan={2} className="h-[6mm] border border-black px-[2mm] leading-[1.1]">
+                  <td colSpan={2} className="h-[6mm] border border-black px-[2mm] text-[11pt] leading-[1.1]">
                     {roman(catatanRoman)} &nbsp; Catatan Lain-Lain
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={2} className="h-[24mm] border border-black px-[2mm] py-[1.5mm] leading-[1.2]">
-                    <p>{roman(perhatianRoman)} &nbsp; PERHATIAN</p>
+                  <td colSpan={2} className="h-[24mm] border border-black px-[2mm] py-[1.5mm] text-[11pt] leading-[1.2]">
+                    <p className="font-bold">{roman(perhatianRoman)} &nbsp; PERHATIAN</p>
                     <p>
                       PPK yang menerbitkan SPD, pegawai yang melakukan
                       perjalanan dinas, para pejabat yang mengesahkan tanggal

@@ -95,7 +95,8 @@ export default function SptPage() {
   const templateStyle = useTemplateDocumentStyle();
   const sptTemplateStyle = {
     ...templateStyle,
-    fontFamily: '"Bookman Old Style", Bookman, Georgia, serif',
+    fontFamily: "Tahoma, Geneva, sans-serif",
+    fontSize: "12pt",
   };
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -659,21 +660,21 @@ export default function SptPage() {
 
             {/* Judul SPT */}
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold underline tracking-wider uppercase">
+              <h3 className="text-[14pt] font-bold underline tracking-wider uppercase">
                 SURAT TUGAS
               </h3>
-              <p className="text-xs">Nomor: {previewItem.nomor}</p>
+              <p className="text-[12pt]">Nomor: {previewItem.nomor}</p>
             </div>
 
             {/* Menimbang */}
-            <div className="grid grid-cols-[78px_10px_1fr] gap-x-1 text-xs">
+            <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed">
               <div className="font-bold">Menimbang</div>
               <div>:</div>
-              <div className="space-y-1 text-justify">
+              <div className="space-y-1.5 text-justify">
                 {previewItem.menimbang.map((m, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                    className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
                     <span className="font-bold text-right">
                       {String.fromCharCode(97 + idx)}.
@@ -685,14 +686,14 @@ export default function SptPage() {
             </div>
 
             {/* Dasar */}
-            <div className="grid grid-cols-[78px_10px_1fr] gap-x-1 text-xs pt-2">
+            <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
               <div className="font-bold">Dasar</div>
               <div>:</div>
-              <div className="space-y-1 text-justify">
+              <div className="space-y-1.5 text-justify">
                 {previewItem.dasar.map((d, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                    className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
                     <span className="font-bold text-right">{idx + 1}.</span>
                     <p>{d.text}</p>
@@ -703,18 +704,18 @@ export default function SptPage() {
 
             {/* Perintah Tengah */}
             <div className="text-center pt-2">
-              <h4 className="text-sm font-black tracking-widest">
+              <h4 className="text-[12pt] font-bold tracking-widest uppercase">
                 Memberi Tugas :
               </h4>
             </div>
 
             {/* Kepada */}
-            <div className="grid grid-cols-[78px_10px_1fr] gap-x-1 text-xs pt-2">
+            <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
               <div className="font-bold">Kepada</div>
               <div>:</div>
               <div>
                 {isSptKomisioner(previewItem) ? (
-                  <table className="w-full table-fixed border-collapse text-xs">
+                  <table className="w-full table-fixed border-collapse text-[12pt] leading-normal">
                     <colgroup>
                       <col className="w-[10%]" />
                       <col className="w-[46%]" />
@@ -746,7 +747,7 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-extrabold">
+                            <td className="border-0 px-1 py-0.5 text-left align-top font-bold">
                               {nama}
                             </td>
                             <td className="border-0 px-1 py-0.5 text-left align-top">
@@ -758,7 +759,7 @@ export default function SptPage() {
                     </tbody>
                   </table>
                 ) : (
-                  <table className="w-full table-fixed border-collapse text-xs">
+                  <table className="w-full table-fixed border-collapse text-[12pt] leading-normal">
                     <colgroup>
                       <col className="w-[10%]" />
                       <col className="w-[38%]" />
@@ -794,7 +795,7 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-extrabold">
+                            <td className="border-0 px-1 py-0.5 text-left align-top font-bold">
                               {nama}
                             </td>
                             <td className="border-0 px-1 py-0.5 text-center align-top">
@@ -813,14 +814,14 @@ export default function SptPage() {
             </div>
 
             {/* Untuk */}
-            <div className="grid grid-cols-[78px_10px_1fr] gap-x-1 text-xs pt-2">
+            <div className="grid grid-cols-[92px_12px_1fr] gap-x-1 text-[12pt] leading-relaxed pt-2">
               <div className="font-bold">Untuk</div>
               <div>:</div>
-              <div className="space-y-1 text-justify">
+              <div className="space-y-1.5 text-justify">
                 {previewItem.untuk.map((u, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-[14px_1fr] gap-x-1 align-top"
+                    className="grid grid-cols-[18px_1fr] gap-x-1.5 align-top"
                   >
                     <span className="font-bold text-right">{idx + 1}.</span>
                     <p>{u.text}</p>
@@ -831,9 +832,9 @@ export default function SptPage() {
 
             {/* Penandatanganan & Tanggal Terbit */}
             <div className="pt-8">
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between text-[12pt]">
                 <div className="w-1/3"></div>
-                <div className="w-72 space-y-16 text-center">
+                <div className="w-80 space-y-16 text-center">
                   <div className="space-y-1 text-center">
                     <p>
                       Limboto,{" "}
@@ -846,11 +847,11 @@ export default function SptPage() {
                     </div>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-extrabold underline uppercase">
+                    <p className="font-bold underline uppercase">
                       {getSptSigningOfficial(previewItem)?.nama || "-"}
                     </p>
                     {!isSptKomisioner(previewItem) && (
-                      <p className="text-gray-500 text-xs">
+                      <p className="text-gray-700 text-[12pt]">
                         NIP. {getSptSigningOfficial(previewItem)?.nip || "-"}
                       </p>
                     )}
@@ -865,11 +866,17 @@ export default function SptPage() {
 
       {/* Global CSS for hiding print wrappers */}
       <style jsx global>{`
+        .spt-print-document {
+          font-family: Tahoma, Geneva, sans-serif !important;
+          font-size: 12pt !important;
+          line-height: 1.35 !important;
+        }
         .spt-print-document * {
-          font-weight: 400 !important;
+          font-family: Tahoma, Geneva, sans-serif !important;
         }
         .spt-print-document .spt-kop-title {
           font-weight: 900 !important;
+          font-size: 13.5pt !important;
         }
         @media print {
           body * {

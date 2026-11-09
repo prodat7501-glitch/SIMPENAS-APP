@@ -104,7 +104,7 @@ export default function TemplatePage() {
             </Field>
             <Field label="Font Dokumen">
               <Select value={form.font} onChange={(e) => setForm({ ...form, font: e.target.value as typeof form.font })}>
-                <option>Arial</option><option>Times New Roman</option><option>Inter</option>
+                <option>Arial</option><option>Times New Roman</option><option>Inter</option><option>Tahoma</option><option>Bookman Old Style</option>
               </Select>
             </Field>
             <Field label="Alignment Kop dan Footer">
