@@ -139,6 +139,37 @@ const saveHistory = (items: ApprovalHistory[]) => {
   }
 };
 
+export const getApprovalHistory = (): ApprovalHistory[] => getHistory();
+
+export const getLatestApprovalNote = (
+  documentId?: string,
+  nomorDokumen?: string,
+  documentType?: "Nota Dinas" | "SPT",
+  currentStatus?: string,
+): string => {
+  const history = getHistory();
+  const cleanNomor = nomorDokumen?.trim();
+  const match = history.find((h) => {
+    const idMatch = Boolean(documentId && h.documentId === documentId);
+    const noMatch = Boolean(
+      cleanNomor &&
+        cleanNomor !== "-" &&
+        cleanNomor !== "undefined" &&
+        cleanNomor !== "null" &&
+        h.nomorDokumen === cleanNomor,
+    );
+    const typeMatch = !documentType || h.documentType === documentType;
+    const statusMatch = !currentStatus || h.status === currentStatus;
+    return (
+      (idMatch || noMatch) &&
+      typeMatch &&
+      statusMatch &&
+      Boolean(h.catatan && h.catatan.trim())
+    );
+  });
+  return match?.catatan?.trim() || "";
+};
+
 export const approvalService = {
   listPending: async (user: UserSession): Promise<ApprovalItem[]> => {
     const [remoteNotas, remoteSpts] = await Promise.all([
@@ -244,8 +275,7 @@ export const approvalService = {
           : "Approval Nota Dinas hanya dapat dilakukan Sekretaris/PLH/PLT Sekretaris yang sedang berlaku.",
       );
     }
-    const catatanRevisi =
-      data.decision === "Perlu Revisi" ? data.catatan.trim() : "";
+    const catatanRevisi = data.catatan.trim();
     const updatedItems = items.map((item) =>
       item.id === data.documentId
         ? { ...item, status: data.decision, catatanRevisi }

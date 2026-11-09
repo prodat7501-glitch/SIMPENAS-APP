@@ -58,10 +58,35 @@ const normalizeSeparatedSptPersonil = (item: Spt): Spt => {
   const signer = penandatanganService
     .getAll()
     .find((candidate) => candidate.id === item.penandatanganId);
+  let catatanRevisi = item.catatanRevisi ? String(item.catatanRevisi).trim() : "";
+  if (!catatanRevisi && typeof window !== "undefined") {
+    try {
+      const rawHist = localStorage.getItem("simpenas_approval_history");
+      if (rawHist) {
+        const histList = JSON.parse(rawHist);
+        if (Array.isArray(histList)) {
+          const cleanNomor = (item.nomor || "").trim();
+          const docId = String(item.id || "").trim();
+          const found = histList.find(
+            (h: Record<string, unknown>) =>
+              ((docId && h.documentId === docId) ||
+                (cleanNomor && cleanNomor !== "-" && h.nomorDokumen === cleanNomor)) &&
+              (!item.status || !h.status || h.status === item.status) &&
+              Boolean(h.catatan && String(h.catatan).trim()),
+          );
+          if (found && found.catatan) {
+            catatanRevisi = String(found.catatan).trim();
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
   const normalized = {
     ...item,
     createdByPegawaiId: item.createdByPegawaiId || "",
-    catatanRevisi: item.catatanRevisi ?? "",
+    catatanRevisi,
     penandatanganSnapshot:
       item.penandatanganSnapshot?.penandatanganId === item.penandatanganId
         ? item.penandatanganSnapshot

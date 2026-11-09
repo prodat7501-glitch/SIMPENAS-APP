@@ -5,6 +5,8 @@ import { useNotificationStore } from "@/stores/notification.store";
 import { approvalService } from "./approval.service";
 import type { ApprovalDecision } from "./approval.schema";
 import { useApprovalStore } from "./approval.store";
+import { useNotaDinasStore } from "@/modules/nota-dinas/nota-dinas.store";
+import { useSptStore } from "@/modules/spt/spt.store";
 import type { UserRole } from "@/stores/auth.store";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -32,6 +34,10 @@ export function useApproval() {
     },
     onSuccess: (item) => {
       queryClient.invalidateQueries({ queryKey: KEY });
+      queryClient.invalidateQueries({ queryKey: ["nota-dinas"] });
+      queryClient.invalidateQueries({ queryKey: ["spt"] });
+      void useNotaDinasStore.getState().load();
+      void useSptStore.getState().load();
       useNotificationStore
         .getState()
         .addNotification(

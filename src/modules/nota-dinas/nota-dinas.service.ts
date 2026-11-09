@@ -229,7 +229,31 @@ const normalizeNotaDinas = (raw: unknown): NotaDinas => {
   const status = (item.status as NotaDinas["status"]) || "Draft";
   const dipaId = String(item.dipaId || item.dipa_id || item.akun_anggaran || "").trim();
   const createdByPegawaiId = String(item.createdByPegawaiId || item.created_by_pegawai_id || item.created_by || "").trim();
-  const catatanRevisi = String(item.catatanRevisi || item.catatan_revisi || "").trim();
+  let catatanRevisi = String(item.catatanRevisi || item.catatan_revisi || "").trim();
+  if (!catatanRevisi && typeof window !== "undefined") {
+    try {
+      const rawHist = localStorage.getItem("simpenas_approval_history");
+      if (rawHist) {
+        const histList = JSON.parse(rawHist);
+        if (Array.isArray(histList)) {
+          const cleanNomor = nomor.trim();
+          const docId = String(item.id || "").trim();
+          const found = histList.find(
+            (h: Record<string, unknown>) =>
+              ((docId && h.documentId === docId) ||
+                (cleanNomor && cleanNomor !== "-" && h.nomorDokumen === cleanNomor)) &&
+              (!status || !h.status || h.status === status) &&
+              Boolean(h.catatan && String(h.catatan).trim()),
+          );
+          if (found && found.catatan) {
+            catatanRevisi = String(found.catatan).trim();
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   let travelConflicts = item.travelConflicts || item.travel_conflicts;
   if (typeof travelConflicts === "string") {

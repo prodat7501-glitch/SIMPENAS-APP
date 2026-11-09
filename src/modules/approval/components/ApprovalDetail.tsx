@@ -177,7 +177,7 @@ export function ApprovalDetail({
               {...register("catatan")}
               rows={3}
               className="w-full text-sm p-3.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-foreground placeholder:text-muted-foreground transition-all duration-200"
-              placeholder={`Wajib diisi apabila ${item.documentType} ditolak untuk revisi.`}
+              placeholder={`Tuliskan catatan arahan (opsional saat disetujui, wajib diisi jika ditolak untuk revisi)...`}
             />
             {errors.catatan && (
               <p className="text-xs font-bold text-danger">

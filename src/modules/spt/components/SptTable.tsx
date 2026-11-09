@@ -17,6 +17,8 @@ import { Edit2, Trash2, Search, Inbox, Printer } from "lucide-react";
 import { Spt } from "../spt.schema";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatTableDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+import { getLatestApprovalNote } from "@/modules/approval/approval.service";
 
 interface SptTableProps {
   items: Spt[];
@@ -134,11 +136,35 @@ export function SptTable({
                       <Badge variant={getStatusVariant(item.status)}>
                         {item.status}
                       </Badge>
-                      {item.status === "Perlu Revisi" && item.catatanRevisi && (
-                        <p className="max-w-64 text-[10px] font-semibold leading-relaxed text-danger">
-                          Catatan: {item.catatanRevisi}
-                        </p>
-                      )}
+                      {(() => {
+                        const note =
+                          (item.catatanRevisi && item.catatanRevisi.trim()) ||
+                          getLatestApprovalNote(
+                            item.id,
+                            item.nomor,
+                            "SPT",
+                            item.status,
+                          );
+                        if (!note) return null;
+                        return (
+                          <div
+                            className={cn(
+                              "max-w-64 text-[10.5px] leading-relaxed rounded-md px-2 py-1 mt-0.5 border break-words",
+                              item.status === "Perlu Revisi"
+                                ? "bg-danger/10 border-danger/30 text-danger font-medium"
+                                : item.status === "Disetujui"
+                                  ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-medium"
+                                  : "bg-muted/50 border-border text-muted-foreground",
+                            )}
+                            title={`Catatan: ${note}`}
+                          >
+                            <span className="font-semibold block text-[9.5px] uppercase tracking-wider opacity-80">
+                              Catatan {item.status === "Disetujui" ? "Persetujuan" : "Revisi"}:
+                            </span>
+                            {note}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
