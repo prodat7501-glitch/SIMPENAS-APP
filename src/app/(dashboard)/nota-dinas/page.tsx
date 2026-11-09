@@ -582,7 +582,7 @@ export default function NotaDinasPage() {
         title={
           editingItem ? "Ubah Transaksi Nota Dinas" : "Buat Nota Dinas Baru"
         }
-        className="flex max-h-[92vh] max-w-6xl flex-col"
+        className="flex max-h-[92vh] w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] flex-col"
         bodyClassName="min-h-0 flex-1 overflow-y-auto pr-2"
       >
         <NotaDinasForm

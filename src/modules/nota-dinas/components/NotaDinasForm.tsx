@@ -613,9 +613,9 @@ export function NotaDinasForm({
       })}
       className="space-y-6"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Header Card (2/3 width or 1/3) */}
-        <div className="lg:col-span-1 space-y-4 bg-card p-5 border border-border rounded-xl">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: Header Card (5/12 width) */}
+        <div className="lg:col-span-5 space-y-4 bg-card p-5 border border-border rounded-xl">
           <h2 className="text-sm font-bold text-foreground uppercase border-b border-border pb-2 flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-primary" /> Informasi Header
           </h2>
@@ -670,7 +670,7 @@ export function NotaDinasForm({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
                 Tanggal
@@ -679,6 +679,7 @@ export function NotaDinasForm({
                 type="date"
                 {...register("tanggal")}
                 error={!!errors.tanggal}
+                className="text-xs sm:text-sm px-2.5 [color-scheme:light] dark:[color-scheme:dark]"
               />
             </div>
             <div>
@@ -697,7 +698,7 @@ export function NotaDinasForm({
             <p className="text-[10px] font-bold uppercase text-foreground">
               Rencana Perjalanan
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[9px] font-bold text-muted-foreground uppercase mb-1">
                   Tanggal Berangkat
@@ -706,6 +707,7 @@ export function NotaDinasForm({
                   type="date"
                   {...register("tanggalBerangkat")}
                   error={!!errors.tanggalBerangkat}
+                  className="text-xs sm:text-sm px-2.5 [color-scheme:light] dark:[color-scheme:dark]"
                 />
                 {errors.tanggalBerangkat && (
                   <p className="text-[10px] text-danger font-bold mt-1">
@@ -721,6 +723,7 @@ export function NotaDinasForm({
                   type="date"
                   {...register("tanggalKembali")}
                   error={!!errors.tanggalKembali}
+                  className="text-xs sm:text-sm px-2.5 [color-scheme:light] dark:[color-scheme:dark]"
                 />
                 {errors.tanggalKembali && (
                   <p className="text-[10px] text-danger font-bold mt-1">
@@ -878,8 +881,8 @@ export function NotaDinasForm({
           </div>
         </div>
 
-        {/* Right: Isi & Lampiran Costing (2/3 width) */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Right: Isi & Lampiran Costing (7/12 width) */}
+        <div className="lg:col-span-7 space-y-4">
           <div className="bg-card p-5 border border-border rounded-xl space-y-4">
             <h2 className="text-sm font-bold text-foreground uppercase border-b border-border pb-2 flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-primary" /> Isi Nota Dinas
