@@ -717,17 +717,17 @@ export default function SptPage() {
                 {isSptKomisioner(previewItem) ? (
                   <table className="w-full table-fixed border-collapse text-[12pt] leading-normal">
                     <colgroup>
-                      <col className="w-[10%]" />
-                      <col className="w-[46%]" />
-                      <col className="w-[44%]" />
+                      <col className="w-[6%]" />
+                      <col className="w-[47%]" />
+                      <col className="w-[47%]" />
                     </colgroup>
                     <thead>
                       <tr className="font-normal">
                         <th className="border-0 px-1 py-0.5 text-center font-normal">No</th>
-                        <th className="border-0 px-1 py-0.5 text-center font-normal">
+                        <th className="border-0 px-2 py-0.5 text-left font-normal">
                           Nama
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center font-normal">
+                        <th className="border-0 pl-6 pr-2 py-0.5 text-left font-normal">
                           Jabatan
                         </th>
                       </tr>
@@ -747,10 +747,10 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-normal">
+                            <td className="border-0 px-2 py-0.5 text-left align-top font-normal">
                               {nama}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top">
+                            <td className="border-0 pl-6 pr-2 py-0.5 text-left align-top">
                               {getPegawaiJabatan(p.pegawaiId)}
                             </td>
                           </tr>
@@ -761,21 +761,21 @@ export default function SptPage() {
                 ) : (
                   <table className="w-full table-fixed border-collapse text-[12pt] leading-normal">
                     <colgroup>
-                      <col className="w-[10%]" />
-                      <col className="w-[38%]" />
-                      <col className="w-[24%]" />
-                      <col className="w-[28%]" />
+                      <col className="w-[6%]" />
+                      <col className="w-[34%]" />
+                      <col className="w-[30%]" />
+                      <col className="w-[30%]" />
                     </colgroup>
                     <thead>
                       <tr className="font-normal">
                         <th className="border-0 px-1 py-0.5 text-center font-normal">No</th>
-                        <th className="border-0 px-1 py-0.5 text-center font-normal">
+                        <th className="border-0 px-2 py-0.5 text-left font-normal">
                           Nama
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center font-normal">
+                        <th className="border-0 px-2 py-0.5 text-center font-normal">
                           NIP
                         </th>
-                        <th className="border-0 px-1 py-0.5 text-center font-normal">
+                        <th className="border-0 pl-6 pr-2 py-0.5 text-left font-normal">
                           Pangkat
                         </th>
                       </tr>
@@ -795,13 +795,13 @@ export default function SptPage() {
                             <td className="border-0 px-1 py-0.5 text-center align-top">
                               {idx + 1}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top font-normal">
+                            <td className="border-0 px-2 py-0.5 text-left align-top font-normal">
                               {nama}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-center align-top">
+                            <td className="border-0 px-2 py-0.5 text-center align-top whitespace-nowrap">
                               {nip}
                             </td>
-                            <td className="border-0 px-1 py-0.5 text-left align-top">
+                            <td className="border-0 pl-6 pr-2 py-0.5 text-left align-top">
                               {getPegawaiPangkatGol(p.pegawaiId)}
                             </td>
                           </tr>
