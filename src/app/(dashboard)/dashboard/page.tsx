@@ -129,13 +129,6 @@ export default function DashboardPage() {
         </div>
       </motion.section>
 
-      {data.removedDemoRecords > 0 && (
-        <Alert variant="success" title="Data demo berhasil dibersihkan">
-          {data.removedDemoRecords} transaksi demo bawaan yang belum pernah
-          diubah telah dihapus. Data input Anda tetap dipertahankan.
-        </Alert>
-      )}
-
       {error && (
         <Alert variant="warning" title="Pembaruan terakhir gagal">
           {error}. Dashboard tetap menampilkan hasil terakhir yang berhasil.
