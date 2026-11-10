@@ -652,26 +652,26 @@ export function LaporanPreview({
           className={
             isLaporanKomisioner
               ? "flex flex-col items-center border-b-[3px] border-double border-black pb-3 text-center"
-              : "grid grid-cols-[64px_1fr_64px] items-center border-b-[3px] border-double border-black pb-3 text-center"
+              : "grid grid-cols-[76px_1fr_76px] items-center border-b-[3px] border-double border-black pb-3 text-center"
           }
         >
           <Image
             src={template.logo}
             alt="Logo instansi"
-            width={56}
-            height={56}
-            className={`h-14 w-14 object-contain ${
+            width={72}
+            height={72}
+            className={`h-[72px] w-[72px] object-contain mx-auto ${
               isLaporanKomisioner ? "mb-2" : ""
             }`}
           />
-          <div>
-            <h1 className="text-base font-black uppercase tracking-wide leading-tight">
+          <div className="space-y-0.5 text-center px-2">
+            <h1 className="laporan-kop-title text-[17pt] font-black uppercase tracking-wide leading-tight">
               KOMISI PEMILIHAN UMUM
             </h1>
-            <p className="text-base font-black uppercase tracking-wide leading-tight">
+            <p className="laporan-kop-title text-[17pt] font-black uppercase tracking-wide leading-tight">
               KABUPATEN GORONTALO
             </p>
-            <p className="mt-1 text-[10px] italic text-gray-500">
+            <p className="laporan-kop-alamat mt-1 text-[10pt] italic text-gray-600 leading-normal">
               {template.alamat}
             </p>
           </div>
@@ -839,7 +839,26 @@ export function LaporanPreview({
           width: 100% !important;
         }
 
-        .laporan-document-content p,
+        .laporan-kop-title {
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 17pt !important;
+          font-weight: 900 !important;
+          line-height: 1.2 !important;
+          letter-spacing: 0.02em !important;
+          margin: 0 !important;
+          display: block !important;
+        }
+
+        .laporan-kop-alamat {
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 10pt !important;
+          font-style: italic !important;
+          line-height: 1.3 !important;
+          color: #4b5563 !important;
+          display: block !important;
+        }
+
+        .laporan-document-content p:not(.laporan-kop-title):not(.laporan-kop-alamat),
         .laporan-document-content td,
         .laporan-document-content th,
         .laporan-document-content li,
@@ -941,7 +960,26 @@ export function LaporanPreview({
             width: 100% !important;
           }
 
-          .laporan-document-content p,
+          .laporan-kop-title {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 17pt !important;
+            font-weight: 900 !important;
+            line-height: 1.2 !important;
+            letter-spacing: 0.02em !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+
+          .laporan-kop-alamat {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 10pt !important;
+            font-style: italic !important;
+            line-height: 1.3 !important;
+            color: #4b5563 !important;
+            display: block !important;
+          }
+
+          .laporan-document-content p:not(.laporan-kop-title):not(.laporan-kop-alamat),
           .laporan-document-content td,
           .laporan-document-content th,
           .laporan-document-content li,

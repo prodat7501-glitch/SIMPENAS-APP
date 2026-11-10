@@ -398,8 +398,51 @@ const getItems = async (params?: { page?: number; limit?: number; search?: strin
           });
         }
 
+        const judulLaporan =
+          remote.judulLaporan &&
+          remote.judulLaporan.trim() !== "" &&
+          remote.judulLaporan.trim() !== "Laporan Perjalanan Dinas"
+            ? remote.judulLaporan
+            : local.judulLaporan &&
+              local.judulLaporan.trim() !== "" &&
+              local.judulLaporan.trim() !== "Laporan Perjalanan Dinas"
+            ? local.judulLaporan
+            : remote.judulLaporan || local.judulLaporan || "Laporan Perjalanan Dinas";
+
+        const tempatPelaksanaan =
+          remote.tempatPelaksanaan && !isInvalidTempat(remote.tempatPelaksanaan)
+            ? remote.tempatPelaksanaan
+            : local.tempatPelaksanaan && !isInvalidTempat(local.tempatPelaksanaan)
+            ? local.tempatPelaksanaan
+            : remote.tempatPelaksanaan || local.tempatPelaksanaan || "";
+
+        const nomorSuratTugas =
+          remote.nomorSuratTugas && !isInvalidNomor(remote.nomorSuratTugas)
+            ? remote.nomorSuratTugas
+            : local.nomorSuratTugas && !isInvalidNomor(local.nomorSuratTugas)
+            ? local.nomorSuratTugas
+            : remote.nomorSuratTugas || local.nomorSuratTugas || "";
+
+        const tanggalSuratTugas =
+          remote.tanggalSuratTugas && remote.tanggalSuratTugas !== "-"
+            ? remote.tanggalSuratTugas
+            : local.tanggalSuratTugas && local.tanggalSuratTugas !== "-"
+            ? local.tanggalSuratTugas
+            : remote.tanggalSuratTugas || local.tanggalSuratTugas || "";
+
+        const suratTugas =
+          remote.suratTugas && remote.suratTugas !== "Sekretaris KPU"
+            ? remote.suratTugas
+            : local.suratTugas || remote.suratTugas || "Sekretaris KPU";
+
         return {
+          ...local,
           ...remote,
+          judulLaporan,
+          tempatPelaksanaan,
+          nomorSuratTugas,
+          tanggalSuratTugas,
+          suratTugas,
           fileLaporan: fileLaporan || null,
           dokumentasi: dokumentasi || [],
         };
@@ -433,6 +476,18 @@ export const laporanService = {
         const localItems = await readDatabaseItems();
         const local = localItems.find((l) => l.id === id || (normalized.sptId && l.sptId === normalized.sptId));
         if (local) {
+          if ((!normalized.judulLaporan || normalized.judulLaporan === "Laporan Perjalanan Dinas") && local.judulLaporan && local.judulLaporan !== "Laporan Perjalanan Dinas") {
+            normalized.judulLaporan = local.judulLaporan;
+          }
+          if ((!normalized.tempatPelaksanaan || isInvalidTempat(normalized.tempatPelaksanaan)) && local.tempatPelaksanaan && !isInvalidTempat(local.tempatPelaksanaan)) {
+            normalized.tempatPelaksanaan = local.tempatPelaksanaan;
+          }
+          if ((!normalized.nomorSuratTugas || isInvalidNomor(normalized.nomorSuratTugas)) && local.nomorSuratTugas && !isInvalidNomor(local.nomorSuratTugas)) {
+            normalized.nomorSuratTugas = local.nomorSuratTugas;
+          }
+          if ((!normalized.tanggalSuratTugas || normalized.tanggalSuratTugas === "-") && local.tanggalSuratTugas && local.tanggalSuratTugas !== "-") {
+            normalized.tanggalSuratTugas = local.tanggalSuratTugas;
+          }
           if (!normalized.fileLaporan?.dataUrl && local.fileLaporan?.dataUrl) {
             normalized.fileLaporan = local.fileLaporan;
           }
