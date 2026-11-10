@@ -50,6 +50,12 @@ export const sppdSchema = z
       .int()
       .min(1, "Minimal terdapat Romawi I")
       .default(6),
+    spasiTtdHalaman2: z.coerce
+      .number()
+      .int()
+      .min(1, "Minimal 1 enter")
+      .max(5, "Maksimal 5 enter")
+      .default(3),
     tandaTanganHalaman2: z.array(sppdTandaTanganHalaman2Schema).default([]),
     status: z.enum(SPPD_STATUS_OPTIONS).default("Draft"),
   })

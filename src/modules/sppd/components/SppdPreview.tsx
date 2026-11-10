@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,9 @@ export function SppdPreview({
   penandatangans,
   onClose,
 }: SppdPreviewProps) {
+  const [overrideSpasiTtd, setOverrideSpasiTtd] = useState<
+    Record<string, number>
+  >({});
   const template = useDocumentTemplate();
   const spt = item ? spts.find((data) => data.id === item.sptId) : null;
   const dipa = item ? dipas.find((data) => data.id === item.dipaId) : null;
@@ -114,6 +118,32 @@ export function SppdPreview({
     });
     return `${result}.`;
   };
+  const spasiTtd =
+    (item.id ? overrideSpasiTtd[item.id] : undefined) ??
+    item.spasiTtdHalaman2 ??
+    3;
+
+  const handleSpasiTtdChange = (delta: number) => {
+    const nextVal = Math.max(1, Math.min(5, spasiTtd + delta));
+    if (item.id) {
+      setOverrideSpasiTtd((prev) => ({
+        ...prev,
+        [item.id!]: nextVal,
+      }));
+    }
+  };
+
+  const getSignatureMarginTopMm = (enter: number) => {
+    const clamped = Math.max(1, Math.min(5, enter || 3));
+    return 8 + clamped * 4;
+  };
+
+  const getManualSignatureMarginTopMm = (enter: number) => {
+    const clamped = Math.max(1, Math.min(5, enter || 3));
+    const map = [0, 12, 16, 20, 24, 27];
+    return map[clamped] ?? 20;
+  };
+
   const page2Count = Math.max(Number(item.jumlahKolomHalaman2 ?? 6), 1);
   const trimPage2Text = (value?: string) => value?.trim() ?? "";
   const hasCustomPage2Route = manualPage2Signers.some(
@@ -265,6 +295,35 @@ export function SppdPreview({
           className="bg-white text-black w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl shadow-2xl print-container relative my-auto p-7"
         >
           <div className="absolute top-4 right-4 flex items-center gap-2 no-print">
+            {mode === "page2" && (
+              <div
+                className="flex items-center gap-1.5 bg-gray-100/90 border border-gray-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-sm"
+                title="Atur jarak vertikal tanda tangan halaman 2 (1 sampai 5 enter)"
+              >
+                <span className="whitespace-nowrap text-gray-600">Jarak TTD:</span>
+                <button
+                  type="button"
+                  onClick={() => handleSpasiTtdChange(-1)}
+                  disabled={spasiTtd <= 1}
+                  className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-bold text-sm leading-none transition-colors"
+                  title="Kurangi jarak tanda tangan (naikkan nama)"
+                >
+                  -
+                </button>
+                <span className="min-w-14 text-center font-bold text-gray-900">
+                  {spasiTtd} Enter
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSpasiTtdChange(1)}
+                  disabled={spasiTtd >= 5}
+                  className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-bold text-sm leading-none transition-colors"
+                  title="Tambah jarak tanda tangan (turunkan nama)"
+                >
+                  +
+                </button>
+              </div>
+            )}
             <PrintExportActions
               title={`SPPD ${item.nomor}${mode === "page2" ? " Halaman 2" : ""}`}
               module="SPPD"
@@ -561,7 +620,12 @@ export function SppdPreview({
                         value: effectivePenandatangan?.jabatanPenandatangan ?? "",
                       },
                     ])}
-                    <div className="mx-auto mt-[12mm] w-[94mm]">
+                    <div
+                      className="mx-auto w-[94mm]"
+                      style={{
+                        marginTop: `${getSignatureMarginTopMm(spasiTtd)}mm`,
+                      }}
+                    >
                       <div title={effectivePenandatangan?.nama ?? ""}>
                         {renderPage2SignatureName(effectivePenandatangan?.nama)}
                       </div>
@@ -611,7 +675,10 @@ export function SppdPreview({
                             )}
                           </div>
                           <div
-                            className="ml-[8mm] mt-[13mm] w-[86mm]"
+                            className="ml-[8mm] w-[86mm]"
+                            style={{
+                              marginTop: `${getManualSignatureMarginTopMm(spasiTtd)}mm`,
+                            }}
                             title={manual?.nama ?? ""}
                           >
                             {renderPage2SignatureName(manual?.nama)}
@@ -655,7 +722,10 @@ export function SppdPreview({
                             )}
                           </div>
                           <div
-                            className="mt-[13mm] w-[86mm]"
+                            className="w-[86mm]"
+                            style={{
+                              marginTop: `${getManualSignatureMarginTopMm(spasiTtd)}mm`,
+                            }}
                             title={manual?.nama ?? ""}
                           >
                             {renderPage2SignatureName(manual?.nama)}

@@ -110,6 +110,7 @@ export function SppdForm({
       penandatanganId: "",
       penandatanganSnapshot: null,
       jumlahKolomHalaman2: 6,
+      spasiTtdHalaman2: 3,
       tandaTanganHalaman2: [],
       status: "Draft",
     },
@@ -167,6 +168,7 @@ export function SppdForm({
       initialValues.penandatanganSnapshot ?? null,
     );
     setValue("jumlahKolomHalaman2", initialValues.jumlahKolomHalaman2 ?? 6);
+    setValue("spasiTtdHalaman2", initialValues.spasiTtdHalaman2 ?? 3);
     replaceTandaTangan(
       (initialValues.tandaTanganHalaman2 ?? []).map(normalizePage2Signer),
     );
@@ -255,6 +257,9 @@ export function SppdForm({
     setValue("jumlahKolomHalaman2", existingSameSpt?.jumlahKolomHalaman2 ?? 6, {
       shouldValidate: true,
     });
+    setValue("spasiTtdHalaman2", existingSameSpt?.spasiTtdHalaman2 ?? 3, {
+      shouldValidate: true,
+    });
     replaceTandaTangan(
       (existingSameSpt?.tandaTanganHalaman2 ?? []).map(normalizePage2Signer),
     );
@@ -311,6 +316,7 @@ export function SppdForm({
           penandatanganId: data.penandatanganId,
           penandatanganSnapshot: initialValues?.penandatanganSnapshot ?? null,
           jumlahKolomHalaman2: Number(data.jumlahKolomHalaman2 ?? 6),
+          spasiTtdHalaman2: Number(data.spasiTtdHalaman2 ?? 3),
           tandaTanganHalaman2: (data.tandaTanganHalaman2 ?? []).map((item) => ({
             tibaDi: item.tibaDi ?? "",
             tanggalTiba: item.tanggalTiba ?? "",
@@ -639,18 +645,36 @@ export function SppdForm({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 self-start sm:self-auto bg-muted/50 px-3 py-1.5 rounded-lg border border-border">
-            <label className="text-xs font-bold text-muted-foreground uppercase whitespace-nowrap">
-              Jumlah Kolom Romawi:
-            </label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              {...register("jumlahKolomHalaman2")}
-              onChange={handleJumlahTandaTanganChange}
-              className="w-16 h-8 font-bold text-center bg-background"
-            />
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-lg border border-border">
+              <label className="text-xs font-bold text-muted-foreground uppercase whitespace-nowrap">
+                Jumlah Romawi:
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                {...register("jumlahKolomHalaman2")}
+                onChange={handleJumlahTandaTanganChange}
+                className="w-16 h-8 font-bold text-center bg-background"
+              />
+            </div>
+            <div
+              className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-lg border border-border"
+              title="Jarak spasi baris/enter tanda tangan (1 sampai 5 enter)"
+            >
+              <label className="text-xs font-bold text-muted-foreground uppercase whitespace-nowrap">
+                Jarak TTD:
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={5}
+                {...register("spasiTtdHalaman2")}
+                className="w-14 h-8 font-bold text-center bg-background"
+              />
+              <span className="text-xs text-muted-foreground font-semibold">Enter</span>
+            </div>
           </div>
         </div>
 

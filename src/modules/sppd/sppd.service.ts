@@ -31,6 +31,7 @@ const defaultSppds: Sppd[] = [
     penandatanganId: "pe1",
     penandatanganSnapshot: null,
     jumlahKolomHalaman2: 6,
+    spasiTtdHalaman2: 3,
     tandaTanganHalaman2: [],
     status: "Selesai",
   },
@@ -99,6 +100,8 @@ interface RawSppdApi {
   penandatangan_snapshot?: unknown;
   jumlahKolomHalaman2?: number;
   jumlah_kolom_halaman2?: number;
+  spasiTtdHalaman2?: number;
+  spasi_ttd_halaman2?: number;
   tandaTanganHalaman2?: unknown;
   tanda_tangan_halaman2?: unknown;
   status?: Sppd["status"];
@@ -168,6 +171,9 @@ const normalizeSinglePersonilSppd = (raw: RawSppdApi): Sppd => {
     penandatanganId,
     jumlahKolomHalaman2: Number(
       raw.jumlahKolomHalaman2 ?? raw.jumlah_kolom_halaman2 ?? 6,
+    ),
+    spasiTtdHalaman2: Number(
+      raw.spasiTtdHalaman2 ?? raw.spasi_ttd_halaman2 ?? 3,
     ),
     tandaTanganHalaman2,
     status: normalizeStoredStatus(raw.status),
