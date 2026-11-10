@@ -105,14 +105,79 @@ const resolveInitialValues = (
   const sptId = getSptIdFromReport(item, sppds);
   const spt = spts.find((data) => data.id === sptId);
   const relatedSppds = sppds.filter((data) => data.sptId === sptId);
-  const tempatPelaksanaan =
-    item?.tempatPelaksanaan ||
-    uniqueText(relatedSppds.map((data) => data.tempatTujuan)).join(", ");
-  const hariTanggalPelaksanaan =
-    item?.hariTanggalPelaksanaan || getTanggalPelaksanaan(relatedSppds, spt);
-  const nomorSuratTugas = item?.nomorSuratTugas || spt?.nomor || "";
-  const tanggalSuratTugas =
-    item?.tanggalSuratTugas || formatTanggalIndonesia(spt?.tanggalMulai);
+
+  const extractedTempat = (() => {
+    if (item?.tempatPelaksanaan?.trim()) return item.tempatPelaksanaan.trim();
+    if (item?.tempatWaktu) {
+      const match = item.tempatWaktu.match(
+        /Tempat Pelaksanaan\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
+      );
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    return uniqueText(relatedSppds.map((data) => data.tempatTujuan)).join(", ");
+  })();
+
+  const extractedHariTanggal = (() => {
+    if (item?.hariTanggalPelaksanaan?.trim())
+      return item.hariTanggalPelaksanaan.trim();
+    if (item?.tempatWaktu) {
+      const match = item.tempatWaktu.match(
+        /Hari\s*\/\s*Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
+      );
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    return getTanggalPelaksanaan(relatedSppds, spt);
+  })();
+
+  const extractedNomorSt = (() => {
+    if (item?.nomorSuratTugas?.trim() && item.nomorSuratTugas.trim() !== "-") {
+      return item.nomorSuratTugas.trim();
+    }
+    if (item?.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(
+        /Nomor\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
+      );
+      if (match?.[1]?.trim() && match[1].trim() !== "-") {
+        return match[1].trim();
+      }
+    }
+    return spt?.nomor || "";
+  })();
+
+  const extractedTanggalSt = (() => {
+    if (
+      item?.tanggalSuratTugas?.trim() &&
+      item.tanggalSuratTugas.trim() !== "-"
+    ) {
+      return formatTanggalIndonesia(item.tanggalSuratTugas.trim());
+    }
+    if (item?.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(
+        /Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
+      );
+      if (match?.[1]?.trim() && match[1].trim() !== "-") {
+        return formatTanggalIndonesia(match[1].trim());
+      }
+    }
+    return formatTanggalIndonesia(spt?.tanggalMulai);
+  })();
+
+  const extractedSuratTugas = (() => {
+    if (item?.suratTugas?.trim()) return item.suratTugas.trim();
+    if (item?.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(
+        /Surat Tugas\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
+      );
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    return DEFAULT_SURAT_TUGAS;
+  })();
+
+  const tempatPelaksanaan = extractedTempat;
+  const hariTanggalPelaksanaan = extractedHariTanggal;
+  const nomorSuratTugas = extractedNomorSt;
+  const tanggalSuratTugas = extractedTanggalSt;
+  const suratTugas = extractedSuratTugas;
 
   return {
     metodeLaporan: item?.metodeLaporan ?? "form",
@@ -121,7 +186,7 @@ const resolveInitialValues = (
     sppdId: item?.sppdId || relatedSppds[0]?.id || "",
     pelaksanaId: item?.pelaksanaId || spt?.personil[0]?.pegawaiId || "",
     judulLaporan: item?.judulLaporan || DEFAULT_JUDUL_LAPORAN,
-    suratTugas: item?.suratTugas || DEFAULT_SURAT_TUGAS,
+    suratTugas,
     nomorSuratTugas,
     tanggalSuratTugas,
     dasarPelaksanaan:
@@ -326,8 +391,18 @@ export function LaporanForm({
       className="space-y-6 max-h-[78vh] overflow-y-auto pr-2"
     >
       <label className="space-y-1.5 block">
-        <span className="font-bold text-sm text-foreground">Judul Laporan</span>
-        <Input {...register("judulLaporan")} className="text-sm h-11" />
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-sm text-foreground">Judul Laporan</span>
+          <span className="text-[11px] text-muted-foreground font-medium">
+            Tekan Enter untuk memisahkan baris kalimat judul saat dicetak
+          </span>
+        </div>
+        <textarea
+          {...register("judulLaporan")}
+          rows={3}
+          placeholder="Judul laporan perjalanan dinas (tekan Enter untuk memisahkan baris)..."
+          className="w-full text-sm p-3 rounded-xl border bg-background text-foreground transition-all resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+        />
         <Error text={errors.judulLaporan?.message} />
       </label>
 

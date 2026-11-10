@@ -25,6 +25,19 @@ const formatTanggalIndonesia = (dateStr?: string) => {
   }).format(date);
 };
 
+const uniqueText = (items: string[]) =>
+  Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+
+const getTanggalPelaksanaan = (relatedSppds: Sppd[], spt?: Spt) => {
+  const first = relatedSppds[0];
+  const start = first?.tanggalBerangkat ?? spt?.tanggalMulai ?? "";
+  const end = first?.tanggalKembali ?? spt?.tanggalSelesai ?? "";
+
+  if (!start && !end) return "";
+  if (!end || start === end) return formatTanggalIndonesia(start);
+  return `${formatTanggalIndonesia(start)} s.d. ${formatTanggalIndonesia(end)}`;
+};
+
 const dataUrlToBlob = (dataUrl: string): Blob => {
   const parts = dataUrl.split(",");
   const mimeMatch = parts[0]?.match(/:(.*?);/);
@@ -54,7 +67,7 @@ const renderNumberedList = (value: string) => {
   }
 
   return (
-    <ol className="list-decimal space-y-1 pl-5 text-justify laporan-flow-list">
+    <ol className="list-decimal space-y-1 pl-6 text-justify laporan-flow-list text-[12pt] leading-[1.35]">
       {items.map((point, index) => (
         <li key={`${point}-${index}`}>{point}</li>
       ))}
@@ -72,7 +85,7 @@ const renderBulletList = (value: string) => {
   }
 
   return (
-    <ul className="list-disc space-y-1 pl-5 text-justify laporan-flow-list">
+    <ul className="list-disc space-y-1 pl-6 text-justify laporan-flow-list text-[12pt] leading-[1.35]">
       {items.map((point, index) => (
         <li key={`${point}-${index}`}>{point}</li>
       ))}
@@ -92,9 +105,9 @@ function SectionBlock({
   return (
     <section className="laporan-section">
       <div className="flex items-start gap-x-2">
-        <span className="font-bold w-6 shrink-0 laporan-section-code">{code}</span>
+        <span className="font-bold w-6 shrink-0 text-[12pt] leading-[1.35] laporan-section-code">{code}</span>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold mb-1 laporan-section-title">{title}</h3>
+          <h3 className="font-bold mb-1.5 text-[12pt] leading-[1.35] laporan-section-title">{title}</h3>
           {children}
         </div>
       </div>
@@ -251,8 +264,15 @@ export function LaporanPreview({
   if (!item) return null;
 
   const sppd = sppds.find((x) => x.id === item.sppdId);
-  const spt = spts.find((x) => x.id === item.sptId) ??
+  const spt =
+    spts.find((x) => x.id === item.sptId) ??
     spts.find((x) => x.id === sppd?.sptId);
+  const relatedSppds = sppds.filter(
+    (x) =>
+      (item.sptId && x.sptId === item.sptId) ||
+      (item.sppdId && x.id === item.sppdId) ||
+      (spt?.id && x.sptId === spt.id),
+  );
   const pelaksana =
     sortByPegawaiOrder(
       spt?.personil ?? [],
@@ -267,9 +287,68 @@ export function LaporanPreview({
     : fallbackPegawai
       ? [fallbackPegawai]
       : [];
-  const nomorSuratTugas = item.nomorSuratTugas || spt?.nomor || "-";
-  const tanggalSuratTugas = item.tanggalSuratTugas || "-";
-  const suratTugas = item.suratTugas || "Sekretaris KPU";
+
+  const nomorSuratTugas = (() => {
+    if (item.nomorSuratTugas?.trim() && item.nomorSuratTugas.trim() !== "-") {
+      return item.nomorSuratTugas.trim();
+    }
+    if (item.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(/Nomor\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
+      if (match?.[1]?.trim() && match[1].trim() !== "-") {
+        return match[1].trim();
+      }
+    }
+    return spt?.nomor || "-";
+  })();
+
+  const tanggalSuratTugas = (() => {
+    if (item.tanggalSuratTugas?.trim() && item.tanggalSuratTugas.trim() !== "-") {
+      return formatTanggalIndonesia(item.tanggalSuratTugas.trim());
+    }
+    if (item.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(/Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
+      if (match?.[1]?.trim() && match[1].trim() !== "-") {
+        return formatTanggalIndonesia(match[1].trim());
+      }
+    }
+    if (spt?.tanggalMulai) {
+      return formatTanggalIndonesia(spt.tanggalMulai);
+    }
+    return "-";
+  })();
+
+  const suratTugas = (() => {
+    if (item.suratTugas?.trim()) return item.suratTugas.trim();
+    if (item.dasarPelaksanaan) {
+      const match = item.dasarPelaksanaan.match(/Surat Tugas\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    return "Sekretaris KPU";
+  })();
+
+  const tempatPelaksanaan = (() => {
+    if (item.tempatPelaksanaan?.trim()) return item.tempatPelaksanaan.trim();
+    if (item.tempatWaktu) {
+      const match = item.tempatWaktu.match(/Tempat Pelaksanaan\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    const sppdTujuan = uniqueText(relatedSppds.map((x) => x.tempatTujuan)).join(", ");
+    if (sppdTujuan) return sppdTujuan;
+    if (item.tujuan?.trim()) return item.tujuan.trim();
+    return "-";
+  })();
+
+  const hariTanggalPelaksanaan = (() => {
+    if (item.hariTanggalPelaksanaan?.trim()) return item.hariTanggalPelaksanaan.trim();
+    if (item.tempatWaktu) {
+      const match = item.tempatWaktu.match(/Hari\s*\/\s*Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
+      if (match?.[1]?.trim()) return match[1].trim();
+    }
+    const sppdTanggal = getTanggalPelaksanaan(relatedSppds, spt);
+    if (sppdTanggal) return sppdTanggal;
+    return "-";
+  })();
+
   const judulLaporan = item.judulLaporan || "Laporan Perjalanan Dinas";
   const tempatLaporan = item.tempatLaporan || "Limboto";
   const isKomisioner = (pegawai?: Pegawai) =>
@@ -518,7 +597,9 @@ export function LaporanPreview({
       <div
         className="laporan-document-content text-slate-900"
         style={{
-          fontFamily: '"Bookman Old Style", Bookman, Georgia, serif',
+          fontFamily: '"Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif',
+          fontSize: "12pt",
+          lineHeight: "1.35",
           textAlign: "left",
         }}
       >
@@ -553,15 +634,17 @@ export function LaporanPreview({
         </header>
 
         <div className="text-center my-4">
-          <h2 className="font-black uppercase">{judulLaporan}</h2>
+          <h2 className="laporan-judul font-black uppercase whitespace-pre-line text-[13pt] leading-tight">
+            {judulLaporan}
+          </h2>
         </div>
 
-        <div className="space-y-5 text-sm">
+        <div className="space-y-5 text-[12pt] leading-[1.35]">
           <SectionBlock code="A." title="Dasar Pelaksanaan">
-            <table className="text-sm">
+            <table className="w-full text-[12pt] leading-[1.35]">
               <tbody>
                 <tr>
-                  <td className="w-40 align-top">Surat Tugas</td>
+                  <td className="w-48 align-top">Surat Tugas</td>
                   <td className="w-4 align-top">:</td>
                   <td>{suratTugas}</td>
                 </tr>
@@ -580,7 +663,7 @@ export function LaporanPreview({
           </SectionBlock>
 
           <SectionBlock code="B." title="Maksud">
-            <p className="whitespace-pre-wrap text-justify">{item.maksud}</p>
+            <p className="whitespace-pre-wrap text-justify text-[12pt] leading-[1.35]">{item.maksud}</p>
           </SectionBlock>
 
           <SectionBlock code="C." title="Tujuan Kegiatan">
@@ -588,17 +671,17 @@ export function LaporanPreview({
           </SectionBlock>
 
           <SectionBlock code="D." title="Tempat dan Waktu Pelaksanaan">
-            <table className="text-sm">
+            <table className="w-full text-[12pt] leading-[1.35]">
               <tbody>
                 <tr>
-                  <td className="w-40 align-top">Tempat Pelaksanaan</td>
+                  <td className="w-48 align-top">Tempat Pelaksanaan</td>
                   <td className="w-4 align-top">:</td>
-                  <td>{item.tempatPelaksanaan}</td>
+                  <td>{tempatPelaksanaan}</td>
                 </tr>
                 <tr>
                   <td className="align-top">Hari / Tanggal</td>
                   <td className="align-top">:</td>
-                  <td>{item.hariTanggalPelaksanaan}</td>
+                  <td>{hariTanggalPelaksanaan}</td>
                 </tr>
               </tbody>
             </table>
@@ -613,14 +696,14 @@ export function LaporanPreview({
           </SectionBlock>
 
           {item.kalimatPenutup.trim() && (
-            <p className="whitespace-pre-wrap text-justify laporan-closing-sentence">
+            <p className="whitespace-pre-wrap text-justify laporan-closing-sentence text-[12pt] leading-[1.35]">
               {item.kalimatPenutup}
             </p>
           )}
         </div>
 
         <section className="mt-10 laporan-signature-section">
-          <table className="w-full table-fixed border-0 text-sm">
+          <table className="w-full table-fixed border-0 text-[12pt] leading-[1.35]">
             <colgroup>
               <col className="w-[68%]" />
               <col className="w-[32%]" />
@@ -704,9 +787,36 @@ export function LaporanPreview({
         }
 
         .laporan-document-content {
-          font-family: "Bookman Old Style", Bookman, Georgia, serif !important;
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 12pt !important;
+          line-height: 1.35 !important;
           display: block !important;
           width: 100% !important;
+        }
+
+        .laporan-document-content p,
+        .laporan-document-content td,
+        .laporan-document-content th,
+        .laporan-document-content li,
+        .laporan-document-content ol,
+        .laporan-document-content ul {
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 12pt !important;
+          line-height: 1.35 !important;
+        }
+
+        .laporan-section-code,
+        .laporan-section-title {
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 12pt !important;
+          font-weight: 700 !important;
+          line-height: 1.35 !important;
+        }
+
+        .laporan-judul {
+          font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+          font-size: 13pt !important;
+          font-weight: 900 !important;
         }
 
         .docx-preview-container .docx-wrapper {
@@ -779,8 +889,36 @@ export function LaporanPreview({
           }
 
           .laporan-document-content {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 12pt !important;
+            line-height: 1.35 !important;
             display: block !important;
             width: 100% !important;
+          }
+
+          .laporan-document-content p,
+          .laporan-document-content td,
+          .laporan-document-content th,
+          .laporan-document-content li,
+          .laporan-document-content ol,
+          .laporan-document-content ul {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 12pt !important;
+            line-height: 1.35 !important;
+          }
+
+          .laporan-section-code,
+          .laporan-section-title {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 12pt !important;
+            font-weight: 700 !important;
+            line-height: 1.35 !important;
+          }
+
+          .laporan-judul {
+            font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
+            font-size: 13pt !important;
+            font-weight: 900 !important;
           }
 
           .laporan-section {
