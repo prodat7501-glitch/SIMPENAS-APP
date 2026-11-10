@@ -139,9 +139,9 @@ export function SppdPreview({
     }
 
     return (
-      <div className="max-h-[30px] overflow-hidden whitespace-normal break-words text-center text-[12pt] leading-[1.1]">
+      <div className="overflow-hidden whitespace-nowrap text-center text-[12pt] leading-[1.1]">
         <span
-          className="inline-block max-w-full border-b border-black px-[1mm]"
+          className="inline-block max-w-full whitespace-nowrap border-b border-black px-[1mm]"
         >
           {name}
         </span>
@@ -561,7 +561,7 @@ export function SppdPreview({
                         value: effectivePenandatangan?.jabatanPenandatangan ?? "",
                       },
                     ])}
-                    <div className="ml-[12mm] mt-[28mm] w-[78mm]">
+                    <div className="mx-auto mt-[12mm] w-[94mm]">
                       <div title={effectivePenandatangan?.nama ?? ""}>
                         {renderPage2SignatureName(effectivePenandatangan?.nama)}
                       </div>
