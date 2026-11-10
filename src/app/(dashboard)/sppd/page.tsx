@@ -480,8 +480,8 @@ export default function SppdPage() {
         isOpen={modalOpen}
         onClose={handleCancel}
         title={selectedItem ? "Ubah SPPD" : "Buat SPPD Baru"}
-        className="max-w-6xl max-h-[calc(100vh-2rem)]"
-        bodyClassName="max-h-[calc(100vh-8rem)] overflow-y-auto pr-2"
+        className="flex max-h-[92vh] w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] flex-col"
+        bodyClassName="min-h-0 flex-1 overflow-y-auto pr-2"
       >
         <SppdForm
           initialValues={selectedItem}

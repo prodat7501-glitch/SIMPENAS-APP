@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { DIPA } from "@/modules/dipa/dipa.schema";
 import type { NotaDinas } from "@/modules/nota-dinas/nota-dinas.schema";
 import type { Pegawai } from "@/modules/pegawai/pegawai.schema";
@@ -324,8 +325,8 @@ export function SppdForm({
       })}
       className="space-y-6"
     >
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="space-y-4 bg-card border border-border rounded-xl p-5">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-4 space-y-4 bg-card border border-border rounded-xl p-5">
           <h2 className="text-sm font-bold uppercase flex items-center gap-2 border-b border-border pb-2">
             <FileCheck className="w-4 h-4 text-primary" />
             Referensi Dokumen
@@ -525,31 +526,38 @@ export function SppdForm({
           </div>
         </div>
 
-        <div className="xl:col-span-2 space-y-4 bg-card border border-border rounded-xl p-5">
+        <div className="xl:col-span-8 space-y-5 bg-card border border-border rounded-xl p-6">
           <h2 className="text-sm font-bold uppercase flex items-center gap-2 border-b border-border pb-2">
             <Route className="w-4 h-4 text-primary" />
             Data Perjalanan
           </h2>
 
           <div>
-            <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Maksud Perjalanan
+            <label className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase mb-1.5">
+              <span>Maksud Perjalanan Dinas</span>
+              <span className="text-[11px] font-normal normal-case text-muted-foreground">
+                Otomatis dari butir &apos;Untuk&apos; pada SPT
+              </span>
             </label>
-            <Input
+            <textarea
               {...register("maksud")}
-              error={!!errors.maksud}
-              placeholder="Maksud perjalanan dinas"
+              rows={3}
+              placeholder="Tuliskan maksud atau uraian perjalanan dinas secara lengkap..."
+              className={cn(
+                "w-full text-sm p-3.5 rounded-xl border bg-background text-foreground transition-all duration-200 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary",
+                errors.maksud ? "border-danger ring-1 ring-danger" : "border-border",
+              )}
             />
             {errors.maksud && (
-              <p className="text-[10px] text-danger font-bold mt-1">
+              <p className="text-xs text-danger font-bold mt-1">
                 {errors.maksud.message}
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+            <div className="md:col-span-3">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
                 Transportasi
               </label>
               <Select
@@ -564,46 +572,48 @@ export function SppdForm({
                 ))}
               </Select>
               {errors.transportasi && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.transportasi.message}
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+            <div className="md:col-span-4">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
                 Tempat Berangkat
               </label>
               <Input
                 {...register("tempatBerangkat")}
                 error={!!errors.tempatBerangkat}
                 leftIcon={<MapPin className="w-4 h-4" />}
+                placeholder="Contoh: Limboto"
               />
               {errors.tempatBerangkat && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.tempatBerangkat.message}
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                Tempat Tujuan
+            <div className="md:col-span-5">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
+                Wilayah / Tempat Tujuan
               </label>
               <Input
                 {...register("tempatTujuan")}
                 error={!!errors.tempatTujuan}
                 leftIcon={<MapPin className="w-4 h-4" />}
+                placeholder="Contoh: Kantor KPU RI, Jakarta Pusat"
               />
               {errors.tempatTujuan && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.tempatTujuan.message}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+            <div className="md:col-span-5">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
                 Tanggal Berangkat
               </label>
               <Input
@@ -612,13 +622,13 @@ export function SppdForm({
                 error={!!errors.tanggalBerangkat}
               />
               {errors.tanggalBerangkat && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.tanggalBerangkat.message}
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+            <div className="md:col-span-5">
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
                 Tanggal Kembali
               </label>
               <Input
@@ -627,14 +637,17 @@ export function SppdForm({
                 error={!!errors.tanggalKembali}
               />
               {errors.tanggalKembali && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.tanggalKembali.message}
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-                Lama Perjalanan
+            <div className="md:col-span-2">
+              <label
+                className="block text-xs font-bold text-muted-foreground uppercase mb-1 truncate"
+                title="Lama Perjalanan (Hari)"
+              >
+                Lama (Hari)
               </label>
               <Input
                 type="number"
@@ -642,10 +655,10 @@ export function SppdForm({
                 readOnly
                 error={!!errors.lamaPerjalanan}
                 rightIcon={<CalendarDays className="w-4 h-4" />}
-                className="font-bold bg-muted"
+                className="font-bold bg-muted text-center"
               />
               {errors.lamaPerjalanan && (
-                <p className="text-[10px] text-danger font-bold mt-1">
+                <p className="text-xs text-danger font-bold mt-1">
                   {errors.lamaPerjalanan.message}
                 </p>
               )}
