@@ -435,85 +435,6 @@ export function SppdForm({
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
-              Romawi Halaman 2
-            </label>
-            <Input
-              type="number"
-              min={1}
-              {...register("jumlahKolomHalaman2")}
-              onChange={handleJumlahTandaTanganChange}
-            />
-            {tandaTanganFields.map((field, index) => (
-              <div
-                key={field.id}
-                className="space-y-1 rounded-xl border border-border bg-background p-3"
-              >
-                <p className="text-[10px] font-black uppercase text-muted-foreground">
-                  Romawi {index + 2}
-                </p>
-                <div className="rounded-lg border border-dashed border-border p-2">
-                  <p className="mb-2 text-[10px] font-black uppercase text-muted-foreground">
-                    Riwayat Perjalanan
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <Input
-                      placeholder="Tiba di"
-                      {...register(`tandaTanganHalaman2.${index}.tibaDi`)}
-                    />
-                    <Input
-                      type="date"
-                      placeholder="Tanggal tiba"
-                      {...register(`tandaTanganHalaman2.${index}.tanggalTiba`)}
-                    />
-                    <Input
-                      placeholder="Berangkat dari"
-                      {...register(
-                        `tandaTanganHalaman2.${index}.berangkatDari`,
-                      )}
-                    />
-                    <Input
-                      placeholder="Ke"
-                      {...register(`tandaTanganHalaman2.${index}.ke`)}
-                    />
-                    <Input
-                      type="date"
-                      placeholder="Tanggal berangkat"
-                      {...register(
-                        `tandaTanganHalaman2.${index}.tanggalBerangkat`,
-                      )}
-                      className="md:col-span-2"
-                    />
-                  </div>
-                  <p className="mt-2 text-[10px] text-muted-foreground">
-                    Jika field “Tiba di” kosong, sistem akan memakai tujuan
-                    utama atau nilai “Ke” dari Romawi sebelumnya.
-                  </p>
-                </div>
-                <p className="pt-1 text-[10px] font-black uppercase text-muted-foreground">
-                  Penandatangan
-                </p>
-                <Input
-                  placeholder="Jabatan penandatangan tujuan"
-                  {...register(`tandaTanganHalaman2.${index}.jabatan`)}
-                />
-                <Input
-                  placeholder="Nama penandatangan tujuan"
-                  {...register(`tandaTanganHalaman2.${index}.nama`)}
-                />
-                <Input
-                  placeholder="NIP penandatangan tujuan"
-                  {...register(`tandaTanganHalaman2.${index}.nip`)}
-                />
-              </div>
-            ))}
-            <p className="text-[10px] text-muted-foreground font-semibold">
-              Romawi I dan Romawi akhir otomatis memakai PPK SPPD. Romawi II dan
-              seterusnya diisi manual; jika kosong, dokumen tetap kosong.
-            </p>
-          </div>
-
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
               Status Dokumen (Otomatis)
@@ -699,6 +620,174 @@ export function SppdForm({
               </p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Pengaturan Halaman Belakang SPPD (Romawi Riwayat Perjalanan & Visum) */}
+      <div className="space-y-4 bg-card border border-border rounded-xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Route className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold uppercase text-foreground">
+                Riwayat Perjalanan &amp; Visum (Halaman Belakang / Halaman 2 SPPD)
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Daftar rute kedatangan, keberangkatan, dan pejabat penandatangan di setiap lokasi tujuan
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 self-start sm:self-auto bg-muted/50 px-3 py-1.5 rounded-lg border border-border">
+            <label className="text-xs font-bold text-muted-foreground uppercase whitespace-nowrap">
+              Jumlah Kolom Romawi:
+            </label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              {...register("jumlahKolomHalaman2")}
+              onChange={handleJumlahTandaTanganChange}
+              className="w-16 h-8 font-bold text-center bg-background"
+            />
+          </div>
+        </div>
+
+        {tandaTanganFields.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic py-3 text-center">
+            Tidak ada kolom Romawi manual. (Romawi I dan Romawi akhir diisi otomatis oleh PPK SPPD).
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {tandaTanganFields.map((field, index) => (
+              <div
+                key={field.id}
+                className="space-y-4 rounded-xl border border-border bg-background p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-xs font-black uppercase bg-primary text-primary-foreground tracking-wide">
+                      Romawi {index + 2}
+                    </span>
+                    <span className="text-xs font-semibold text-foreground">
+                      Riwayat &amp; Pengesahan di Tempat Tujuan
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-card: Riwayat Perjalanan */}
+                <div className="space-y-3 rounded-xl border border-dashed border-border p-4 bg-card/60">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-primary" />
+                    Riwayat Perjalanan
+                  </p>
+
+                  {/* Baris 1: Tiba di & Tanggal Tiba */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                    <div className="md:col-span-8">
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Tiba di (Lokasi / Tempat Tujuan)
+                      </label>
+                      <Input
+                        placeholder="Contoh: Kantor KPU RI, Jakarta Pusat"
+                        {...register(`tandaTanganHalaman2.${index}.tibaDi`)}
+                        leftIcon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Tanggal Tiba
+                      </label>
+                      <Input
+                        type="date"
+                        {...register(`tandaTanganHalaman2.${index}.tanggalTiba`)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Baris 2: Berangkat dari, Ke, & Tanggal Berangkat */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                    <div className="md:col-span-4">
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Berangkat dari
+                      </label>
+                      <Input
+                        placeholder="Contoh: KPU RI, Jakarta Pusat"
+                        {...register(`tandaTanganHalaman2.${index}.berangkatDari`)}
+                        leftIcon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Ke (Tujuan Berikutnya / Kembali ke)
+                      </label>
+                      <Input
+                        placeholder="Contoh: KPU Kabupaten Gorontalo"
+                        {...register(`tandaTanganHalaman2.${index}.ke`)}
+                        leftIcon={<MapPin className="w-4 h-4 text-muted-foreground" />}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Tanggal Berangkat
+                      </label>
+                      <Input
+                        type="date"
+                        {...register(`tandaTanganHalaman2.${index}.tanggalBerangkat`)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    * Jika field &ldquo;Tiba di&rdquo; dikosongkan, sistem cetak otomatis memakai tujuan utama atau nilai &ldquo;Ke&rdquo; dari Romawi sebelumnya.
+                  </p>
+                </div>
+
+                {/* Sub-card: Penandatangan Tujuan */}
+                <div className="space-y-3 rounded-xl border border-dashed border-border p-4 bg-card/60">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <UserRound className="w-3.5 h-3.5 text-primary" />
+                    Pejabat Penandatangan di Tempat Tujuan (Visum)
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Jabatan Penandatangan
+                      </label>
+                      <Input
+                        placeholder="Contoh: Kepala Bagian Umum"
+                        {...register(`tandaTanganHalaman2.${index}.jabatan`)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Nama Penandatangan
+                      </label>
+                      <Input
+                        placeholder="Nama lengkap pejabat tujuan"
+                        {...register(`tandaTanganHalaman2.${index}.nama`)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        NIP Penandatangan
+                      </label>
+                      <Input
+                        placeholder="NIP pejabat (jika ada)"
+                        {...register(`tandaTanganHalaman2.${index}.nip`)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="rounded-xl bg-muted/60 border border-border/80 p-3.5 text-xs text-muted-foreground leading-relaxed">
+          <p className="font-bold text-foreground mb-1">Catatan Halaman Belakang (SPPD Halaman 2):</p>
+          Romawi I dan Romawi akhir otomatis memakai Pejabat Pembuat Komitmen (PPK) SPPD. Romawi II dan seterusnya diisi manual untuk riwayat perjalanan &amp; pengesahan visum di lokasi tujuan; jika dikosongkan, kolom pada dokumen cetak tetap disediakan kosong untuk stempel basah manual di lapangan.
         </div>
       </div>
 
