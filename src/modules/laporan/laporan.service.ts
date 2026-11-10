@@ -104,17 +104,30 @@ const deleteDatabaseItem = async (id: string): Promise<void> => {
   }
 };
 
-const buildDasarPelaksanaan = (item: Partial<Laporan>) =>
-  item.dasarPelaksanaan ||
-  `Surat Tugas\t: ${item.suratTugas ?? "Sekretaris KPU"}\nNomor\t: ${
-    item.nomorSuratTugas ?? ""
-  }\nTanggal\t: ${item.tanggalSuratTugas ?? ""}`;
+const isInvalidNomor = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^tanggal\b/i.test(val.trim());
 
-const buildTempatWaktu = (item: Partial<Laporan>) =>
-  item.tempatWaktu ||
-  `Tempat Pelaksanaan\t: ${item.tempatPelaksanaan ?? ""}\nHari / Tanggal\t: ${
-    item.hariTanggalPelaksanaan ?? ""
-  }`;
+const isInvalidTempat = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^hari\s*\/\s*tanggal\b/i.test(val.trim());
+
+const buildDasarPelaksanaan = (item: Partial<Laporan>) => {
+  const st = item.suratTugas || "Sekretaris KPU";
+  const no = isInvalidNomor(item.nomorSuratTugas) ? "" : item.nomorSuratTugas!.trim();
+  const tgl = item.tanggalSuratTugas || "";
+  return `Surat Tugas\t: ${st}\nNomor\t: ${no}\nTanggal\t: ${tgl}`;
+};
+
+const buildTempatWaktu = (item: Partial<Laporan>) => {
+  const tp = isInvalidTempat(item.tempatPelaksanaan) ? "" : item.tempatPelaksanaan!.trim();
+  const ht = item.hariTanggalPelaksanaan || "";
+  return `Tempat Pelaksanaan\t: ${tp}\nHari / Tanggal\t: ${ht}`;
+};
 
 const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -206,15 +219,46 @@ const normalizeLaporan = (item: Partial<Laporan>): Laporan => {
     sptId: item.sptId ?? (item as Record<string, unknown>).spt_id as string ?? "",
     sppdId: item.sppdId ?? (item as Record<string, unknown>).sppd_id as string ?? "",
     pelaksanaId: item.pelaksanaId ?? (item as Record<string, unknown>).pelaksana_id as string ?? "",
-    judulLaporan: item.judulLaporan ?? "Laporan Perjalanan Dinas",
-    suratTugas: item.suratTugas ?? "Sekretaris KPU",
-    nomorSuratTugas: item.nomorSuratTugas ?? (item as Record<string, unknown>).nomor_surat_tugas as string ?? "",
-    tanggalSuratTugas: cleanDateString(item.tanggalSuratTugas ?? (item as Record<string, unknown>).tanggal_surat_tugas),
+    judulLaporan:
+      item.judulLaporan ??
+      ((item as Record<string, unknown>).judul_laporan as string) ??
+      ((item as Record<string, unknown>).judul as string) ??
+      "Laporan Perjalanan Dinas",
+    suratTugas:
+      item.suratTugas ??
+      ((item as Record<string, unknown>).surat_tugas as string) ??
+      "Sekretaris KPU",
+    nomorSuratTugas: (() => {
+      const val =
+        item.nomorSuratTugas ??
+        ((item as Record<string, unknown>).nomor_surat_tugas as string) ??
+        "";
+      return isInvalidNomor(val) ? "" : val.trim();
+    })(),
+    tanggalSuratTugas: cleanDateString(
+      item.tanggalSuratTugas ??
+        (item as Record<string, unknown>).tanggal_surat_tugas,
+    ),
     dasarPelaksanaan: buildDasarPelaksanaan(item),
-    maksud: item.maksud ?? (item as Record<string, unknown>).maksud_perjalanan as string ?? "",
-    tujuan: item.tujuan ?? (item as Record<string, unknown>).tempat_tujuan as string ?? "",
-    tempatPelaksanaan: item.tempatPelaksanaan ?? (item as Record<string, unknown>).tempat_pelaksanaan as string ?? "",
-    hariTanggalPelaksanaan: item.hariTanggalPelaksanaan ?? (item as Record<string, unknown>).hari_tanggal_pelaksanaan as string ?? "",
+    maksud:
+      item.maksud ??
+      ((item as Record<string, unknown>).maksud_perjalanan as string) ??
+      "",
+    tujuan:
+      item.tujuan ??
+      ((item as Record<string, unknown>).tempat_tujuan as string) ??
+      "",
+    tempatPelaksanaan: (() => {
+      const val =
+        item.tempatPelaksanaan ??
+        ((item as Record<string, unknown>).tempat_pelaksanaan as string) ??
+        "";
+      return isInvalidTempat(val) ? "" : val.trim();
+    })(),
+    hariTanggalPelaksanaan:
+      item.hariTanggalPelaksanaan ??
+      ((item as Record<string, unknown>).hari_tanggal_pelaksanaan as string) ??
+      "",
     tempatWaktu: buildTempatWaktu(item),
     materi: item.materi ?? "",
     hasilPelaksanaan: item.hasilPelaksanaan ?? (item as Record<string, unknown>).hasil_perjalanan as string ?? "",

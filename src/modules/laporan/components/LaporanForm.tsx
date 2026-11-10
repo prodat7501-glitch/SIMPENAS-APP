@@ -97,6 +97,44 @@ const formatFileSize = (bytes?: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+const isInvalidNomor = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^tanggal\b/i.test(val.trim());
+
+const isInvalidTempat = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^hari\s*\/\s*tanggal\b/i.test(val.trim());
+
+const isInvalidHariTanggal = (val?: string | null) =>
+  !val || val.trim() === "" || val.trim() === "-";
+
+const isInvalidTanggal = (val?: string | null) =>
+  !val || val.trim() === "" || val.trim() === "-";
+
+const isInvalidSuratTugas = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^nomor\b/i.test(val.trim());
+
+const extractLineValue = (text?: string, labelPrefix?: string): string => {
+  if (!text || !labelPrefix) return "";
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const regex = new RegExp(`^${labelPrefix}\\s*[:\\t]+[ \\t]*(.*)$`, "i");
+    const m = trimmed.match(regex);
+    if (m && m[1]) {
+      return m[1].trim();
+    }
+  }
+  return "";
+};
+
 const resolveInitialValues = (
   item: Laporan | null,
   spts: Spt[],
@@ -106,78 +144,70 @@ const resolveInitialValues = (
   const spt = spts.find((data) => data.id === sptId);
   const relatedSppds = sppds.filter((data) => data.sptId === sptId);
 
-  const extractedTempat = (() => {
-    if (item?.tempatPelaksanaan?.trim()) return item.tempatPelaksanaan.trim();
-    if (item?.tempatWaktu) {
-      const match = item.tempatWaktu.match(
-        /Tempat Pelaksanaan\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
-      );
-      if (match?.[1]?.trim()) return match[1].trim();
+  const tempatPelaksanaan = (() => {
+    if (!isInvalidTempat(item?.tempatPelaksanaan)) {
+      return item!.tempatPelaksanaan!.trim();
     }
-    return uniqueText(relatedSppds.map((data) => data.tempatTujuan)).join(", ");
+    const extracted = extractLineValue(item?.tempatWaktu, "Tempat Pelaksanaan");
+    if (!isInvalidTempat(extracted)) {
+      return extracted;
+    }
+    const sppdTujuan = uniqueText(relatedSppds.map((data) => data.tempatTujuan)).join(", ");
+    if (!isInvalidTempat(sppdTujuan)) return sppdTujuan;
+    if (!isInvalidTempat(item?.tujuan)) return item!.tujuan!.trim();
+    return "";
   })();
 
-  const extractedHariTanggal = (() => {
-    if (item?.hariTanggalPelaksanaan?.trim())
-      return item.hariTanggalPelaksanaan.trim();
-    if (item?.tempatWaktu) {
-      const match = item.tempatWaktu.match(
-        /Hari\s*\/\s*Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
-      );
-      if (match?.[1]?.trim()) return match[1].trim();
+  const hariTanggalPelaksanaan = (() => {
+    if (!isInvalidHariTanggal(item?.hariTanggalPelaksanaan)) {
+      return item!.hariTanggalPelaksanaan!.trim();
+    }
+    const extracted = extractLineValue(item?.tempatWaktu, "Hari\\s*\\/\\s*Tanggal");
+    if (!isInvalidHariTanggal(extracted)) {
+      return extracted;
     }
     return getTanggalPelaksanaan(relatedSppds, spt);
   })();
 
-  const extractedNomorSt = (() => {
-    if (item?.nomorSuratTugas?.trim() && item.nomorSuratTugas.trim() !== "-") {
-      return item.nomorSuratTugas.trim();
+  const nomorSuratTugas = (() => {
+    if (!isInvalidNomor(item?.nomorSuratTugas)) {
+      return item!.nomorSuratTugas!.trim();
     }
-    if (item?.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(
-        /Nomor\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
-      );
-      if (match?.[1]?.trim() && match[1].trim() !== "-") {
-        return match[1].trim();
-      }
+    const extracted = extractLineValue(item?.dasarPelaksanaan, "Nomor");
+    if (!isInvalidNomor(extracted)) {
+      return extracted;
     }
     return spt?.nomor || "";
   })();
 
-  const extractedTanggalSt = (() => {
-    if (
-      item?.tanggalSuratTugas?.trim() &&
-      item.tanggalSuratTugas.trim() !== "-"
-    ) {
-      return formatTanggalIndonesia(item.tanggalSuratTugas.trim());
+  const tanggalSuratTugas = (() => {
+    if (!isInvalidTanggal(item?.tanggalSuratTugas)) {
+      return formatTanggalIndonesia(item!.tanggalSuratTugas!.trim());
     }
-    if (item?.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(
-        /Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
-      );
-      if (match?.[1]?.trim() && match[1].trim() !== "-") {
-        return formatTanggalIndonesia(match[1].trim());
-      }
+    const extracted = extractLineValue(item?.dasarPelaksanaan, "Tanggal");
+    if (!isInvalidTanggal(extracted)) {
+      return formatTanggalIndonesia(extracted);
     }
     return formatTanggalIndonesia(spt?.tanggalMulai);
   })();
 
-  const extractedSuratTugas = (() => {
-    if (item?.suratTugas?.trim()) return item.suratTugas.trim();
-    if (item?.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(
-        /Surat Tugas\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i,
-      );
-      if (match?.[1]?.trim()) return match[1].trim();
+  const suratTugas = (() => {
+    if (!isInvalidSuratTugas(item?.suratTugas)) {
+      return item!.suratTugas!.trim();
+    }
+    const extracted = extractLineValue(item?.dasarPelaksanaan, "Surat Tugas");
+    if (!isInvalidSuratTugas(extracted)) {
+      return extracted;
     }
     return DEFAULT_SURAT_TUGAS;
   })();
 
-  const tempatPelaksanaan = extractedTempat;
-  const hariTanggalPelaksanaan = extractedHariTanggal;
-  const nomorSuratTugas = extractedNomorSt;
-  const tanggalSuratTugas = extractedTanggalSt;
-  const suratTugas = extractedSuratTugas;
+  const rawJudul =
+    item?.judulLaporan ||
+    (item as Record<string, unknown>)?.judul_laporan as string ||
+    (item as Record<string, unknown>)?.judul as string ||
+    "";
+  const judulLaporan = rawJudul.trim() ? rawJudul.trim() : DEFAULT_JUDUL_LAPORAN;
 
   return {
     metodeLaporan: item?.metodeLaporan ?? "form",
@@ -185,7 +215,7 @@ const resolveInitialValues = (
     sptId,
     sppdId: item?.sppdId || relatedSppds[0]?.id || "",
     pelaksanaId: item?.pelaksanaId || spt?.personil[0]?.pegawaiId || "",
-    judulLaporan: item?.judulLaporan || DEFAULT_JUDUL_LAPORAN,
+    judulLaporan,
     suratTugas,
     nomorSuratTugas,
     tanggalSuratTugas,
@@ -261,9 +291,10 @@ export function LaporanForm({
   const selectSpt = (id: string) => {
     const spt = spts.find((item) => item.id === id);
     const related = sppds.filter((item) => item.sptId === id);
-    const tempatPelaksanaan = uniqueText(
-      related.map((item) => item.tempatTujuan),
-    ).join(", ");
+    const tempatPelaksanaan =
+      uniqueText(related.map((item) => item.tempatTujuan)).join(", ") ||
+      (spt as Record<string, unknown>)?.tujuan as string ||
+      "";
     const hariTanggalPelaksanaan = getTanggalPelaksanaan(related, spt);
     const nomorSuratTugas = spt?.nomor ?? "";
     const tanggalSuratTugas = formatTanggalIndonesia(spt?.tanggalMulai);
@@ -271,7 +302,17 @@ export function LaporanForm({
     setValue("sptId", id, { shouldValidate: true });
     setValue("sppdId", related[0]?.id ?? "", { shouldValidate: true });
     setValue("pelaksanaId", spt?.personil[0]?.pegawaiId ?? "");
-    setValue("judulLaporan", DEFAULT_JUDUL_LAPORAN, { shouldValidate: true });
+
+    // PENTING: Jangan timpa judul jika pengguna sudah mengetik judulnya!
+    const currentJudul = control._formValues.judulLaporan;
+    if (
+      !currentJudul ||
+      currentJudul.trim() === "" ||
+      currentJudul === DEFAULT_JUDUL_LAPORAN
+    ) {
+      setValue("judulLaporan", DEFAULT_JUDUL_LAPORAN, { shouldValidate: true });
+    }
+
     setValue("suratTugas", DEFAULT_SURAT_TUGAS, { shouldValidate: true });
     setValue("nomorSuratTugas", nomorSuratTugas, { shouldValidate: true });
     setValue("tanggalSuratTugas", tanggalSuratTugas, { shouldValidate: true });
@@ -287,7 +328,12 @@ export function LaporanForm({
       shouldValidate: true,
     });
     setValue("tujuan", tempatPelaksanaan, { shouldValidate: true });
-    setValue("tempatPelaksanaan", tempatPelaksanaan, {
+
+    const currentTempat = control._formValues.tempatPelaksanaan;
+    const finalTempat =
+      tempatPelaksanaan ||
+      (currentTempat && !isInvalidTempat(currentTempat) ? currentTempat : "");
+    setValue("tempatPelaksanaan", finalTempat, {
       shouldValidate: true,
     });
     setValue("hariTanggalPelaksanaan", hariTanggalPelaksanaan, {
@@ -295,7 +341,7 @@ export function LaporanForm({
     });
     setValue(
       "tempatWaktu",
-      buildTempatWaktu(tempatPelaksanaan, hariTanggalPelaksanaan),
+      buildTempatWaktu(finalTempat, hariTanggalPelaksanaan),
     );
   };
 

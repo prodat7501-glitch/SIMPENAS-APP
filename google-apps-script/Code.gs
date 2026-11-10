@@ -1560,6 +1560,16 @@ function rowValuesToObject(rowValues, headers) {
   if (!obj.dokumentasi && obj.dokumentasi_json) obj.dokumentasi = obj.dokumentasi_json;
   if (!obj.metodeLaporan && obj.metode_laporan) obj.metodeLaporan = obj.metode_laporan;
   if (!obj.fileLaporan && (obj.file_laporan_json || obj.file_laporan)) obj.fileLaporan = obj.file_laporan_json || obj.file_laporan;
+  if (!obj.judulLaporan && obj.judul_laporan) obj.judulLaporan = obj.judul_laporan;
+  if (!obj.judul_laporan && obj.judulLaporan) obj.judul_laporan = obj.judulLaporan;
+  if (!obj.tempatPelaksanaan && obj.tempat_pelaksanaan) obj.tempatPelaksanaan = obj.tempat_pelaksanaan;
+  if (!obj.tempat_pelaksanaan && obj.tempatPelaksanaan) obj.tempat_pelaksanaan = obj.tempatPelaksanaan;
+  if (!obj.nomorSuratTugas && obj.nomor_surat_tugas) obj.nomorSuratTugas = obj.nomor_surat_tugas;
+  if (!obj.nomor_surat_tugas && obj.nomorSuratTugas) obj.nomor_surat_tugas = obj.nomorSuratTugas;
+  if (!obj.tanggalSuratTugas && obj.tanggal_surat_tugas) obj.tanggalSuratTugas = obj.tanggal_surat_tugas;
+  if (!obj.tanggal_surat_tugas && obj.tanggalSuratTugas) obj.tanggal_surat_tugas = obj.tanggalSuratTugas;
+  if (!obj.suratTugas && obj.surat_tugas) obj.suratTugas = obj.surat_tugas;
+  if (!obj.surat_tugas && obj.suratTugas) obj.surat_tugas = obj.suratTugas;
   if (obj.fileLaporan && typeof obj.fileLaporan === "object") {
     if (!obj.fileLaporan.dataUrl && obj.fileLaporan.data_url) obj.fileLaporan.dataUrl = obj.fileLaporan.data_url;
     if (!obj.fileLaporan.dataUrl && (obj.fileLaporan.viewUrl || obj.fileLaporan.url || obj.fileLaporan.downloadUrl)) {
@@ -1765,6 +1775,11 @@ function objectToRowValues(obj, headers) {
   if (obj.dokumentasi) obj.dokumentasi_json = obj.dokumentasi;
   if (obj.metodeLaporan !== undefined) obj.metode_laporan = obj.metodeLaporan;
   if (obj.fileLaporan !== undefined) obj.file_laporan_json = obj.fileLaporan;
+  if (obj.judulLaporan !== undefined) obj.judul_laporan = obj.judulLaporan;
+  if (obj.tempatPelaksanaan !== undefined) obj.tempat_pelaksanaan = obj.tempatPelaksanaan;
+  if (obj.nomorSuratTugas !== undefined) obj.nomor_surat_tugas = obj.nomorSuratTugas;
+  if (obj.tanggalSuratTugas !== undefined) obj.tanggal_surat_tugas = obj.tanggalSuratTugas;
+  if (obj.suratTugas !== undefined) obj.surat_tugas = obj.suratTugas;
 
   // Mapping fallback jika input approval_history dari frontend
   if (obj.documentId && !obj.document_id) obj.document_id = obj.documentId;

@@ -38,6 +38,44 @@ const getTanggalPelaksanaan = (relatedSppds: Sppd[], spt?: Spt) => {
   return `${formatTanggalIndonesia(start)} s.d. ${formatTanggalIndonesia(end)}`;
 };
 
+const isInvalidNomor = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^tanggal\b/i.test(val.trim());
+
+const isInvalidTempat = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^hari\s*\/\s*tanggal\b/i.test(val.trim());
+
+const isInvalidHariTanggal = (val?: string | null) =>
+  !val || val.trim() === "" || val.trim() === "-";
+
+const isInvalidTanggal = (val?: string | null) =>
+  !val || val.trim() === "" || val.trim() === "-";
+
+const isInvalidSuratTugas = (val?: string | null) =>
+  !val ||
+  val.trim() === "" ||
+  val.trim() === "-" ||
+  /^nomor\b/i.test(val.trim());
+
+const extractLineValue = (text?: string, labelPrefix?: string): string => {
+  if (!text || !labelPrefix) return "";
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const regex = new RegExp(`^${labelPrefix}\\s*[:\\t]+[ \\t]*(.*)$`, "i");
+    const m = trimmed.match(regex);
+    if (m && m[1]) {
+      return m[1].trim();
+    }
+  }
+  return "";
+};
+
 const dataUrlToBlob = (dataUrl: string): Blob => {
   const parts = dataUrl.split(",");
   const mimeMatch = parts[0]?.match(/:(.*?);/);
@@ -289,27 +327,23 @@ export function LaporanPreview({
       : [];
 
   const nomorSuratTugas = (() => {
-    if (item.nomorSuratTugas?.trim() && item.nomorSuratTugas.trim() !== "-") {
-      return item.nomorSuratTugas.trim();
+    if (!isInvalidNomor(item.nomorSuratTugas)) {
+      return item.nomorSuratTugas!.trim();
     }
-    if (item.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(/Nomor\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
-      if (match?.[1]?.trim() && match[1].trim() !== "-") {
-        return match[1].trim();
-      }
+    const extracted = extractLineValue(item.dasarPelaksanaan, "Nomor");
+    if (!isInvalidNomor(extracted)) {
+      return extracted;
     }
     return spt?.nomor || "-";
   })();
 
   const tanggalSuratTugas = (() => {
-    if (item.tanggalSuratTugas?.trim() && item.tanggalSuratTugas.trim() !== "-") {
-      return formatTanggalIndonesia(item.tanggalSuratTugas.trim());
+    if (!isInvalidTanggal(item.tanggalSuratTugas)) {
+      return formatTanggalIndonesia(item.tanggalSuratTugas!.trim());
     }
-    if (item.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(/Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
-      if (match?.[1]?.trim() && match[1].trim() !== "-") {
-        return formatTanggalIndonesia(match[1].trim());
-      }
+    const extracted = extractLineValue(item.dasarPelaksanaan, "Tanggal");
+    if (!isInvalidTanggal(extracted)) {
+      return formatTanggalIndonesia(extracted);
     }
     if (spt?.tanggalMulai) {
       return formatTanggalIndonesia(spt.tanggalMulai);
@@ -318,38 +352,49 @@ export function LaporanPreview({
   })();
 
   const suratTugas = (() => {
-    if (item.suratTugas?.trim()) return item.suratTugas.trim();
-    if (item.dasarPelaksanaan) {
-      const match = item.dasarPelaksanaan.match(/Surat Tugas\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
-      if (match?.[1]?.trim()) return match[1].trim();
+    if (!isInvalidSuratTugas(item.suratTugas)) {
+      return item.suratTugas!.trim();
+    }
+    const extracted = extractLineValue(item.dasarPelaksanaan, "Surat Tugas");
+    if (!isInvalidSuratTugas(extracted)) {
+      return extracted;
     }
     return "Sekretaris KPU";
   })();
 
   const tempatPelaksanaan = (() => {
-    if (item.tempatPelaksanaan?.trim()) return item.tempatPelaksanaan.trim();
-    if (item.tempatWaktu) {
-      const match = item.tempatWaktu.match(/Tempat Pelaksanaan\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
-      if (match?.[1]?.trim()) return match[1].trim();
+    if (!isInvalidTempat(item.tempatPelaksanaan)) {
+      return item.tempatPelaksanaan!.trim();
+    }
+    const extracted = extractLineValue(item.tempatWaktu, "Tempat Pelaksanaan");
+    if (!isInvalidTempat(extracted)) {
+      return extracted;
     }
     const sppdTujuan = uniqueText(relatedSppds.map((x) => x.tempatTujuan)).join(", ");
-    if (sppdTujuan) return sppdTujuan;
-    if (item.tujuan?.trim()) return item.tujuan.trim();
+    if (!isInvalidTempat(sppdTujuan)) return sppdTujuan;
+    if (!isInvalidTempat(item.tujuan)) return item.tujuan!.trim();
     return "-";
   })();
 
   const hariTanggalPelaksanaan = (() => {
-    if (item.hariTanggalPelaksanaan?.trim()) return item.hariTanggalPelaksanaan.trim();
-    if (item.tempatWaktu) {
-      const match = item.tempatWaktu.match(/Hari\s*\/\s*Tanggal\s*[:\t]+\s*(.+?)(?:\r?\n|$)/i);
-      if (match?.[1]?.trim()) return match[1].trim();
+    if (!isInvalidHariTanggal(item.hariTanggalPelaksanaan)) {
+      return item.hariTanggalPelaksanaan!.trim();
+    }
+    const extracted = extractLineValue(item.tempatWaktu, "Hari\\s*\\/\\s*Tanggal");
+    if (!isInvalidHariTanggal(extracted)) {
+      return extracted;
     }
     const sppdTanggal = getTanggalPelaksanaan(relatedSppds, spt);
-    if (sppdTanggal) return sppdTanggal;
+    if (!isInvalidHariTanggal(sppdTanggal)) return sppdTanggal;
     return "-";
   })();
 
-  const judulLaporan = item.judulLaporan || "Laporan Perjalanan Dinas";
+  const rawJudul =
+    item.judulLaporan ||
+    (item as Record<string, unknown>).judul_laporan as string ||
+    (item as Record<string, unknown>).judul as string ||
+    "";
+  const judulLaporan = rawJudul.trim() ? rawJudul.trim() : "Laporan Perjalanan Dinas";
   const tempatLaporan = item.tempatLaporan || "Limboto";
   const isKomisioner = (pegawai?: Pegawai) =>
     pegawai?.kategoriPegawai === "Ketua KPU" ||
