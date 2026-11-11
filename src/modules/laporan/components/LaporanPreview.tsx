@@ -135,20 +135,36 @@ function SectionBlock({
   code,
   title,
   children,
+  className,
 }: {
   code: string;
   title: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="laporan-section">
-      <div className="flex items-start gap-x-2">
-        <span className="font-bold w-6 shrink-0 text-[12pt] leading-[1.35] laporan-section-code">{code}</span>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold mb-1.5 text-[12pt] leading-[1.35] laporan-section-title">{title}</h3>
-          {children}
-        </div>
-      </div>
+    <section className={cn("laporan-section mb-3.5 print:mb-2.5", className)}>
+      <table className="w-full border-0 p-0 m-0 border-collapse table-fixed">
+        <colgroup>
+          <col className="w-7 shrink-0" />
+          <col className="w-[calc(100%-1.75rem)]" />
+        </colgroup>
+        <tbody>
+          <tr>
+            <td className="align-top p-0 m-0 font-bold text-[12pt] leading-[1.35] border-0 select-none">
+              <span className="laporan-section-code block">{code}</span>
+            </td>
+            <td className="align-top p-0 m-0 border-0 min-w-0">
+              <h3 className="font-bold mb-1 text-[12pt] leading-[1.35] laporan-section-title">
+                {title}
+              </h3>
+              <div className="laporan-section-body min-w-0 text-[12pt] leading-[1.35]">
+                {children}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
 }
@@ -396,13 +412,35 @@ export function LaporanPreview({
     "";
   const judulLaporan = rawJudul.trim() ? rawJudul.trim() : "Laporan Perjalanan Dinas";
   const tempatLaporan = item.tempatLaporan || "Limboto";
+  const isKetuaKpu = (pegawai?: Pegawai) => {
+    if (!pegawai) return false;
+    const kat = (pegawai.kategoriPegawai || "").toUpperCase();
+    const jab = (jabatans.find((j) => j.id === pegawai.jabatanId)?.nama || "").toUpperCase();
+    return kat.includes("KETUA") || jab.includes("KETUA");
+  };
+
+  const isAnggotaKpu = (pegawai?: Pegawai) => {
+    if (!pegawai) return false;
+    if (isKetuaKpu(pegawai)) return false;
+    const kat = (pegawai.kategoriPegawai || "").toUpperCase();
+    const jab = (jabatans.find((j) => j.id === pegawai.jabatanId)?.nama || "").toUpperCase();
+    return kat.includes("ANGGOTA") || kat.includes("KOMISIONER") || jab.includes("ANGGOTA") || jab.includes("KOMISIONER");
+  };
+
   const isKomisioner = (pegawai?: Pegawai) =>
-    pegawai?.kategoriPegawai === "Ketua KPU" ||
-    pegawai?.kategoriPegawai === "Anggota KPU";
-  const getJabatanPelaksana = (pegawai?: Pegawai) =>
-    jabatans.find((jabatan) => jabatan.id === pegawai?.jabatanId)?.nama ||
-    pegawai?.kategoriPegawai ||
-    "-";
+    isKetuaKpu(pegawai) || isAnggotaKpu(pegawai);
+
+  const getLabelPelaksana = (pegawai?: Pegawai) => {
+    if (!pegawai) return "-";
+    if (isKetuaKpu(pegawai)) return "Ketua";
+    if (isAnggotaKpu(pegawai)) return "Anggota";
+    const nip = pegawai.nip?.trim();
+    if (nip && nip !== "" && nip !== "-") {
+      return `NIP. ${nip}`;
+    }
+    return "NIP. -";
+  };
+
   const isLaporanKomisioner =
     daftarPelaksana.length > 0 && daftarPelaksana.every(isKomisioner);
 
@@ -582,9 +620,7 @@ export function LaporanPreview({
                       {pegawai?.nama ?? "-"}
                       <span className="text-muted-foreground">
                         {" "}
-                        ({isKomisioner(pegawai)
-                          ? `Jabatan: ${getJabatanPelaksana(pegawai)}`
-                          : `NIP. ${pegawai?.nip || "-"}`})
+                        ({getLabelPelaksana(pegawai)})
                       </span>
                     </li>
                   ))}
@@ -637,6 +673,7 @@ export function LaporanPreview({
       isOpen
       title="Pratinjau Laporan Perjalanan Dinas"
       onClose={onClose}
+      printPageSize="215mm 330mm"
       className="laporan-print-sheet w-[215mm] min-h-[330mm] print:overflow-visible"
     >
       <div
@@ -678,13 +715,13 @@ export function LaporanPreview({
           {!isLaporanKomisioner && <span aria-hidden />}
         </header>
 
-        <div className="text-center my-4">
+        <div className="text-center my-4 laporan-judul-wrapper">
           <h2 className="laporan-judul font-black uppercase whitespace-pre-line text-[13pt] leading-tight">
             {judulLaporan}
           </h2>
         </div>
 
-        <div className="space-y-5 text-[12pt] leading-[1.35]">
+        <div className="laporan-sections-container text-[12pt] leading-[1.35]">
           <SectionBlock code="A." title="Dasar Pelaksanaan">
             <table className="w-full text-[12pt] leading-[1.35]">
               <tbody>
@@ -770,17 +807,15 @@ export function LaporanPreview({
                   key={pegawai?.id ?? `${pegawai?.nama}-${index}`}
                   className="laporan-signature-row"
                 >
-                  <td className="border-0 py-3 pr-8 align-middle">
+                  <td className="border-0 py-2.5 pr-8 align-middle">
                     <p className="font-bold leading-snug">
                       {index + 1}. {pegawai?.nama ?? "-"}
                     </p>
                     <p className="pl-4 leading-snug">
-                      {isKomisioner(pegawai)
-                        ? `Jabatan: ${getJabatanPelaksana(pegawai)}`
-                        : `NIP. ${pegawai?.nip || "-"}`}
+                      {getLabelPelaksana(pegawai)}
                     </p>
                   </td>
-                  <td className="border-0 py-3 align-middle">
+                  <td className="border-0 py-2.5 align-middle">
                     <span className="tracking-[0.16em]">
                       ............................
                     </span>
@@ -797,11 +832,9 @@ export function LaporanPreview({
           </div>
         )}
 
-        <section className="mt-8 laporan-section laporan-documentation-section">
-          <div className="flex items-start gap-x-2">
-            <span className="font-bold w-6 shrink-0 laporan-section-code">G.</span>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold mb-4 laporan-section-title">Dokumentasi</h3>
+        {item.dokumentasi && item.dokumentasi.length > 0 && (
+          <div className="mt-8 laporan-documentation-section">
+            <SectionBlock code="G." title="Dokumentasi">
               <div className="grid grid-cols-2 gap-4">
                 {item.dokumentasi.map((foto) => (
                   <figure key={foto.id}>
@@ -816,9 +849,9 @@ export function LaporanPreview({
                   </figure>
                 ))}
               </div>
-            </div>
+            </SectionBlock>
           </div>
-        </section>
+        )}
       </div>
       <style jsx global>{`
         .laporan-print-sheet {
@@ -917,9 +950,8 @@ export function LaporanPreview({
           }
 
           .print-direct {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
+            display: block !important;
             width: 100% !important;
             background: white !important;
             padding: 0 !important;
@@ -998,13 +1030,22 @@ export function LaporanPreview({
             line-height: 1.35 !important;
           }
 
+          .laporan-judul-wrapper,
           .laporan-judul {
             font-family: "Bookman Old Style", Bookman, "URW Bookman", "TeX Gyre Bonum", Georgia, serif !important;
             font-size: 13pt !important;
             font-weight: 900 !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
 
           .laporan-section {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+            margin-bottom: 2.5mm !important;
+          }
+
+          .laporan-section table {
             break-inside: auto !important;
             page-break-inside: auto !important;
           }
@@ -1029,6 +1070,7 @@ export function LaporanPreview({
           .laporan-signature-section {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            margin-top: 6mm !important;
           }
 
           .laporan-documentation-section {
