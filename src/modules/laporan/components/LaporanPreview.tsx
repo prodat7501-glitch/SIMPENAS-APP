@@ -673,7 +673,6 @@ export function LaporanPreview({
       isOpen
       title="Pratinjau Laporan Perjalanan Dinas"
       onClose={onClose}
-      printPageSize="215mm 330mm"
       className="laporan-print-sheet w-[215mm] min-h-[330mm] print:overflow-visible"
     >
       <div
@@ -949,15 +948,17 @@ export function LaporanPreview({
             visibility: visible;
           }
 
-          .print-direct {
+          .print-direct.print-direct {
             position: static !important;
             display: block !important;
             width: 100% !important;
+            max-width: 100% !important;
             background: white !important;
             padding: 0 !important;
             margin: 0 !important;
             box-shadow: none !important;
             overflow: visible !important;
+            float: none !important;
           }
 
           .laporan-print-sheet.print-container {
